@@ -3,10 +3,12 @@
  *
  * Nivel (Elo adaptado a 30–99):
  *   E = 1 / (1 + 10^((rival − yo) / 20))
- *   Δ = K × (resultado − E) × margen
+ *   resultado = 0,75 si ganas (0 si pierdes) + 0,25 × (juegos que ganas / juegos totales)
+ *   Δ = K × (resultado − E)
  *   K = 12 en los 5 primeros partidos de cada jugador, después 4.
- *   margen = 1,15 si el ganador no cede más de 3 juegos.
- * Puntos de temporada: victoria 3, derrota 1, +1 si ganas a alguien con 5+ niveles más
+ *   Así cuentan también los juegos: perder 6-7 6-7 contra alguien mucho mejor casi no resta,
+ *   y ganar 6-0 6-0 suma más que ganar 7-6 7-6.
+ * Puntos de temporada: victoria 3, derrota en 3 sets 2, derrota 1, +1 si ganas a alguien con 5+ niveles más
  *   (solo si ninguno es provisional). Cuentan como máximo 3 partidos por semana por jugador
  *   y 2 partidos por pareja en la temporada. Los Másters no dan puntos. Perder por rechazo (6-0 6-0) da 0 puntos.
  */
@@ -19,9 +21,11 @@ export const ATTRS = [
   ['saque2', '2.º servicio'],
 ];
 export const MIN_LVL = 30, MAX_LVL = 99;
-export const K_PROV = 12, K_NORMAL = 4, PROV_MATCHES = 5, MARGIN_MULT = 1.15, MARGIN_GAMES = 3;
+export const K_PROV = 12, K_NORMAL = 4, PROV_MATCHES = 5, WIN_WEIGHT = 0.75, GAMES_WEIGHT = 0.25;
 export const WEEK_CAP = 3, PAIR_CAP = 2;
-export const PTS_WIN = 3, PTS_LOSS = 1, PTS_BONUS = 1, BONUS_GAP = 5;
+export const PTS_WIN = 3, PTS_LOSS = 1, PTS_LOSS_3SETS = 2, PTS_BONUS = 1, BONUS_GAP = 5;
+/** Desde este día de la fase regular, solo se puede retar a tu grupo de 8 y a los de al lado. */
+export const BAND_FROM_DAY = 30, BAND_SIZE = 8, BAND_LAST = 3;
 export const TIERS = [
   ['oro', 'Máster Oro'],
   ['plata', 'Máster Plata'],
@@ -66,7 +70,8 @@ export function ageOn(birth, today = new Date()) {
 /* ── Marcadores ──────────────────────────────────────────────────────── */
 /**
  * sets: [[juegosP1, juegosP2], ...] (1 a 3 sets). El 3.º puede ser super tie-break (a 10).
- * Devuelve { ok, winner: 0|1, loserGames, error }.
+ * Devuelve { ok, winner: 0|1, loserGames, games: [juegosP1, juegosP2], sets: nº de sets, error }.
+ * (el súper tie-break cuenta como 1 juego para quien lo gana)
  */
 export function checkSets(sets) {
   if (!Array.isArray(sets) || sets.length < 1 || sets.length > 3) return { ok: false, error: 'Pon entre 1 y 3 sets.' };
@@ -94,13 +99,18 @@ export function checkSets(sets) {
   if (sets.length === 3 && (w0 === 3 || w1 === 3)) return { ok: false, error: 'Con 3 sets, el ganador gana 2 y pierde 1.' };
   if (sets.length === 2 && w0 !== 2 && w1 !== 2) return { ok: false, error: 'Con 2 sets, falta el tercero.' };
   const winner = w0 > w1 ? 0 : 1;
-  return { ok: true, winner, loserGames: winner === 0 ? g1 : g0 };
+  return { ok: true, winner, loserGames: winner === 0 ? g1 : g0, games: [g0, g1], sets: sets.length };
 }
 export const fmtSets = (sets, flip = false) =>
   sets.map(([a, b]) => (flip ? `${b}-${a}` : `${a}-${b}`)).join(' ');
 
 /* ── Elo ─────────────────────────────────────────────────────────────── */
 export const expected = (me, rival) => 1 / (1 + Math.pow(10, (rival - me) / 20));
+/** Resultado del partido para el Elo: 0,75 por ganar + 0,25 × % de juegos ganados. */
+export const matchScore = (won, gameShare) => (won ? WIN_WEIGHT : 0) + GAMES_WEIGHT * gameShare;
+/** Grupo de 8 según el puesto (0 = 1.º–8.º, 1 = 9.º–16.º, 2 = 17.º–24.º, 3 = del 25.º en adelante). */
+export const bandOf = (index) => Math.min(Math.floor(index / BAND_SIZE), BAND_LAST);
+export const bandName = (b) => ['1.º–8.º', '9.º–16.º', '17.º–24.º', 'del 25.º en adelante'][b];
 
 /* Semana ISO de una fecha 'YYYY-MM-DD' */
 export function isoWeek(day) {
@@ -131,11 +141,12 @@ export function replay(players, matches) {
     const prov1 = count[m.p1] < PROV_MATCHES, prov2 = count[m.p2] < PROV_MATCHES;
     const p1Won = m.winner === m.p1;
     const chk = checkSets(m.sets);
-    const loserGames = chk.ok ? chk.loserGames : 99;
-    const mult = loserGames <= MARGIN_GAMES ? MARGIN_MULT : 1;
+    const share1 = chk.ok && chk.games[0] + chk.games[1] > 0 ? chk.games[0] / (chk.games[0] + chk.games[1]) : (p1Won ? 1 : 0);
+    const S1 = matchScore(p1Won, share1), S2 = 1 - S1;
     const E1 = expected(L1, L2), E2 = 1 - E1;
-    const d1 = (prov1 ? K_PROV : K_NORMAL) * ((p1Won ? 1 : 0) - E1) * mult;
-    const d2 = (prov2 ? K_PROV : K_NORMAL) * ((p1Won ? 0 : 1) - E2) * mult;
+    const d1 = (prov1 ? K_PROV : K_NORMAL) * (S1 - E1);
+    const d2 = (prov2 ? K_PROV : K_NORMAL) * (S2 - E2);
+    const threeSets = chk.ok && chk.sets === 3;
     const A1 = r2(clamp(L1 + d1)), A2 = r2(clamp(L2 + d2));
 
     let pts1 = 0, pts2 = 0;
@@ -150,7 +161,7 @@ export function replay(players, matches) {
           if ((weekUsed[key] || 0) >= WEEK_CAP) return 0;
           weekUsed[key] = (weekUsed[key] || 0) + 1;
           if (!won && m.walkover) return 0;           // rechazar no da el punto de participación
-          let p = won ? PTS_WIN : PTS_LOSS;
+          let p = won ? PTS_WIN : threeSets ? PTS_LOSS_3SETS : PTS_LOSS;
           if (won && bonusOk && rivalL - myL >= BONUS_GAP) p += PTS_BONUS;
           return p;
         };

@@ -135,13 +135,28 @@ async function standings(sql = db()) {
 }
 const posMap = (st) => Object.fromEntries(st.qualified.map((r) => [r.id, r.pos]));
 
+/** Lo que te juegas contra un rival: un partido «normal» (6-4 6-4) ganado o perdido. */
 function stakes(me, meCount, rv, rvCount) {
   const K = meCount < R.PROV_MATCHES ? R.K_PROV : R.K_NORMAL;
   const E = R.expected(Number(me.level), Number(rv.level));
   const bonus = meCount >= R.PROV_MATCHES && rvCount >= R.PROV_MATCHES && Number(rv.level) - Number(me.level) >= R.BONUS_GAP;
-  return { win: K * (1 - E), loss: -K * E, ptsWin: R.PTS_WIN + (bonus ? R.PTS_BONUS : 0), ptsLoss: R.PTS_LOSS };
+  return { win: K * (R.matchScore(true, 0.6) - E), loss: K * (R.matchScore(false, 0.4) - E),
+    winBig: K * (R.matchScore(true, 1) - E), lossBig: K * (R.matchScore(false, 0) - E),
+    ptsWin: R.PTS_WIN + (bonus ? R.PTS_BONUS : 0), ptsLoss: R.PTS_LOSS, ptsLoss3: R.PTS_LOSS_3SETS };
 }
-const stakesLine = (s) => `Si ganas: ${signed(s.win)} nivel · +${s.ptsWin} pts. Si pierdes: ${signed(s.loss)} nivel · +${s.ptsLoss} pt.`;
+const stakesLine = (s) => `Ganando 6-4 6-4: ${signed(s.win)} nivel · +${s.ptsWin} pts. Perdiendo 4-6 4-6: ${signed(s.loss)} nivel · +${s.ptsLoss} pt (2 si le quitas un set).`;
+
+/** Desde el día 30, solo se puede retar a tu grupo de 8 y a los de al lado. Devuelve null si se puede. */
+function bandBlock(st, S, aId, bId) {
+  const day = Math.round((new Date(madridToday()) - new Date(S.starts_on)) / 864e5) + 1;
+  if (S.phase !== 'regular' || day < R.BAND_FROM_DAY) return null;
+  const order = [...st.qualified, ...st.others].map((r) => r.id);
+  const ia = order.indexOf(aId), ib = order.indexOf(bId);
+  if (ia < 0 || ib < 0) return null;
+  const ga = R.bandOf(ia), gb = R.bandOf(ib);
+  if (Math.abs(ga - gb) <= 1) return null;
+  return `Desde el día ${R.BAND_FROM_DAY} solo se puede retar al propio grupo y a los de al lado. Tú estás en el grupo ${R.bandName(ga)} y este jugador en el ${R.bandName(gb)}.`;
+}
 
 function checkWhen(date, time, S, { allowToday = true } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) fail('Elige el día.');
@@ -374,6 +389,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
       stakes: stakes(me, st.count[me.id] || 0, p, st.count[id] || 0),
       noMessage: isMinor(me) || isMinor(p),
       canChallenge: p.active && st.S.phase === 'regular',
+      bandBlock: bandBlock(st, st.S, me.id, id),
     };
   }
   return out;
@@ -407,6 +423,8 @@ on('POST', 'challenge', async ({ req, body, out }) => {
   if (!rv) fail('Ese jugador no está disponible.');
   let message = String(body.message || '').trim().slice(0, 200) || null;
   if (isMinor(me) || isMinor(rv)) message = null;
+  const blocked = bandBlock(await standings(sql), S, me.id, to);
+  if (blocked) fail(blocked);
   const ch = await sql.begin(async (tx) => {
     await tx`select pg_advisory_xact_lock(hashtext(${[me.id, to].sort().join('|')}))`;
     const [chk] = await tx`select

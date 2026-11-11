@@ -745,6 +745,7 @@ async function screenPlayer(id) {
   if (!own) {
     const v = d.vs;
     if (!v.canChallenge) cta = `<p class="hint" style="text-align:center;margin-top:18px">${S.season.phase === 'regular' ? 'Este jugador no está disponible.' : 'La fase regular ha terminado.'}</p>`;
+    else if (v.bandBlock) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(v.bandBlock)}</p>`;
     else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · verlo</a>`;
     else if (v.pairLeft <= 0) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado los 2 partidos por pareja de esta temporada.</p>`;
     else cta = `<a class="btn block" style="margin-top:18px" href="#/retar/${p.id}">Retar a ${esc(first(p.full_name))}</a>`;
@@ -792,8 +793,8 @@ async function screenChallenge(id) {
         <div>${avatar(p, 'lg').replace('class="av', 'style="margin:0 auto;border:2px solid rgba(255,255,255,.3)" class="av')}<div style="margin-top:6px;font-size:14px;font-weight:700">${esc(first(p.full_name))} · ${lvl(p.level)}</div></div>
       </div>
       <div style="margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
-        <div style="background:rgba(31,157,107,.2);border-radius:12px;padding:9px 10px"><div class="label" style="color:#7FD8B2;letter-spacing:.1em">Si ganas</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.win)} nivel · +${v.stakes.ptsWin} pts</div></div>
-        <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:9px 10px"><div class="label" style="color:rgba(255,255,255,.65);letter-spacing:.1em">Si pierdes</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.loss)} nivel · +${v.stakes.ptsLoss} pt</div></div>
+        <div style="background:rgba(31,157,107,.2);border-radius:12px;padding:9px 10px"><div class="label" style="color:#7FD8B2;letter-spacing:.1em">Si ganas</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.win)} nivel · +${v.stakes.ptsWin} pts</div><div style="font-size:12px;opacity:.7;margin-top:2px">6-0 6-0: ${signed(v.stakes.winBig)}</div></div>
+        <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:9px 10px"><div class="label" style="color:rgba(255,255,255,.65);letter-spacing:.1em">Si pierdes</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.loss)} nivel · +${v.stakes.ptsLoss} pt</div><div style="font-size:12px;opacity:.7;margin-top:2px">0-6 0-6: ${signed(v.stakes.lossBig)} · en 3 sets: +2 pts</div></div>
       </div>
     </div>
     ${whenPicker('w')}
@@ -1198,8 +1199,9 @@ function screenPrivacy() {
       <li>Puedes retar a cualquier jugador. El retado tiene 7 días para responder; si nadie responde, el reto caduca sin penalización.</li>
       <li>Cada jugador tiene 2 rechazos libres al mes. A partir del tercero, el partido cuenta como derrota 6-0 6-0 (sin punto por jugar).</li>
       <li>Después del partido, uno pone el resultado y el otro lo confirma. Si no responde en 48 horas, se da por bueno. Si hay desacuerdo, decide el club.</li>
-      <li>Puntos: victoria 3, derrota 1, y +1 si ganas a alguien con 5 o más niveles por encima (cuando ninguno es provisional). Cuentan como máximo 3 partidos por semana y 2 partidos por pareja en la temporada.</li>
-      <li>El nivel se mueve con los resultados: más rápido en tus 5 primeros partidos.</li>
+      <li>Puntos: victoria 3, derrota en 3 sets 2, derrota 1, y +1 si ganas a alguien con 5 o más niveles por encima (cuando ninguno es provisional). Cuentan como máximo 3 partidos por semana y 2 partidos por pareja en la temporada.</li>
+      <li>El nivel se mueve con los resultados y con los juegos: ganar a alguien mejor sube mucho; perder ajustado contra alguien mejor casi no resta. Se mueve más rápido en tus 5 primeros partidos.</li>
+      <li>Desde el día 30, solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.</li>
       <li>Para entrar en los Másters hay que jugar al menos 5 partidos. Los Másters se juegan por grupos de 8 según la clasificación (Oro, Plata, Bronce y Challenger).</li>
       <li>Las pistas se reservan en el club, como siempre.</li>
     </ul>

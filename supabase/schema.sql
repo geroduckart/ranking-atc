@@ -11,8 +11,8 @@ create table if not exists season (
   id           int primary key default 1 check (id = 1),
   name         text not null default 'Temporada 1',
   starts_on    date not null default current_date,
-  ends_on      date not null default (current_date + 49),   -- fin de la fase regular
-  masters_end  date not null default (current_date + 59),  -- 60 días en total
+  ends_on      date not null default (current_date + 59),   -- fin de la fase regular (60 días)
+  masters_end  date not null default (current_date + 73),  -- Másters: 2 semanas después
   phase        text not null default 'regular' check (phase in ('regular','masters','closed')),
   min_matches  int  not null default 5
 );
