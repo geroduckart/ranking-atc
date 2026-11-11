@@ -1,0 +1,25 @@
+# Ranking ATC — Almuñécar Tennis Club
+# La app está en /public y la API en /netlify/functions (base de datos: Supabase).
+[build]
+  publish = "public"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

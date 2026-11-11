@@ -1,0 +1,10 @@
+{
+  "name": "ranking-atc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Almuñécar Tennis Club — Ranking del club",
+  "dependencies": {
+    "postgres": "^3.4.5"
+  }
+}
