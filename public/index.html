@@ -107,6 +107,9 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .rank-head{margin:calc(-12px - var(--sat)) -18px 0;padding:calc(20px + var(--sat)) 20px 18px;border-radius:0 0 30px 30px;box-shadow:0 12px 30px rgba(11,27,51,.22);text-align:center;display:flex;flex-direction:column;align-items:center}
 .rank-head img{width:140px;height:auto}
 .rank-head h1{margin:12px 0 0;font-size:30px;font-weight:700;letter-spacing:-.02em}
+.season-sub{margin-top:8px;font-size:12px;font-weight:600;color:var(--peach);letter-spacing:.01em}
+.season-bar{width:150px;height:3px;margin:7px auto 0;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
+.season-bar i{display:block;height:100%;background:var(--orange);border-radius:3px}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.1)}
 .pill.light{background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:0 4px 14px rgba(15,23,32,.07),inset 0 1px 0 rgba(255,255,255,.9);font-size:13px;padding:7px 12px}
 .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;border-radius:999px;background:rgba(255,255,255,.1);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid rgba(255,255,255,.14);width:100%;margin-top:14px}
@@ -192,16 +195,16 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 /* Barra inferior */
 .nav{position:absolute;z-index:30;left:0;right:0;bottom:calc(10px + var(--sab));margin:0 auto;width:calc(100% - 32px);max-width:420px;height:64px;
   display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;padding:6px;border-radius:999px;
-  background:rgba(22,24,29,.88);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
-  border:1px solid rgba(255,255,255,.08);box-shadow:0 12px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06);
+  background:linear-gradient(180deg,rgba(26,55,96,.97),rgba(14,33,61,.97));-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+  border:1px solid rgba(255,255,255,.09);box-shadow:0 12px 32px rgba(11,27,51,.35),inset 0 1px 0 rgba(255,255,255,.08);
   -webkit-transform:translateZ(0);transform:translateZ(0)}
 .nav a{height:52px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  font-size:10.5px;font-weight:600;letter-spacing:.01em;color:rgba(255,255,255,.55);position:relative;
+  font-size:10.5px;font-weight:600;letter-spacing:.01em;color:rgba(214,226,245,.62);position:relative;
   transition:background-color 200ms ease,color 200ms ease,transform 160ms var(--ease)}
 .nav a:active{transform:scale(.94)}
 .nav a svg{width:22px;height:22px;stroke-width:1.8}
-.nav a[aria-current="page"]{color:#fff;background:rgba(255,255,255,.12)}
-.nav .dot{position:absolute;top:5px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid rgb(22,24,29)}
+.nav a[aria-current="page"]{color:#fff;background:rgba(255,255,255,.14)}
+.nav .dot{position:absolute;top:5px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--navy)}
 
 /* Login */
 .login{min-height:100vh;min-height:100dvh;padding:calc(48px + var(--sat)) 26px calc(28px + var(--sab));display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
@@ -723,19 +726,34 @@ function screenReset(q) {
 }
 
 /* ── Clasificación ──────────────────────────────────────────────────── */
+const dm = (d) => { const [, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}`; };
+const daysBetween = (a, b) => Math.round((Date.parse(String(b).slice(0, 10)) - Date.parse(String(a).slice(0, 10))) / 864e5);
+const nextDay = (d) => new Date(Date.parse(String(d).slice(0, 10)) + 864e5).toISOString().slice(0, 10);
+function seasonSub(sv) {
+  if (sv.phase === 'closed') return 'Temporada terminada';
+  if (sv.phase === 'masters') return `Másters en juego · hasta el ${dm(sv.masters_end)}`;
+  const t = today();
+  if (!sv.started) {
+    const n = daysBetween(t, sv.starts_on);
+    return n <= 1 ? 'Empieza mañana' : `Empieza en ${n} días`;
+  }
+  if (sv.regularOver) return `Fase regular terminada · Másters del ${dm(nextDay(sv.ends_on))} al ${dm(sv.masters_end)}`;
+  const left = sv.total - sv.day;
+  const pct = Math.round(sv.day / sv.total * 100);
+  return `Día ${sv.day} de ${sv.total} · ${left === 0 ? 'último día' : left === 1 ? 'queda 1 día' : `quedan ${left} días`}<div class="season-bar"><i style="width:${pct}%"></i></div>`;
+}
 let rankTab = 'puntos', rankQuery = '';
 async function screenRanking() {
   render(`<main class="screen"><header class="rank-head hero">
-    <img src="${LOGO_W}" alt="Almuñécar Tennis Club"><h1>Clasificación</h1><div class="pill" id="pill">&nbsp;</div>
+    <img src="${LOGO_W}" alt="Almuñécar Tennis Club"><h1>Clasificación</h1><div class="pill" id="pill">&nbsp;</div><div id="seasonsub" class="season-sub">&nbsp;</div>
     <div class="tabs" role="tablist"><button role="tab" data-t="puntos">Puntos</button><button role="tab" data-t="nivel">Nivel</button></div>
   </header><div id="body">${spinner()}</div></main>${nav('ranking')}`);
   let d;
   try { d = await api('GET', 'ranking'); } catch (e) { return errorScreen(e); }
   S.cache.ranking = d; S.season = d.season;
   const sv = d.season;
-  document.getElementById('pill').textContent = sv.phase === 'regular'
-    ? (sv.started ? (sv.regularOver ? `${sv.name} · fase regular terminada` : `${sv.name} · Día ${sv.day} de ${sv.total}`) : `${sv.name} · empieza el ${fmtWhen(sv.starts_on, true)}`)
-    : sv.phase === 'masters' ? `${sv.name} · Másters` : `${sv.name} · terminada`;
+  document.getElementById('pill').textContent = `${sv.name} · ${sv.total} días · ${dm(sv.starts_on)} al ${dm(sv.ends_on)}`;
+  document.getElementById('seasonsub').innerHTML = seasonSub(sv);
   const paint = () => {
     document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.t === rankTab ? 'true' : 'false'));
     const q = rankQuery.trim().toLowerCase();
@@ -763,7 +781,7 @@ async function screenRanking() {
         html += row(r, 0, 'puntos');
       }
       if (oth.length) {
-        html += `<div class="zone"><span>Aún sin clasificar · mínimo ${sv.min_matches} partidos</span><span>PJ · Pts</span></div>`;
+        html += `<div class="zone"><span>Aún sin clasificar · mínimo ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span style="white-space:nowrap;flex:none">PJ · Pts</span></div>`;
         html += oth.map((r) => row(r, 0, 'puntos')).join('');
       }
       if (!qual.length && !oth.length) html += `<div class="empty">${q ? 'No hay nadie con ese nombre.' : 'Todavía no hay jugadores.'}</div>`;
