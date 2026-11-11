@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#12294A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -134,7 +134,7 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .av.xl{width:84px;height:84px;font-size:26px}
 .search{position:relative;margin-top:12px}
 .search input{padding-left:42px;height:46px;font-size:15px;border-radius:999px;background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:0 4px 14px rgba(15,23,32,.06)}
-.search svg{position:absolute;left:14px;top:13px;color:var(--muted)}
+.search svg{position:absolute;left:14px;top:14px;color:var(--muted);z-index:2;pointer-events:none}
 .empty{text-align:center;color:var(--muted);padding:32px 12px;font-size:15px;line-height:1.5}
 
 /* Tarjetas */
@@ -1370,7 +1370,7 @@ function paintAdmin() {
    Router
    ════════════════════════════════════════════════════════════════════ */
 function go(path) { const h = '#/' + path; if (location.hash === h) route(); else location.hash = h; }
-const PUBLIC = new Set(['login', 'registro', 'registro/carta', 'olvide', 'reset', 'privacidad']);
+const PUBLIC = new Set(['login', 'registro', 'registro/carta', 'olvide', 'reset', 'privacidad', 'diag']);
 async function route() {
   const raw = location.hash.replace(/^#\/?/, '');
   const [path, qs] = raw.split('?');
@@ -1402,6 +1402,15 @@ async function route() {
     case 'masters': return screenMasters();
     case 'ajustes': return screenSettings();
     case 'admin': return screenAdmin();
+    case 'diag': {
+      const vv = window.visualViewport, cs = getComputedStyle(document.documentElement);
+      const rows = [['innerWidth × innerHeight', `${innerWidth} × ${innerHeight}`], ['visualViewport', vv ? `${Math.round(vv.width)} × ${Math.round(vv.height)} · top ${Math.round(vv.offsetTop)}` : '—'],
+        ['clientHeight', document.documentElement.clientHeight], ['screen', `${screen.width} × ${screen.height}`], ['scrollY', scrollY],
+        ['safe-area top/bottom', `${cs.getPropertyValue('--sat')} / ${cs.getPropertyValue('--sab')}`], ['shell', `${$shell.style.top} · ${$shell.style.height}`], ['navegador', navigator.userAgent]];
+      return render(`<main class="screen nonav"><h1 class="h" style="font-size:24px">Diagnóstico de pantalla</h1><p class="sub">Haz una captura y mándasela a quien te ayuda con la app.</p>
+        <div class="box" style="margin-top:14px">${rows.map(([k, v]) => `<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${k}</b><br>${esc(String(v))}</div>`).join('')}</div>
+        <div style="position:fixed;left:0;right:0;top:0;height:4px;background:red"></div><div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:red"></div></main>`);
+    }
     default: return go('');
   }
 }
