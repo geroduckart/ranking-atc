@@ -144,8 +144,9 @@ export function replay(players, matches) {
     const share1 = chk.ok && chk.games[0] + chk.games[1] > 0 ? chk.games[0] / (chk.games[0] + chk.games[1]) : (p1Won ? 1 : 0);
     const S1 = matchScore(p1Won, share1), S2 = 1 - S1;
     const E1 = expected(L1, L2), E2 = 1 - E1;
-    const d1 = (prov1 ? K_PROV : K_NORMAL) * (S1 - E1);
-    const d2 = (prov2 ? K_PROV : K_NORMAL) * (S2 - E2);
+    // Quien gana nunca baja y quien pierde nunca sube (aunque el marcador sea ajustado).
+    const d1 = p1Won ? Math.max(0, (prov1 ? K_PROV : K_NORMAL) * (S1 - E1)) : Math.min(0, (prov1 ? K_PROV : K_NORMAL) * (S1 - E1));
+    const d2 = p1Won ? Math.min(0, (prov2 ? K_PROV : K_NORMAL) * (S2 - E2)) : Math.max(0, (prov2 ? K_PROV : K_NORMAL) * (S2 - E2));
     const threeSets = chk.ok && chk.sets === 3;
     const A1 = r2(clamp(L1 + d1)), A2 = r2(clamp(L2 + d2));
 

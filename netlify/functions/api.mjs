@@ -140,8 +140,9 @@ function stakes(me, meCount, rv, rvCount) {
   const K = meCount < R.PROV_MATCHES ? R.K_PROV : R.K_NORMAL;
   const E = R.expected(Number(me.level), Number(rv.level));
   const bonus = meCount >= R.PROV_MATCHES && rvCount >= R.PROV_MATCHES && Number(rv.level) - Number(me.level) >= R.BONUS_GAP;
-  return { win: K * (R.matchScore(true, 0.6) - E), loss: K * (R.matchScore(false, 0.4) - E),
-    winBig: K * (R.matchScore(true, 1) - E), lossBig: K * (R.matchScore(false, 0) - E),
+  const up = (x) => Math.max(0, x), down = (x) => Math.min(0, x);
+  return { win: up(K * (R.matchScore(true, 0.6) - E)), loss: down(K * (R.matchScore(false, 0.4) - E)),
+    winBig: up(K * (R.matchScore(true, 1) - E)), lossBig: down(K * (R.matchScore(false, 0) - E)),
     ptsWin: R.PTS_WIN + (bonus ? R.PTS_BONUS : 0), ptsLoss: R.PTS_LOSS, ptsLoss3: R.PTS_LOSS_3SETS };
 }
 const stakesLine = (s) => `Ganando 6-4 6-4: ${signed(s.win)} nivel · +${s.ptsWin} pts. Perdiendo 4-6 4-6: ${signed(s.loss)} nivel · +${s.ptsLoss} pt (2 si le quitas un set).`;

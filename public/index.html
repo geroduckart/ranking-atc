@@ -33,7 +33,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:radial-gradient(70% 45% at 100% 0%,rgba(227,91,42,.10),transparent 70%),radial-gradient(70% 50% at 0% 100%,rgba(18,41,74,.10),transparent 70%),radial-gradient(50% 35% at 0% 20%,rgba(244,226,161,.18),transparent 70%),#F3F1ED}
 .glass{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none}
+#scroll{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 body{min-height:100vh;min-height:100dvh;background:transparent;color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.4}
 button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -185,7 +186,7 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 
 .pagehead{padding:10px 2px 0}
 /* Barra inferior */
-.nav{position:fixed;z-index:30;left:0;right:0;bottom:calc(12px + var(--sab));margin:0 auto;width:calc(100% - 28px);max-width:452px;height:68px;
+.nav{position:fixed;z-index:30;left:0;right:0;bottom:calc(10px + var(--sab));margin:0 auto;width:calc(100% - 28px);max-width:452px;height:68px;
   display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;padding:6px;border-radius:999px;
   background:rgba(255,255,255,.66);-webkit-backdrop-filter:blur(26px) saturate(190%);backdrop-filter:blur(26px) saturate(190%);
   border:1px solid rgba(255,255,255,.8);box-shadow:0 14px 40px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.06),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.35);
@@ -284,7 +285,7 @@ details.adm summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="scroll"><div id="app"></div></div>
 <script>
 'use strict';
 /* ════════════════════════════════════════════════════════════════════
@@ -414,7 +415,8 @@ function nav(active) {
 }
 const backBtn = (href, label = 'Volver') => `<a class="icon-btn" href="#/${href}" aria-label="${esc(label)}">${I.back}</a>`;
 const spinner = () => '<div class="spinner" role="progressbar" aria-label="Cargando"></div>';
-function render(html) { $app.innerHTML = html; window.scrollTo(0, 0); }
+const $scroll = document.getElementById('scroll');
+function render(html) { $app.innerHTML = html; $scroll.scrollTop = 0; }
 function errorScreen(e, back = '') {
   render(`<main class="screen"><div class="top">${backBtn(back)}<div></div><div style="width:44px"></div></div>
     <div class="empty">${esc(e.message || e)}<div style="margin-top:16px"><button class="btn sm ghost" onclick="route()">Reintentar</button></div></div></main>${S.me ? nav('') : ''}`);
