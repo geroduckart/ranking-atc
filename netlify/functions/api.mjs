@@ -317,7 +317,8 @@ async function anonymize(sql, id) {
       pin_hash = 'deleted', photo = null, active = false, session_v = session_v + 1, notify = '{}'::jsonb,
       birth_date = '1900-01-01', reset_hash = null where id = ${id}`;
     await tx`delete from comments where author = ${id}`;
-    await tx`delete from feed where actor = ${id} and kind in ('new_player','admin')`;
+    await tx`delete from feed where (actor = ${id} or target = ${id}) and kind in ('new_player','admin','challenge','accepted')`;
+    await tx`delete from likes where player = ${id}`;
   });
 }
 
@@ -843,7 +844,7 @@ on('POST', 'masters/:id/result', async ({ req, params, body, out }) => {
    Tablón
    ════════════════════════════════════════════════════════════════════ */
 on('GET', 'feed', async ({ req, url }) => {
-  await auth(req);
+  const me = await auth(req);
   const sql = db();
   const before = Number(url.searchParams.get('before')) || 9e15;
   const posts = await sql`select f.*, a.full_name as actor_name, a.photo_v as actor_pv, t.full_name as target_name
@@ -852,9 +853,13 @@ on('GET', 'feed', async ({ req, url }) => {
   const ids = posts.map((p) => p.id);
   const comments = ids.length ? await sql`select c.*, p.full_name as author_name, p.photo_v as author_pv from comments c
     left join players p on p.id = c.author where c.post_id in ${sql(ids)} order by c.id` : [];
+  const likes = ids.length ? await sql`select post_id, count(*)::int as n, bool_or(player = ${me.id}) as mine
+    from likes where post_id in ${sql(ids)} group by post_id` : [];
+  const likeOf = Object.fromEntries(likes.map((l) => [Number(l.post_id), l]));
   return {
     posts: posts.map((p) => ({
       id: Number(p.id), kind: p.kind, data: p.data, body: p.body, created_at: p.created_at,
+      likes: likeOf[Number(p.id)]?.n || 0, liked: !!likeOf[Number(p.id)]?.mine,
       actor: p.actor ? { id: p.actor, name: p.actor_name, photo_v: p.actor_pv } : null,
       target: p.target ? { id: p.target, name: p.target_name } : null,
       comments: comments.filter((c) => c.post_id === p.id).map((c) => ({ id: Number(c.id), body: c.body, created_at: c.created_at,
@@ -878,6 +883,25 @@ on('POST', 'feed/:id/comment', async ({ req, params, body }) => {
   if (recent.n >= 5) fail('Vas muy rápido. Espera un momento.');
   const [c] = await sql`insert into comments (post_id, author, body) values (${id}, ${me.id}, ${text}) returning id`;
   return { id: Number(c.id) };
+});
+
+on('POST', 'feed/:id/like', async ({ req, params }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [f] = await sql`select id from feed where id = ${id}`;
+  if (!f) fail('Publicación no encontrada.', 404);
+  const del = await sql`delete from likes where post_id = ${id} and player = ${me.id} returning 1`;
+  if (!del.length) await sql`insert into likes (post_id, player) values (${id}, ${me.id}) on conflict do nothing`;
+  const [{ n }] = await sql`select count(*)::int as n from likes where post_id = ${id}`;
+  return { liked: !del.length, likes: n };
+});
+
+on('GET', 'feed/:id/likes', async ({ req, params }) => {
+  await auth(req);
+  const rows = await db()`select p.id, p.full_name, p.photo_v from likes l join players p on p.id = l.player
+    where l.post_id = ${checkNum(params[0])} and p.active order by l.created_at desc`;
+  return { players: rows };
 });
 
 on('POST', 'comment/:id/delete', async ({ req, params }) => {
@@ -1136,7 +1160,7 @@ on('POST', 'admin/masters/generate', async ({ req, body, out }) => {
     }
     await tx`update season set phase = 'masters' where id = 1`;
     const names = R.TIERS.filter(([t]) => summary[t]).map(([t, n]) => `${n} (${summary[t]})`).join(', ');
-    await tx`insert into feed (kind, data, body) values ('masters', ${tx.json(summary)}, ${`¡Cuadros de los Másters listos! ${names}. Mirad vuestro primer partido en Retos.`})`;
+    await tx`insert into feed (kind, data, body) values ('masters', ${tx.json(summary)}, ${`¡Cuadros de los Másters listos! ${names}. Mirad vuestro primer partido en la pestaña Partidos.`})`;
     const P = await playersById(tx, Object.values(groups).flat());
     for (const [tier, ids] of Object.entries(groups)) {
       const tname = R.TIERS.find(([t]) => t === tier)[1];

@@ -45,12 +45,12 @@ Necesitas tres cuentas gratuitas: **Supabase** (base de datos), **Netlify** (la 
 
 1. Entra en [resend.com](https://resend.com), crea la cuenta → **Domains → Add Domain** → `almunecartennisclub.com`, región **Ireland (eu-west-1)**.
 2. Resend te enseña 3 o 4 registros DNS (tipo, nombre y valor). Déjalos abiertos.
-3. En **Hostinger**: hPanel → **Dominios** → `almunecartennisclub.com` → **DNS / Nameservers** → **Gestionar registros DNS**. Añade cada registro **exactamente** como lo muestra Resend:
-   - **MX**, nombre `send` (prioridad 10).
-   - **TXT**, nombre `send` (el que empieza por `v=spf1`).
-   - **TXT**, nombre `resend._domainkey` (el valor largo, el DKIM).
-   - Si Resend propone un **TXT `_dmarc`**, añádelo también.
-   - **No toques ni borres los registros que ya hay**, sobre todo los MX de `@`: son los de `info@`. Los de Resend van en el subdominio `send` y no afectan a tu correo actual.
+3. En **Hostinger**: hPanel → **Dominios** → `almunecartennisclub.com` → **DNS / Nameservers** → **Gestionar registros DNS**. Añade cada registro **exactamente** como lo muestra Resend (copia el contenido con el botón de copiar, no a mano):
+   - **TXT**, nombre `resend._domainkey` (el valor largo que empieza por `p=`, el DKIM).
+   - **CNAME**, nombre `rsend`.
+   - **CNAME**, nombre `send`.
+   - En "Nombre" pon solo eso (`send`, `rsend`…): Hostinger añade el dominio solo.
+   - **No toques ni borres los registros que ya hay**, sobre todo los MX de `@`: son los de `info@`.
 4. Vuelve a Resend y pulsa **Verify DNS Records**. Puede tardar de unos minutos a unas horas. Cuando salga **Verified**, ve a **API Keys → Create API Key** (permiso *Sending access*), cópiala en Netlify como `RESEND_API_KEY` y vuelve a hacer **Trigger deploy**.
 
 Mientras no haya `RESEND_API_KEY`, la app funciona igual pero no envía emails.

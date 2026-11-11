@@ -12,7 +12,7 @@ create table if not exists season (
   name         text not null default 'Temporada 1',
   starts_on    date not null default current_date,
   ends_on      date not null default (current_date + 49),   -- fin de la fase regular
-  masters_end  date not null default (current_date + 60),
+  masters_end  date not null default (current_date + 59),  -- 60 días en total
   phase        text not null default 'regular' check (phase in ('regular','masters','closed')),
   min_matches  int  not null default 5
 );
@@ -122,6 +122,12 @@ create table if not exists comments (
   created_at timestamptz not null default now()
 );
 create index if not exists comments_post on comments (post_id);
+create table if not exists likes (
+  post_id    bigint not null references feed(id) on delete cascade,
+  player     uuid not null references players(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, player)
+);
 
 -- Seguridad: nadie entra a las tablas desde fuera. Solo la app (desde Netlify) con la conexión directa.
 alter table season     enable row level security;
@@ -131,3 +137,4 @@ alter table masters    enable row level security;
 alter table matches    enable row level security;
 alter table feed       enable row level security;
 alter table comments   enable row level security;
+alter table likes      enable row level security;

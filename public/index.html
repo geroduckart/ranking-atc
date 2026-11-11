@@ -204,24 +204,46 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .or{width:100%;margin-top:22px;padding-top:20px;border-top:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;align-items:center;gap:10px;position:relative}
 .or p{margin:0;font-size:15px;color:rgba(255,255,255,.8)}
 
-/* Tablón */
-.post{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:22px;padding:14px 16px}
+/* Tablón (compacto, tipo Instagram) */
+.post{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:20px;padding:12px 14px 8px}
 .post.admin{background:radial-gradient(120% 120% at 90% 0%,var(--navy-3),var(--navy) 55%,var(--navy-2));border-color:rgba(255,255,255,.08);color:#fff;box-shadow:0 12px 30px rgba(11,27,51,.22)}
-.post + .post{margin-top:10px}
-.post .head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--muted)}
-.post.admin .head{color:var(--peach)}
-.post .txt{margin-top:8px;font-size:16px;font-weight:700;line-height:1.35}
+.post + .post{margin-top:8px}
+.ph{display:flex;align-items:center;gap:10px}
+.ph .av{width:34px;height:34px;font-size:12px}
+.ph .meta{flex:1;min-width:0;line-height:1.25}
+.ph .kind{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.ph .t{font-size:12px;font-weight:600;color:var(--muted)}
+.post.admin .ph .t{color:rgba(255,255,255,.6)}
+.post .txt{margin-top:8px;font-size:15px;font-weight:700;line-height:1.35}
 .post .txt em{font-style:normal;font-weight:500;color:var(--muted)}
-.post .body{margin-top:6px;font-size:15px;line-height:1.45;white-space:pre-line;font-weight:500}
-.comments{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.post .body{margin-top:8px;font-size:15px;line-height:1.45;white-space:pre-line;font-weight:500}
+.post .sub2{margin-top:3px;font-size:13px;color:var(--muted);font-weight:600}
+.score{margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.score b{font-size:18px;font-variant-numeric:tabular-nums}
+.acts{display:flex;align-items:center;gap:4px;margin:6px -8px 0}
+.act{display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 8px;border:0;background:none;border-radius:999px;color:var(--ink);font-size:14px;font-weight:700}
+.act svg{width:22px;height:22px}
+.act.liked{color:#E0245E}
+.act.liked svg{fill:#E0245E;stroke:#E0245E}
+.act:active svg{transform:scale(1.2)}
+.post.admin .act{color:#fff}
+.act.del{margin-left:auto;color:var(--muted);font-size:12px}
+.post.admin .act.del{color:rgba(255,255,255,.6)}
+.likers{background:none;border:0;padding:0;font-size:13.5px;font-weight:700;color:inherit}
+.prev{margin-top:4px;font-size:14px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prev b{margin-right:4px}
+.more{background:none;border:0;padding:2px 0;font-size:13.5px;font-weight:600;color:var(--muted);display:block}
+.post.admin .more{color:rgba(255,255,255,.65)}
+.comments{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
 .post.admin .comments{border-color:rgba(255,255,255,.15)}
 .cmt{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.4}
-.cmt .av{width:28px;height:28px;font-size:11px}
+.cmt .av{width:26px;height:26px;font-size:10px}
 .cmt b{margin-right:4px}
+.cmt .ct{font-size:11.5px;color:var(--muted);font-weight:600;margin-left:4px}
 .cmt .x{margin-left:auto;background:none;border:0;color:var(--muted);font-size:12px;font-weight:700;padding:2px 0 2px 6px}
-.cform{display:flex;gap:8px;margin-top:10px}
-.cform input{height:42px;font-size:15px;border-radius:999px}
-.cform button{height:42px;flex:none}
+.cform{display:flex;gap:8px;margin:10px 0 4px}
+.cform input{height:40px;font-size:15px;border-radius:999px}
+.cform button{height:40px;flex:none}
 
 /* Másters */
 .round{margin-top:18px}
@@ -386,7 +408,7 @@ function nav(active) {
   const item = (href, key, icon, label, dot) => `<a href="#/${href}" ${active === key ? 'aria-current="page"' : ''}>${icon}${label}${dot ? `<span class="dot">${dot}</span>` : ''}</a>`;
   return `<nav class="nav" aria-label="Principal">
     ${item('', 'ranking', I.trophy, 'Ranking')}
-    ${item('retos', 'retos', I.ball, 'Retos', S.todo > 0 ? S.todo : '')}
+    ${item('retos', 'retos', I.ball, 'Partidos', S.todo > 0 ? S.todo : '')}
     ${item('tablon', 'tablon', I.chat, 'Tablón')}
     ${item('perfil', 'perfil', I.user, 'Perfil')}</nav>`;
 }
@@ -795,7 +817,7 @@ async function screenChallenge(id) {
 
 /* ── Retos ─────────────────────────────────────────────────────────── */
 async function screenRetos() {
-  render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px">Retos</h1></div></div><div id="body">${spinner()}</div></main>${nav('retos')}`);
+  render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px">Partidos</h1></div></div><div id="body">${spinner()}</div></main>${nav('retos')}`);
   let d;
   try { d = await api('GET', 'retos'); refreshMe().then(updateDot).catch(() => {}); } catch (e) { return errorScreen(e); }
   const C = d.challenges;
@@ -967,7 +989,7 @@ async function screenResult(kind, id) {
 let feedPosts = [], feedMore = false, openComments = new Set();
 async function screenFeed(append) {
   if (!append) {
-    render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px">Tablón</h1></div></div><div id="body">${spinner()}</div></main>${nav('tablon')}`);
+    render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px;font-size:28px">Tablón</h1></div></div><div id="body">${spinner()}</div></main>${nav('tablon')}`);
   }
   try {
     const before = append && feedPosts.length ? feedPosts[feedPosts.length - 1].id : '';
@@ -976,53 +998,76 @@ async function screenFeed(append) {
   } catch (e) { return errorScreen(e); }
   paintFeed();
 }
+const HEART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.5 3.7 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>';
+const BUBBLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.2A8.5 8.5 0 1 1 20.5 11.5z"/></svg>';
 function postHTML(p) {
   const A = p.actor, T = p.target, x = p.data || {};
   const nm = (u) => u ? `<a href="#/jugador/${u.id}" style="color:inherit">${esc(u.name)}</a>` : 'Alguien';
-  let kind = '', color = 'var(--muted)', main = '', extra = '';
+  let kind = '', color = 'var(--muted)', main = '', who = A;
   switch (p.kind) {
-    case 'admin': kind = `${I.pin} Aviso del club${A ? ' · ' + esc(first(A.name)) : ''}`; main = `<div class="body" style="font-weight:600">${esc(p.body)}</div>`; break;
-    case 'masters': kind = 'Másters'; color = '#A47F2A'; main = `<div class="body" style="font-weight:600">${esc(p.body)}</div><div class="btns"><a class="btn xs navy" href="#/masters">Ver cuadros</a></div>`; break;
+    case 'admin': kind = 'Aviso del club'; color = 'var(--peach)'; main = `<div class="body" style="font-weight:600">${esc(p.body)}</div>`; break;
+    case 'masters': kind = 'Másters'; color = '#A47F2A'; who = null; main = `<div class="body" style="font-weight:600">${esc(p.body)}</div><div class="btns" style="margin-top:8px"><a class="btn xs navy" href="#/masters">Ver cuadros</a></div>`; break;
     case 'result': kind = x.tier ? ZONES[x.tier][0] : 'Resultado'; color = 'var(--ok)';
-      main = `<div class="txt">${nm(A)} <em>gana a</em> ${nm(T)}</div>`;
-      extra = `<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">${esc(x.score)}</span>
-        <span class="badge ok">${signed(x.delta)} nivel${x.pts != null ? ` · +${x.pts} pts` : ''}</span></div>`; break;
+      main = `<div class="txt">${nm(A)} <em>gana a</em> ${nm(T)}</div>
+        <div class="score"><b>${esc(x.score)}</b><span class="badge ok">${signed(x.delta)} nivel${x.pts != null ? ` · +${x.pts} pts` : ''}</span></div>`; break;
     case 'walkover': kind = 'No presentado'; color = 'var(--bad)';
-      main = `<div class="txt">${nm(A)} <em>gana 6-0 6-0 a</em> ${nm(T)}</div><div class="when" style="margin-top:4px">Tercer reto rechazado del mes.</div>`; break;
+      main = `<div class="txt">${nm(A)} <em>gana 6-0 6-0 a</em> ${nm(T)}</div><div class="sub2">Tercer reto rechazado del mes.</div>`; break;
     case 'accepted': kind = 'Partido aceptado'; color = 'var(--navy)';
-      main = `<div class="txt">${nm(A)} <em>vs</em> ${nm(T)}</div>${x.play_at ? `<div class="when" style="margin-top:4px">${cap(fmtWhen(x.play_at))}</div>` : ''}`; break;
+      main = `<div class="txt">${nm(A)} <em>vs</em> ${nm(T)}</div>${x.play_at ? `<div class="sub2">${cap(fmtWhen(x.play_at))}</div>` : ''}`; break;
     case 'challenge': kind = 'Nuevo reto'; color = 'var(--orange)'; main = `<div class="txt">${nm(A)} <em>ha retado a</em> ${nm(T)}</div>`; break;
-    case 'new_player': kind = 'Nuevo jugador'; color = 'var(--navy)'; main = `<div class="txt">${nm(A)} <em>se ha unido al ranking</em></div>${x.level ? `<div class="when" style="margin-top:4px">Nivel de partida: ${lvl(x.level)}</div>` : ''}`; break;
+    case 'new_player': kind = 'Nuevo jugador'; color = 'var(--navy)'; main = `<div class="txt">${nm(A)} <em>se ha unido al ranking</em></div>${x.level ? `<div class="sub2">Nivel de partida: ${lvl(x.level)}</div>` : ''}`; break;
     default: main = `<div class="body">${esc(p.body || '')}</div>`;
   }
   const cs = p.comments || [];
   const open = openComments.has(p.id);
-  const shown = open ? cs : cs.slice(-2);
   const canDel = (c) => S.me && (S.me.is_admin || (c.author && c.author.id === S.me.id));
+  const av = who ? avatar({ id: who.id, full_name: who.name, photo_v: who.photo_v }) : `<span class="av" style="background:var(--navy);color:var(--gold)">${I.trophy.replace('width="24" height="24"', 'width="18" height="18"')}</span>`;
+  const last = cs[cs.length - 1];
   return `<article class="post${p.kind === 'admin' ? ' admin' : ''}" data-id="${p.id}">
-    <div class="head"><span class="kind" style="color:${p.kind === 'admin' ? 'var(--peach)' : color};display:inline-flex;gap:6px;align-items:center">${kind}</span><span>${ago(p.created_at)}</span></div>
-    ${main}${extra}
-    ${cs.length || open ? `<div class="comments">${cs.length > shown.length ? `<button class="link" data-more="${p.id}" style="text-align:left">Ver los ${cs.length} comentarios</button>` : ''}
-      ${shown.map((c) => `<div class="cmt">${avatar(c.author ? { id: c.author.id, full_name: c.author.name, photo_v: c.author.photo_v } : null)}<p style="margin:0"><b>${esc(c.author ? first(c.author.name) : 'Jugador')}</b>${esc(c.body)}</p>
-        ${canDel(c) ? `<button class="x" data-delc="${c.id}" aria-label="Borrar comentario">Borrar</button>` : ''}</div>`).join('')}</div>` : ''}
-    ${open ? `<form class="cform" data-post="${p.id}"><label class="sr" for="c${p.id}">Comentario</label><input class="input" id="c${p.id}" maxlength="500" placeholder="Escribe un comentario" autocomplete="off"><button class="btn xs">Enviar</button></form>`
-      : `<div style="margin-top:6px;display:flex;justify-content:space-between"><button class="link" data-open="${p.id}" ${p.kind === 'admin' ? 'style="color:rgba(255,255,255,.7)"' : ''}>${cs.length ? 'Comentar' : 'Comentar'}</button>
-        ${S.me?.is_admin ? `<button class="link" data-delp="${p.id}" ${p.kind === 'admin' ? 'style="color:rgba(255,255,255,.6)"' : ''}>Borrar</button>` : ''}</div>`}
+    <div class="ph">${p.kind === 'admin' ? `<span class="av" style="background:rgba(255,255,255,.12);color:var(--peach)">${I.pin.replace('width="14" height="14"', 'width="16" height="16"')}</span>` : av}
+      <div class="meta"><div class="kind" style="color:${color}">${kind}</div><div class="t">${p.kind === 'admin' && A ? esc(first(A.name)) + ' · ' : ''}${ago(p.created_at)}</div></div></div>
+    ${main}
+    <div class="acts">
+      <button class="act${p.liked ? ' liked' : ''}" data-like="${p.id}" aria-pressed="${p.liked ? 'true' : 'false'}" aria-label="Me gusta">${HEART}${p.likes ? `<span>${p.likes}</span>` : ''}</button>
+      <button class="act" data-open="${p.id}" aria-label="Comentar">${BUBBLE}${cs.length ? `<span>${cs.length}</span>` : ''}</button>
+      ${S.me?.is_admin ? `<button class="act del" data-delp="${p.id}">Borrar</button>` : ''}
+    </div>
+    ${p.likes ? `<button class="likers" data-likers="${p.id}">${p.likes} me gusta</button>` : ''}
+    ${!open && last ? `<div class="prev"><b>${esc(last.author ? first(last.author.name) : 'Jugador')}</b>${esc(last.body)}</div>
+      <button class="more" data-open="${p.id}">${cs.length > 1 ? `Ver los ${cs.length} comentarios` : 'Ver comentario'}</button>` : ''}
+    ${open ? `<div class="comments">${cs.map((c) => `<div class="cmt">${avatar(c.author ? { id: c.author.id, full_name: c.author.name, photo_v: c.author.photo_v } : null)}
+        <p style="margin:0;flex:1;min-width:0"><b>${esc(c.author ? first(c.author.name) : 'Jugador')}</b>${esc(c.body)}<span class="ct">${ago(c.created_at)}</span></p>
+        ${canDel(c) ? `<button class="x" data-delc="${c.id}" aria-label="Borrar comentario">Borrar</button>` : ''}</div>`).join('') || '<p class="hint" style="margin:0">Sé el primero en comentar.</p>'}</div>
+      <form class="cform" data-post="${p.id}"><label class="sr" for="c${p.id}">Comentario</label><input class="input" id="c${p.id}" maxlength="500" placeholder="Añade un comentario…" autocomplete="off"><button class="btn xs">Enviar</button></form>
+      <button class="more" data-close="${p.id}">Ocultar comentarios</button>` : ''}
   </article>`;
 }
 function paintFeed() {
   const body = document.getElementById('body'); if (!body) return;
-  body.innerHTML = (feedPosts.length ? `<div style="margin-top:14px">${feedPosts.map(postHTML).join('')}</div>` : '<div class="empty">Todavía no hay nada. ¡Lanza el primer reto!</div>')
+  body.innerHTML = (feedPosts.length ? `<div style="margin-top:12px">${feedPosts.map(postHTML).join('')}</div>` : '<div class="empty">Todavía no hay nada. ¡Lanza el primer reto!</div>')
     + (feedMore ? '<div style="text-align:center;margin-top:14px"><button class="btn sm ghost" id="more">Ver más</button></div>' : '');
   body.onclick = async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.id === 'more') return screenFeed(true);
     if (b.dataset.open) { openComments.add(Number(b.dataset.open)); paintFeed(); document.getElementById('c' + b.dataset.open)?.focus(); return; }
-    if (b.dataset.more) { openComments.add(Number(b.dataset.more)); paintFeed(); return; }
+    if (b.dataset.close) { openComments.delete(Number(b.dataset.close)); paintFeed(); return; }
     try {
+      if (b.dataset.like) {
+        const post = feedPosts.find((x) => x.id === Number(b.dataset.like));
+        post.liked = !post.liked; post.likes = (post.likes || 0) + (post.liked ? 1 : -1); paintFeed();
+        const r = await api('POST', `feed/${post.id}/like`);
+        post.liked = r.liked; post.likes = r.likes; paintFeed();
+        return;
+      }
+      if (b.dataset.likers) {
+        const r = await api('GET', `feed/${b.dataset.likers}/likes`);
+        await sheet(`<h2>Me gusta</h2><div class="list" style="margin-top:14px">${r.players.map((pl) => `<a class="prow" href="#/jugador/${pl.id}" data-close="no">${avatar(pl)}<span class="who"><b>${esc(pl.full_name)}</b></span></a>`).join('')}</div>
+          <div class="btns" style="margin-top:16px"><button class="btn ghost" data-close="no">Cerrar</button></div>`);
+        return;
+      }
       if (b.dataset.delc) { if (!(await confirmBox('¿Borrar el comentario?', '', 'Borrar', true))) return; await api('POST', `comment/${b.dataset.delc}/delete`); }
       if (b.dataset.delp) { if (!(await confirmBox('¿Borrar esta publicación?', 'Se borra para todos, con sus comentarios.', 'Borrar', true))) return; await api('POST', `admin/feed/${b.dataset.delp}/delete`); }
-      screenFeed();
+      const keep = new Set(openComments); await screenFeed(); openComments = keep; paintFeed();
     } catch (err) { toast(err.message); }
   };
   body.onsubmit = async (e) => {
@@ -1059,7 +1104,7 @@ async function screenMasters() {
       ${t.champion ? `<div class="champ"><div class="label" style="color:var(--peach)">Campeón</div><b>${esc(t.champion)}</b></div>` : ''}
       ${t.rounds.map((r) => `<div class="round"><span class="label" style="display:block;margin:0 0 8px 4px">${esc(r.name)}</span>
         ${r.matches.map((m) => `<div class="bm">${pl(m.p1, m, true)}${pl(m.p2, m, false)}</div>`).join('')}</div>`).join('')}
-      <p class="hint" style="margin-top:16px">Los partidos de los Másters mueven el nivel, pero no los puntos de la temporada. Quedad entre vosotros y poned el resultado en Retos.</p>`;
+      <p class="hint" style="margin-top:16px">Los partidos de los Másters mueven el nivel, pero no los puntos de la temporada. Quedad entre vosotros y poned el resultado en Partidos.</p>`;
   };
   render(`<main class="screen"><div class="top">${backBtn('')}<div class="title">Másters · ${esc(d.season.name)}</div><div style="width:44px"></div></div><div id="body"></div></main>${nav('ranking')}`);
   document.getElementById('body').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) { mastersTier = b.dataset.t; paint(); } });
