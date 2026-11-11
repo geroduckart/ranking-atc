@@ -30,7 +30,7 @@
   --card:rgba(255,255,255,.82);--card-line:rgba(255,255,255,.9);--card-shadow:0 1px 2px rgba(15,23,32,.05),0 6px 18px rgba(15,23,32,.05);
 }
 #shell{
-  background:radial-gradient(70% 45% at 100% 0%,rgba(227,91,42,.10),transparent 70%),radial-gradient(70% 50% at 0% 100%,rgba(18,41,74,.10),transparent 70%),radial-gradient(50% 35% at 0% 20%,rgba(244,226,161,.18),transparent 70%),#F3F1ED}
+  background:radial-gradient(80% 40% at 100% 0%,rgba(227,91,42,.06),transparent 70%),#F4F3F0}
 .glass{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none;background:#F3F1ED}
@@ -45,16 +45,16 @@ button{cursor:pointer}
 a{color:var(--orange);text-decoration:none}
 img{display:block}
 #app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;position:relative}
-.screen{padding:calc(12px + var(--sat)) 18px calc(124px + var(--sab));animation:fadeIn 260ms var(--ease) both}
+.screen{animation:screenIn 160ms ease-out both;padding:calc(12px + var(--sat)) 18px calc(124px + var(--sab));}
 .screen.nonav{padding-bottom:calc(32px + var(--sab))}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes screenIn{from{opacity:0}to{opacity:1}}
 .hidden{display:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* Botones */
-.btn{box-shadow:0 6px 18px rgba(227,91,42,.28),inset 0 1px 0 rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 26px;border-radius:999px;border:0;font-weight:700;font-size:17px;background:var(--orange);color:#fff;text-decoration:none;transition:transform 120ms,background 160ms}
-.btn:active{transform:scale(.98)}
-.btn:hover{background:var(--orange-hover)}
+.btn{box-shadow:0 6px 18px rgba(227,91,42,.28),inset 0 1px 0 rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 26px;border-radius:999px;border:0;font-weight:700;font-size:17px;background:var(--orange);color:#fff;text-decoration:none;transition:transform 160ms var(--ease),background-color 160ms ease}
+.btn:active{transform:scale(.97)}
+@media (hover:hover) and (pointer:fine){.btn:hover{background:var(--orange-hover)}}
 .btn[disabled]{opacity:.5;pointer-events:none}
 .btn.navy{background:var(--navy);box-shadow:0 6px 18px rgba(18,41,74,.25),inset 0 1px 0 rgba(255,255,255,.15)}.btn.navy:hover{background:var(--navy-3)}
 .btn.ghost{background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:0 4px 14px rgba(15,23,32,.07),inset 0 1px 0 rgba(255,255,255,.9);color:var(--ink)}.btn.ghost:hover{background:#fff}
@@ -164,8 +164,8 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fut-wrap{display:flex;flex-direction:column;align-items:center}
 .fut{position:relative;width:min(272px,78vw);aspect-ratio:3/3.85;padding:20px 24px 16px;color:var(--navy);overflow:hidden;
   clip-path:polygon(50% 0,100% 6%,100% 88%,50% 100%,0 88%,0 6%);
-  background:linear-gradient(155deg,#F4E2A1 0%,#D8B65A 45%,#B8913A 100%);filter:drop-shadow(0 18px 30px rgba(15,23,32,.18));animation:cardIn 600ms var(--ease) both}
-@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+  background:linear-gradient(155deg,#F4E2A1 0%,#D8B65A 45%,#B8913A 100%);filter:drop-shadow(0 18px 30px rgba(15,23,32,.18));animation:cardIn 320ms var(--ease) both}
+@keyframes cardIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 .fut.silver{background:linear-gradient(155deg,#F1F3F6 0%,#C9CED6 50%,#9DA5B1 100%)}
 .fut.bronze{background:linear-gradient(155deg,#F0CDA8 0%,#C98F5B 50%,#9C6537 100%)}
 .fut.special{background:radial-gradient(120% 80% at 80% 0%,#1D3A66 0%,#12294A 45%,#0B1B33 100%);color:#fff}
@@ -190,15 +190,18 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 
 .pagehead{padding:10px 2px 0}
 /* Barra inferior */
-.nav{position:absolute;z-index:30;left:0;right:0;bottom:calc(10px + var(--sab));margin:0 auto;width:calc(100% - 28px);max-width:452px;height:68px;
+.nav{position:absolute;z-index:30;left:0;right:0;bottom:calc(10px + var(--sab));margin:0 auto;width:calc(100% - 32px);max-width:420px;height:64px;
   display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;padding:6px;border-radius:999px;
-  background:rgba(255,255,255,.66);-webkit-backdrop-filter:blur(26px) saturate(190%);backdrop-filter:blur(26px) saturate(190%);
-  border:1px solid rgba(255,255,255,.8);box-shadow:0 14px 40px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.06),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.35);
+  background:rgba(22,24,29,.88);-webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+  border:1px solid rgba(255,255,255,.08);box-shadow:0 12px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06);
   -webkit-transform:translateZ(0);transform:translateZ(0)}
-.nav a{height:56px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:700;color:var(--muted);position:relative;transition:background 200ms,color 200ms}
-.nav a svg{width:22px;height:22px}
-.nav a[aria-current="page"]{color:var(--orange);background:rgba(255,255,255,.75);box-shadow:0 4px 14px rgba(15,23,32,.10),inset 0 1px 0 #fff}
-.nav .dot{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.nav a{height:52px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:10.5px;font-weight:600;letter-spacing:.01em;color:rgba(255,255,255,.55);position:relative;
+  transition:background-color 200ms ease,color 200ms ease,transform 160ms var(--ease)}
+.nav a:active{transform:scale(.94)}
+.nav a svg{width:22px;height:22px;stroke-width:1.8}
+.nav a[aria-current="page"]{color:#fff;background:rgba(255,255,255,.12)}
+.nav .dot{position:absolute;top:5px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid rgb(22,24,29)}
 
 /* Login */
 .login{min-height:100vh;min-height:100dvh;padding:calc(48px + var(--sat)) 26px calc(28px + var(--sab));display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
@@ -266,14 +269,14 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 /* Hojas y avisos */
 .sheet-bg{position:absolute;inset:0;z-index:50;background:rgba(11,27,51,.35);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fadeBg 200ms both}
 @keyframes fadeBg{from{opacity:0}to{opacity:1}}
-.sheet{width:calc(100% - 20px);max-width:460px;margin-bottom:calc(10px + var(--sab));background:rgba(255,255,255,.8);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(255,255,255,.85);box-shadow:0 20px 50px rgba(15,23,32,.25),inset 0 1px 0 #fff;border-radius:34px;padding:24px 22px 20px;animation:sheetUp 280ms var(--ease) both;max-height:90vh;overflow:auto}
+.sheet{width:calc(100% - 20px);max-width:460px;margin-bottom:calc(10px + var(--sab));background:rgba(255,255,255,.8);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(255,255,255,.85);box-shadow:0 20px 50px rgba(15,23,32,.25),inset 0 1px 0 #fff;border-radius:34px;padding:24px 22px 20px;animation:sheetUp 320ms cubic-bezier(.32,.72,0,1) both;max-height:90vh;overflow:auto}
 @keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .sheet h2{margin:0;font-size:21px;line-height:1.25}
 .sheet p{margin:8px 0 0;color:var(--muted);font-size:15px;line-height:1.45}
 .toast{position:absolute;left:50%;bottom:calc(96px + var(--sab));-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);transform:translateX(-50%);text-align:center;background:rgba(15,23,32,.82);color:#fff;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:60;max-width:calc(100% - 32px);box-shadow:0 10px 30px rgba(15,23,32,.25);animation:toastUp 240ms var(--ease) both}
 @keyframes toastUp{from{transform:translate(-50%,24px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 .toast.ok{background:rgba(31,157,107,.88)}
-.spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--orange);animation:spin 800ms linear infinite;margin:60px auto}
+.spinner{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--orange);animation:spin 600ms linear infinite;margin:60px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 .prose h2{font-size:18px;margin:22px 0 6px}
 .prose p,.prose li{font-size:15px;line-height:1.55;color:var(--ink)}
@@ -286,6 +289,16 @@ details.adm summary::-webkit-details-marker{display:none}
 .setrow{display:grid;grid-template-columns:70px 1fr 18px 1fr;gap:8px;align-items:center}
 .setrow .input{text-align:center;font-size:22px;font-weight:700;height:58px;padding:0}
 .setrow span{text-align:center;color:var(--muted);font-weight:700}
+
+/* Pulsables: confirman el toque */
+.prow,.chip,.icon-btn,.act,.mrow,.tile,.seg button,.tabs button,.link{transition:transform 160ms var(--ease),background-color 160ms ease,color 160ms ease}
+.prow:active,.mrow:active{transform:scale(.985)}
+.chip:active,.icon-btn:active,.seg button:active,.tabs button:active{transform:scale(.96)}
+.act:active{transform:scale(.9)}
+.act svg{transition:transform 200ms var(--ease)}
+.act.liked svg{animation:pop 260ms var(--ease)}
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:1ms!important;transition-duration:1ms!important}}
 </style>
 </head>
 <body>
@@ -356,8 +369,15 @@ async function api(method, path, body) {
   if (S.token) headers.Authorization = 'Bearer ' + S.token;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   let r;
-  try { r = await fetch('/api/' + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined }); }
-  catch (e) { throw new Error('Sin conexión. Revisa tu internet e inténtalo otra vez.'); }
+  const go1 = () => fetch('/api/' + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  try { r = await go1(); }
+  catch (e) { r = null; }
+  // Las consultas (GET) se reintentan una vez si falla la red o el servidor tarda en arrancar.
+  if (method === 'GET' && (!r || r.status >= 500)) {
+    await new Promise((ok) => setTimeout(ok, 700));
+    try { r = await go1(); } catch (e) { r = null; }
+  }
+  if (!r) throw new Error('Sin conexión. Revisa tu internet e inténtalo otra vez.');
   let data = {};
   try { data = await r.json(); } catch (e) {}
   if (r.status === 401 && S.token) { logout(true); throw new Error(data.error || 'Tu sesión ha caducado.'); }
@@ -421,6 +441,7 @@ const backBtn = (href, label = 'Volver') => `<a class="icon-btn" href="#/${href}
 const spinner = () => '<div class="spinner" role="progressbar" aria-label="Cargando"></div>';
 const $scroll = document.getElementById('scroll'), $shell = document.getElementById('shell'), $navslot = document.getElementById('navslot');
 function render(html) {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   $app.innerHTML = html;
   const n = $app.querySelector('.nav');      // el menú se saca del contenido y se ancla a la carcasa
   $navslot.replaceChildren(...(n ? [n] : []));
@@ -436,10 +457,15 @@ if (window.visualViewport) { visualViewport.addEventListener('resize', fitViewpo
 window.addEventListener('resize', fitViewport);
 window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
 fitViewport();
-/* Con el teclado abierto, el menú se esconde para no tapar lo que escribes. */
-const TYPING = 'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea';
-document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches(TYPING)) $shell.classList.add('kb'); });
-document.addEventListener('focusout', () => setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches(TYPING))) $shell.classList.remove('kb'); }, 80));
+/* Con el teclado abierto (la zona visible encoge mucho), el menú se esconde; al cerrarlo, vuelve. */
+let fullH = 0;
+function checkKeyboard() {
+  const h = window.visualViewport ? visualViewport.height : window.innerHeight;
+  if (h > fullH) fullH = h;
+  $shell.classList.toggle('kb', fullH - h > 150);
+}
+if (window.visualViewport) visualViewport.addEventListener('resize', checkKeyboard);
+window.addEventListener('orientationchange', () => { fullH = 0; setTimeout(checkKeyboard, 400); });
 function errorScreen(e, back = '') {
   render(`<main class="screen"><div class="top">${backBtn(back)}<div></div><div style="width:44px"></div></div>
     <div class="empty">${esc(e.message || e)}<div style="margin-top:16px"><button class="btn sm ghost" onclick="route()">Reintentar</button></div></div></main>${S.me ? nav('') : ''}`);
@@ -476,13 +502,14 @@ function spark(levels) {
 
 /* Selector de día y hora (retos y contrapropuestas) */
 function whenPicker(id) {
-  const t = today(), now = madridNow();
+  const now = madridNow();
+  const t = S.season && S.season.starts_on > today() ? S.season.starts_on : today();   // antes del inicio, desde el primer día
   const days = [];
   for (let i = 0; i < 10; i++) {
     const d = addDays(t, i);
     if (S.season && d > S.season.ends_on) break;
     const dt = new Date(d + 'T12:00:00Z');
-    days.push({ d, top: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : DAYS_S[dt.getUTCDay()], bottom: `${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()].slice(0, 3)}` });
+    days.push({ d, top: d === today() ? 'Hoy' : d === addDays(today(), 1) ? 'Mañana' : DAYS_S[dt.getUTCDay()], bottom: `${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()].slice(0, 3)}` });
   }
   const hours = ['09:00','10:30','12:00','17:00','18:30','20:00'];
   return `<div id="${id}">
@@ -770,6 +797,7 @@ async function screenPlayer(id) {
   if (!own) {
     const v = d.vs;
     if (!v.canChallenge) cta = `<p class="hint" style="text-align:center;margin-top:18px">${S.season.phase === 'regular' ? 'Este jugador no está disponible.' : 'La fase regular ha terminado.'}</p>`;
+    else if (!S.season.started) cta = `<p class="hint" style="text-align:center;margin-top:18px">Los retos se abren el ${fmtWhen(S.season.starts_on)}. ¡Ve preparando la raqueta!</p>`;
     else if (v.bandBlock) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(v.bandBlock)}</p>`;
     else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · verlo</a>`;
     else if (v.pairLeft <= 0) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado los 2 partidos por pareja de esta temporada.</p>`;
@@ -803,13 +831,13 @@ async function screenPlayer(id) {
 
 /* ── Retar ─────────────────────────────────────────────────────────── */
 async function screenChallenge(id) {
-  render(`<main class="screen nonav">${spinner()}</main>`);
+  render(`<main class="screen">${spinner()}</main>${nav('ranking')}`);
   let d;
   try { d = await api('GET', 'player/' + id); } catch (e) { return errorScreen(e); }
   const p = d.player, v = d.vs;
   if (!v) return go('perfil');
   if (v.openChallenge) { toast('Ya tenéis un reto abierto.'); return go('retos'); }
-  render(`<main class="screen nonav">
+  render(`<main class="screen">
     <div class="top"><a class="icon-btn" href="#/jugador/${p.id}" aria-label="Cerrar">${I.close}</a><div class="title">Nuevo reto</div><div style="width:44px"></div></div>
     <div class="box navy" style="margin-top:18px;border-radius:22px;padding:18px 20px">
       <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center">
@@ -828,7 +856,7 @@ async function screenChallenge(id) {
     <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 7 días para responder y le llegará un email. La pista se reserva en el club. ${v.pairLeft === 1 ? 'Os queda 1 partido' : `Os quedan ${v.pairLeft} partidos`} entre vosotros esta temporada.</p>
     <div class="err hidden" id="e" style="margin-top:10px"></div>
     <button class="btn block" id="send" style="margin-top:16px">Enviar reto</button>
-  </main>`);
+  </main>${nav('ranking')}`);
   const get = bindWhen(document.getElementById('w'));
   const btn = document.getElementById('send');
   btn.addEventListener('click', () => busy(btn, async () => {
@@ -936,12 +964,12 @@ function updateDot() {
 
 /* ── Contrapropuesta de hora ───────────────────────────────────────── */
 async function screenCounter(id) {
-  render(`<main class="screen nonav">${spinner()}</main>`);
+  render(`<main class="screen">${spinner()}</main>${nav('retos')}`);
   let d;
   try { d = await api('GET', 'challenge/' + id); } catch (e) { return errorScreen(e, 'retos'); }
   const c = d.challenge;
   if (!c.myTurn) { toast(c.status === 'pending' ? 'Te toca esperar a tu rival.' : 'Este reto ya está respondido.'); return go('retos'); }
-  render(`<main class="screen nonav">
+  render(`<main class="screen">
     <div class="top">${backBtn('retos')}<div class="title">Proponer otra hora</div><div style="width:44px"></div></div>
     <div class="box" style="margin-top:18px"><div class="label">Propuesta de ${esc(first(c.rival.name))}</div><div style="font-size:18px;font-weight:700;margin-top:4px">${cap(fmtWhen(c.play_at))}</div>
       ${c.message ? `<p style="margin:8px 0 0">«${esc(c.message)}»</p>` : ''}</div>
@@ -951,7 +979,7 @@ async function screenCounter(id) {
       <button class="btn block" id="send" style="margin-top:16px">Proponer esta hora</button>`
       : '<p class="hint" style="margin-top:16px">Ya habéis cambiado la hora 3 veces. Habladlo directamente y, si hace falta, que uno cree un reto nuevo.</p>'}
     <div class="btns" style="margin-top:12px"><button class="btn sm ghost" id="acc">Mejor acepto la suya</button></div>
-  </main>`);
+  </main>${nav('retos')}`);
   document.getElementById('acc').addEventListener('click', async (e) => {
     try { await busy(e.currentTarget, () => api('POST', `challenge/${c.id}/respond`, { action: 'accept' })); toast('¡Partido aceptado!', true); go('retos'); } catch (err) { toast(err.message); }
   });
@@ -967,14 +995,14 @@ async function screenCounter(id) {
 
 /* ── Poner resultado ───────────────────────────────────────────────── */
 async function screenResult(kind, id) {
-  render(`<main class="screen nonav">${spinner()}</main>`);
+  render(`<main class="screen">${spinner()}</main>${nav('retos')}`);
   let rival, title;
   try {
     const d = await api('GET', 'retos');
     if (kind === 'c') { const c = d.challenges.find((x) => x.id === Number(id)); if (!c || !c.canReport) throw new Error('Este partido no está pendiente de resultado.'); rival = c.rival; title = cap(fmtWhen(c.play_at)); }
     else { const n = d.masters.find((x) => x.id === Number(id)); if (!n || n.match) throw new Error('Este partido no está pendiente de resultado.'); rival = n.rival; title = `${ZONES[n.tier][0]} · ${n.round}`; }
   } catch (e) { return errorScreen(e, 'retos'); }
-  render(`<main class="screen nonav">
+  render(`<main class="screen">
     <div class="top">${backBtn('retos')}<div class="title">Resultado</div><div style="width:44px"></div></div>
     <h1 class="h" style="font-size:26px">Tú vs ${esc(first(rival.name))}</h1><p class="sub">${esc(title)}</p>
     <div class="box" style="margin-top:18px">
@@ -988,7 +1016,7 @@ async function screenResult(kind, id) {
     <div class="err hidden" id="e" style="margin-top:10px"></div>
     <button class="btn block" id="send" style="margin-top:16px">Enviar resultado</button>
     <p class="hint" style="margin-top:10px;text-align:center">${esc(first(rival.name))} tiene que confirmarlo. Si no responde en 48 h, se da por bueno.</p>
-  </main>`);
+  </main>${nav('retos')}`);
   const sets = () => [0, 1, 2].map((s) => [0, 1].map((i) => document.querySelector(`[data-s="${s}"][data-i="${i}"]`).value.trim()))
     .filter((x) => x[0] !== '' || x[1] !== '').map((x) => x.map(Number));
   const preview = () => {
