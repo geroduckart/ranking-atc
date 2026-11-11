@@ -265,8 +265,8 @@ on('GET', 'me', async ({ req }) => {
 });
 function seasonView(S) {
   const today = madridToday();
-  // días de la temporada completa: fase regular + Másters
-  const total = Math.round((new Date(S.masters_end) - new Date(S.starts_on)) / 864e5) + 1;
+  // días de la fase regular (los Másters van después)
+  const total = Math.round((new Date(S.ends_on) - new Date(S.starts_on)) / 864e5) + 1;
   const day = Math.round((new Date(today) - new Date(S.starts_on)) / 864e5) + 1;
   return { name: S.name, starts_on: S.starts_on, ends_on: S.ends_on, masters_end: S.masters_end, phase: S.phase, min_matches: S.min_matches,
     day: Math.max(0, Math.min(day, total)), total, started: today >= S.starts_on, regularOver: today > S.ends_on };
