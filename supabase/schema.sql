@@ -29,7 +29,7 @@ create table if not exists players (
   birth_date      date not null,
   hand            text not null default 'diestro' check (hand in ('diestro','zurdo')),
   backhand        text not null default 'dos'     check (backhand in ('una','dos')),
-  attrs           jsonb not null,               -- valoración inicial: derecha, reves, slice, saque1, saque2
+  attrs           jsonb not null,               -- valoración inicial: derecha, reves, slice, saque, velocidad
   start_level     numeric(5,2) not null,        -- media inicial (la puede corregir el admin)
   level           numeric(5,2) not null,        -- nivel actual (lo recalcula la app)
   photo           text,                         -- foto pequeña (data URL)
@@ -138,3 +138,12 @@ alter table matches    enable row level security;
 alter table feed       enable row level security;
 alter table comments   enable row level security;
 alter table likes      enable row level security;
+
+-- Cartas antiguas (1.er y 2.º servicio) → servicio + velocidad, sin cambiar el nivel.
+update players set attrs = (attrs - 'saque1' - 'saque2') || jsonb_build_object(
+    'saque', round(((attrs->>'saque1')::numeric + (attrs->>'saque2')::numeric) / 2),
+    'velocidad', least(99, greatest(30, (attrs->>'saque1')::int + (attrs->>'saque2')::int - round(((attrs->>'saque1')::numeric + (attrs->>'saque2')::numeric) / 2)::int)))
+  where attrs ? 'saque1';
+
+-- Idioma de cada jugador (app y emails): 'es' o 'en'.
+alter table players add column if not exists lang text not null default 'es';

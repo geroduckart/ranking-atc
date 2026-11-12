@@ -13,7 +13,7 @@ export function db() {
   const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url) || url.includes('host=/');
   _sql = postgres(url, {
     prepare: false,              // necesario con el "Transaction pooler" de Supabase
-    max: 4,                      // varias consultas a la vez (van en paralelo)
+    max: 8,                      // hasta 8 consultas a la vez: la ficha de un jugador lanza 7 en paralelo
     idle_timeout: 60,            // reutiliza la conexión entre peticiones seguidas (abrirla cuesta ~0,5 s)
     max_lifetime: 60 * 10,
     connect_timeout: 8,

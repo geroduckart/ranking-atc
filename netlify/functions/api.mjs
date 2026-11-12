@@ -18,7 +18,15 @@ import {
   db, resetDb, isConnError, hashPin, checkPin, validPin, signSession, readSession, randomToken, sha, sameStr,
   madridNow, madridToday, fmtWhen, fmtDay, fmtNum, signed, ord, esc, firstName, siteUrl,
 } from '../lib/core.mjs';
-import { mail, layout } from '../lib/mail.mjs';
+import { mail, layout, setLangResolver } from '../lib/mail.mjs';
+import { trHtml } from '../lib/i18n.mjs';
+
+const PROMO_MATCHES = 5;         // promoción de estreno: los primeros partidos de la temporada, con pista y bolas gratis
+const okLang = (l) => (l === 'en' ? 'en' : 'es');
+// Cada email sale en el idioma del jugador (si aún no existe la columna «lang», en español).
+setLangResolver(async (email) => {
+  try { const [p] = await db()`select lang from players where email = ${email}`; return okLang(p && p.lang); } catch (e) { return 'es'; }
+});
 
 export const config = { path: '/api/*' };
 
@@ -73,7 +81,10 @@ export default async function handler(req) {
       }
       if (method === 'POST') _season = null;
       await flush(out);
-      const resp = res instanceof Response ? res : json(res ?? { ok: true });
+      let resp = res instanceof Response ? res : json(res ?? { ok: true });
+      // Las páginas de los botones de los emails salen en inglés si el móvil no está en español
+      if (path === 'act' && resp.status === 200 && !/^\s*es/i.test(req.headers.get('accept-language') || 'es'))
+        resp = html(trHtml(await resp.text(), 'en'));
       try { resp.headers.set('Server-Timing', `app;dur=${Date.now() - t0}`); } catch (e) {}
       return resp;
     } catch (e) {
@@ -128,7 +139,7 @@ function selfView(p) {
     hand: p.hand, backhand: p.backhand, level: Number(p.level), start_level: Number(p.start_level),
     attrs: R.shownAttrs(p.attrs, p.start_level, p.level), photo_v: p.photo_v, is_admin: p.is_admin,
     notify: { challenges: wants(p, 'challenges'), results: wants(p, 'results'), drop: wants(p, 'drop'), reminders: wants(p, 'reminders') },
-    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)),
+    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)), lang: okLang(p.lang),
   };
 }
 
@@ -155,14 +166,14 @@ async function recompute(sql) {
 async function standings(sql = db()) {
   const [S, players, ms] = await Promise.all([
     season(sql),
-    sql`select id, full_name, username, level, photo_v from players where active`,
+    sql`select id, full_name, username, level, photo_v, attrs, start_level, hand, backhand, birth_date from players where active`,
     sql`select id, p1, p2, winner, master_id, p1_pts, p2_pts from matches where status = 'confirmed'`,
   ]);
   const count = {};
   for (const m of ms) { count[m.p1] = (count[m.p1] || 0) + 1; count[m.p2] = (count[m.p2] || 0) + 1; }
   const st = R.standings(players.map((p) => ({ ...p, level: Number(p.level) })), ms, S.min_matches);
   for (const r of [...st.qualified, ...st.others]) r.provisional = (count[r.id] || 0) < R.PROV_MATCHES;
-  return { S, ...st, count };
+  return { S, ...st, count, played: ms.filter((m) => !m.master_id).length };
 }
 const posMap = (st) => Object.fromEntries(st.qualified.map((r) => [r.id, r.pos]));
 
@@ -246,6 +257,7 @@ on('POST', 'signup', async ({ body }) => {
     values (${username}, ${full_name}, ${email}, ${hashPin(body.pin)}, ${body.birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin})
     returning *`;
   await sql`insert into feed (kind, actor, data) values ('new_player', ${p.id}, ${sql.json({ level: lvl })})`;
+  if (body.lang === 'en') { try { await sql`update players set lang = 'en' where id = ${p.id}`; p.lang = 'en'; } catch (e) {} }
   return { token: signSession(p.id, p.session_v), me: selfView(p) };
 });
 
@@ -324,6 +336,9 @@ on('POST', 'me', async ({ req, body }) => {
   const p = await auth(req);
   const sql = db();
   const upd = {};
+  if (body.lang) {   // idioma de la app y de los emails
+    try { await sql`update players set lang = ${okLang(body.lang)} where id = ${p.id}`; p.lang = okLang(body.lang); } catch (e) {}
+  }
   if (body.hand) upd.hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   if (body.backhand) upd.backhand = body.backhand === 'una' ? 'una' : 'dos';
   if (body.notify && typeof body.notify === 'object') {
@@ -386,11 +401,15 @@ async function anonymize(sql, id) {
    Ranking y perfiles
    ════════════════════════════════════════════════════════════════════ */
 const rowView = (r) => ({ id: r.id, full_name: r.full_name, username: r.username, level: r.level, photo_v: r.photo_v,
+  // lo justo para pintar la carta al instante al abrir la ficha (la edad, solo la franja)
+  attrs: R.shownAttrs(r.attrs, r.start_level, r.level), start_level: Number(r.start_level), hand: r.hand, backhand: r.backhand,
+  ageTag: R.ageTag(R.ageOn(r.birth_date, new Date(madridToday() + 'T12:00:00Z'))),
   pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional });
 
 on('GET', 'ranking', async ({ req }) => {
   const [, st] = await Promise.all([auth(req), standings()]);
-  return { season: seasonView(st.S), qualified: st.qualified.map(rowView), others: st.others.map(rowView) };
+  return { season: seasonView(st.S), qualified: st.qualified.map(rowView), others: st.others.map(rowView),
+    promo: { total: PROMO_MATCHES, left: Math.max(0, PROMO_MATCHES - st.played) } };
 });
 
 on('GET', 'player/:id', async ({ req, params }) => {
@@ -1093,7 +1112,11 @@ on('GET', 'admin', async ({ req }) => {
       (select m.status from matches m where m.challenge_id = c.id and m.status <> 'annulled' order by m.id desc limit 1) as match_status
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
     where c.status in ('pending','accepted') order by c.play_at`;
+  const promo = await sql`select m.id, m.played_on, a.full_name as n1, b.full_name as n2 from matches m
+    join players a on a.id = m.p1 join players b on b.id = m.p2
+    where m.status = 'confirmed' and m.master_id is null and not m.walkover order by m.confirmed_at, m.id limit ${PROMO_MATCHES}`;
   return {
+    promo: { total: PROMO_MATCHES, matches: promo.map((m) => ({ id: Number(m.id), n1: m.n1, n2: m.n2, played_on: m.played_on })) },
     agenda: agenda.map((c) => ({ id: Number(c.id), status: c.status, play_at: c.play_at, n1: c.n1, n2: c.n2, e1: c.e1, e2: c.e2,
       l1: Number(c.l1), l2: Number(c.l2), waitingFor: c.status === 'pending' ? (c.proposed_by === c.challenger ? c.n2 : c.n1) : null, match_status: c.match_status })),
     season: seasonView(st.S),

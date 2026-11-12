@@ -3,6 +3,11 @@
  * Sin RESEND_API_KEY no se envía nada: el email se escribe en el registro de la función (útil para pruebas).
  */
 import { esc, siteUrl } from './core.mjs';
+import { tr, trHtml } from './i18n.mjs';
+
+let langOf = async () => 'es';
+/** Función que dice en qué idioma quiere los emails cada dirección. */
+export const setLangResolver = (f) => { langOf = f; };
 
 const NAVY = '#12294A', ORANGE = '#E35B2A', INK = '#0F1720', MUTED = '#546073', BG = '#FBFAF8', LINE = '#E0E2E8';
 
@@ -56,7 +61,17 @@ ${buttons.length ? `<tr><td align="center" style="padding:14px 20px 8px">${butto
   return { html, text };
 }
 
-export function mail(to, subject, parts) {
-  const { html, text } = layout({ title: subject, ...parts });
+export async function mail(to, subject, parts) {
+  let lang = 'es';
+  try { lang = await langOf(to); } catch (e) {}
+  if (lang === 'en') {
+    const f = (x) => (x == null ? x : trHtml(String(x), 'en'));
+    subject = tr(subject, 'en');
+    parts = { ...parts, lines: (parts.lines || []).map(f), foot: f(parts.foot),
+      highlight: parts.highlight && { big: f(parts.highlight.big), small: f(parts.highlight.small) },
+      buttons: (parts.buttons || []).map((b) => ({ ...b, label: tr(b.label, 'en') })) };
+  }
+  let { html, text } = layout({ title: subject, ...parts });
+  if (lang === 'en') { html = trHtml(html, 'en'); text = text.split('\n').map((l) => tr(l, 'en')).join('\n'); }
   return send({ to, subject, html, text });
 }
