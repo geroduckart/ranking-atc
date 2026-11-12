@@ -163,6 +163,9 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .btns .btn{flex:1;white-space:nowrap;padding:0 12px}
 
+.pill-row .pill{font-size:12px;padding:5px 9px;white-space:nowrap}
+.share-pop{display:flex;margin:12px auto 0;align-items:center;gap:8px;height:44px;padding:0 22px;border-radius:999px;border:0;background:var(--navy);color:#fff;font-weight:700;font-size:15px;box-shadow:0 10px 24px rgba(15,23,32,.2);opacity:0;transform:translateY(-8px) scale(.85);pointer-events:none;transition:opacity 200ms ease,transform 280ms var(--ease)}
+.share-pop.on{opacity:1;transform:none;pointer-events:auto}
 /* Carta */
 .fut-wrap{display:flex;flex-direction:column;align-items:center}
 .fut{position:relative;width:min(272px,78vw);aspect-ratio:3/3.85;padding:20px 24px 16px;color:var(--navy);overflow:hidden;
@@ -517,11 +520,11 @@ const EN = {/*DICT*/
   "PIN (6 cifras)": "PIN (6 digits)",
   "PIN (# cifras)": "PIN ($1 digits)",
   "Fecha de nacimiento": "Date of birth",
-  "En tu carta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.": "Your card only shows your age band (Junior, +20, +30…), never your exact age.",
+  "En tu tarjeta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.": "Your card only shows your age band (Junior, +20, +30…), never your exact age.",
   "Acepto la": "I accept the",
   "política de privacidad": "privacy policy",
   "y las normas de la temporada.": "and the season rules.",
-  "Siguiente: mi carta": "Next: my card",
+  "Siguiente: mi tarjeta": "Next: my card",
   "Al email te avisaremos cuando alguien te rete. También sirve para recuperar el PIN. La fecha de nacimiento no se muestra a nadie: solo comprobamos que tienes 14 años o más.": "We'll email you when someone challenges you. It's also used to reset your PIN. Your date of birth is never shown to anyone: we only check you are 14 or older.",
   "Después entrarás siempre con tu usuario y tu PIN.": "From then on you'll always log in with your username and PIN.",
   "Escribe tu nombre y al menos un apellido.": "Enter your first name and at least one surname.",
@@ -540,8 +543,8 @@ const EN = {/*DICT*/
   "Tienes que aceptar la política de privacidad y las normas.": "You must accept the privacy policy and the rules.",
   "Ese usuario ya existe. Prueba con otro.": "That username is taken. Try another.",
   "Ya hay una cuenta con ese email. Si es tuya, recupera tu PIN.": "There is already an account with that email. If it's yours, reset your PIN.",
-  "Tu carta de jugador": "Your player card",
-  "Tu carta": "Your card",
+  "Tu tarjeta de jugador": "Your player card",
+  "Tu tarjeta": "Your card",
   "Valórate de 30 a 99. Tu nivel es la media; después lo deciden tus partidos.": "Rate yourself from 30 to 99. Your level is the average; after that, your matches decide.",
   "Tu nivel": "Your level",
   "Provisional en tus 5 primeros partidos": "Provisional for your first 5 matches",
@@ -560,13 +563,13 @@ const EN = {/*DICT*/
   "Velocidad": "Speed",
   "Sé honesto: en tus 5 primeros partidos el nivel se ajusta muy rápido. Si te pones de más, bajarás enseguida.": "Be honest: in your first 5 matches your level adjusts very fast. If you overrate yourself, you'll drop quickly.",
   "Sé honesto: en tus 5 primeros partidos el nivel se ajusta muy rápido.": "Be honest: in your first 5 matches your level adjusts very fast.",
-  "Guardar mi carta": "Save my card",
+  "Guardar mi tarjeta": "Save my card",
   "Valora cada golpe entre 30 y 99.": "Rate each stroke between 30 and 99.",
   "Cada golpe entre 30 y 99.": "Each stroke between 30 and 99.",
   "¡Bienvenido al ranking! Ya puedes retar a quien quieras.": "Welcome to the ranking! You can now challenge anyone.",
   "Puedes ajustarla hasta el *. Después la mueven tus partidos.": "You can adjust it until $1. After that, your matches move it.",
-  "Carta guardada.": "Card saved.",
-  "Editar mi carta · hasta el *": "Edit my card · until $1",
+  "Tarjeta guardada.": "Card saved.",
+  "Editar mi tarjeta · hasta el *": "Edit my card · until $1",
   "Editar mis barritas": "Edit my ratings",
   "La temporada ya ha empezado: tus barritas las mueven tus partidos.": "The season has started: your matches now move your ratings.",
   "La temporada ya ha empezado: ahora tus barritas las mueven tus partidos.": "The season has started: your matches now move your ratings.",
@@ -809,6 +812,9 @@ const EN = {/*DICT*/
   "Quitar": "Remove",
   "Tu juego": "Your game",
   "Idioma": "Language",
+  "Compartir tarjeta": "Share card",
+  "Móvil (WhatsApp, opcional)": "Mobile (WhatsApp, optional)",
+  "Quiero recibir por WhatsApp solo avisos de mis partidos (retos, confirmaciones y recordatorios). Nunca enviaremos publicidad. Puedo darme de baja cuando quiera respondiendo BAJA; seguiré recibiendo los avisos por email y en la app.": "I want WhatsApp messages only about my matches (challenges, confirmations and reminders). We will never send advertising. I can unsubscribe at any time by replying STOP; I will keep receiving notices by email and in the app.",
   "App y emails": "App and emails",
   "Puedes cambiarlas hasta que empiece la temporada (*). Después las mueven tus partidos.": "You can change them until the season starts ($1). After that, your matches move them.",
   "Tus barritas no se pueden tocar: las mueven tus partidos. Si hay un error grande, habla con el club.": "Your ratings can't be edited: your matches move them. If something is badly wrong, contact the club.",
@@ -1203,7 +1209,7 @@ function addDays(day, n) { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(
 function fmtWhen(ts, month = true) {
   const [d, t = ''] = String(ts).replace('T', ' ').split(' ');
   const dt = new Date(d + 'T12:00:00Z');
-  const s = `${DAYS[dt.getUTCDay()]} ${dt.getUTCDate()}${month ? (EN_ON ? ' ' : ' de ') + MONTHS[dt.getUTCMonth()] : ''}`;
+  const s = `${cap(DAYS[dt.getUTCDay()])} ${dt.getUTCDate()}${month ? (EN_ON ? ' ' : ' de ') + MONTHS[dt.getUTCMonth()] : ''}`;
   return t ? `${s} · ${t.slice(0, 5)}` : s;
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -1538,6 +1544,38 @@ function cardHTML(p) {
     <div class="fut-stats">${ATTRS.map(([k, l]) => `<div class="fs"><span>${l}</span><b>${p.attrs[k]}</b></div>`).join('')}</div>
   </div></div>`;
 }
+async function shareCard(p) {
+  const W = 900, H = 1100, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, '#f3dc94'); grad.addColorStop(1, '#c9a24a');
+  g.fillStyle = grad; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#0f2a4a'; g.textAlign = 'center';
+  g.font = '700 150px system-ui, sans-serif'; g.fillText(lvl(p.level), W / 2, 330);
+  g.font = '600 40px system-ui, sans-serif'; g.fillText('NIVEL', W / 2, 390);
+  const parts = String(p.full_name).trim().split(/\s+/);
+  const short = parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : parts[0];
+  g.font = '700 84px system-ui, sans-serif'; g.fillText(short.toUpperCase(), W / 2, 520);
+  g.font = '600 32px system-ui, sans-serif';
+  g.fillText(`${S.season?.name || 'Temporada 1'} · ATC${p.ageTag ? ' · ' + p.ageTag : ''}`.toUpperCase(), W / 2, 580);
+  ATTRS.forEach(([k, l], i) => {
+    const y = 690 + i * 68;
+    g.textAlign = 'left'; g.font = '600 38px system-ui, sans-serif'; g.fillText(l, 150, y);
+    g.textAlign = 'right'; g.font = '700 42px system-ui, sans-serif'; g.fillText(String(p.attrs[k]), W - 150, y);
+  });
+  g.textAlign = 'center'; g.font = '600 30px system-ui, sans-serif';
+  g.fillText('@' + p.username + ' · Ranking ATC', W / 2, H - 70);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const file = new File([blob], `tarjeta-${p.username}.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Ranking ATC', text: 'Mi tarjeta en Ranking ATC' }); } catch (e) {}
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
 /* La carta se inclina hacia el dedo (o el ratón) y brilla; al soltar vuelve con un pequeño rebote. */
 function bindTilt(root) {
   const el = root && root.querySelector('.fut');
@@ -1662,11 +1700,13 @@ function screenSignup1() {
       <label class="field">Email<input class="input" name="email" type="email" autocomplete="email" value="${esc(v.email || '')}" placeholder="tu@email.com"></label>
       <label class="field">PIN (6 cifras)<input class="input" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" value="${esc(v.pin || '')}" placeholder="••••••" style="letter-spacing:.3em"></label>
       <label class="field">Fecha de nacimiento<input class="input" name="birth_date" type="date" value="${esc(v.birth_date || '')}" max="${today()}"></label>
-      <p class="hint" style="margin:-4px 4px 0">En tu carta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.</p>
+      <p class="hint" style="margin:-4px 4px 0">En tu tarjeta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.</p>
       <p class="hint">Al email te avisaremos cuando alguien te rete. También sirve para recuperar el PIN. La fecha de nacimiento no se muestra a nadie: solo comprobamos que tienes 14 años o más.</p>
+      <label class="field">Móvil (WhatsApp, opcional)<input class="input" name="phone" type="tel" autocomplete="tel" value="${esc(v.phone || '')}" placeholder="600 000 000"></label>
+      <label class="check"><input type="checkbox" name="wa_consent" ${v.wa_consent ? 'checked' : ''}><span>Quiero recibir por WhatsApp solo avisos de mis partidos (retos, confirmaciones y recordatorios). Nunca enviaremos publicidad. Puedo darme de baja cuando quiera respondiendo BAJA; seguiré recibiendo los avisos por email y en la app.</span></label>
       <label class="check"><input type="checkbox" name="accept" ${v.accept ? 'checked' : ''}><span>Acepto la <a href="#/privacidad">política de privacidad</a> y las normas de la temporada.</span></label>
       <div class="err hidden" id="e"></div>
-      <button class="btn block" style="margin-top:6px">Siguiente: mi carta</button>
+      <button class="btn block" style="margin-top:6px">Siguiente: mi tarjeta</button>
     </form>
   </main>`);
   const f = document.getElementById('f');
@@ -1682,11 +1722,12 @@ function screenSignup1() {
     if (!/^\d{6}$/.test(d.pin)) return err('El PIN tiene que tener 6 cifras.');
     if (!d.birth_date) return err('Pon tu fecha de nacimiento.');
     if (!d.accept) return err('Tienes que aceptar la política de privacidad.');
+    if (d.wa_consent && !d.phone) return err('Pon tu móvil para los avisos de WhatsApp, o desmarca la casilla.');
     go('registro/carta');
   });
 }
 function collect(f) {
-  return { full_name: f.full_name.value, username: f.username.value.trim().toLowerCase(), email: f.email.value.trim(), pin: f.pin.value, birth_date: f.birth_date.value, accept: f.accept.checked };
+  return { full_name: f.full_name.value, username: f.username.value.trim().toLowerCase(), email: f.email.value.trim(), pin: f.pin.value, birth_date: f.birth_date.value, accept: f.accept.checked, phone: f.phone.value.trim(), wa_consent: f.wa_consent.checked };
 }
 
 /* ── Registro, paso 2: la carta ────────────────────────────────────── */
@@ -1698,7 +1739,7 @@ function screenSignup2() {
   const mean = () => ATTRS.reduce((s, [k]) => s + v.attrs[k], 0) / ATTRS.length;
   render(`<main class="screen nonav">
     <div class="top">${backBtn('registro')}<div class="label" style="letter-spacing:.06em;text-transform:none;font-size:13px">Paso 2 de 2</div><div style="width:44px"></div></div>
-    <h1 class="h" style="font-size:28px">Tu carta de jugador</h1>
+    <h1 class="h" style="font-size:28px">Tu tarjeta de jugador</h1>
     <p class="sub" style="font-size:14px">Valórate de 30 a 99. Tu nivel es la media; después lo deciden tus partidos.</p>
     <div class="box navy row-between" style="margin-top:16px;border-radius:20px;padding:12px 20px">
       <div><div class="label" style="color:rgba(255,255,255,.65)">Tu nivel</div><div style="margin-top:4px;font-size:13px;color:rgba(255,255,255,.75)">Provisional en tus 5 primeros partidos</div></div>
@@ -1714,7 +1755,7 @@ function screenSignup2() {
     </div>
     <p class="hint" style="margin-top:10px">Sé honesto: en tus 5 primeros partidos el nivel se ajusta muy rápido. Si te pones de más, bajarás enseguida.</p>
     <div class="err hidden" id="e" style="margin-top:10px"></div>
-    <button class="btn block" id="save" style="margin-top:16px">Guardar mi carta</button>
+    <button class="btn block" id="save" style="margin-top:16px">Guardar mi tarjeta</button>
   </main>`);
   const paint = () => {
     document.getElementById('mean').textContent = Math.round(mean());
@@ -1744,7 +1785,7 @@ function screenEditCard() {
   const mean = () => ATTRS.reduce((t, [k]) => t + v.attrs[k], 0) / ATTRS.length;
   if (S.season && S.season.started) { toast('La temporada ya ha empezado: tus barritas las mueven tus partidos.'); return go('perfil'); }
   render(`<main class="screen">
-    <div class="top">${backBtn('perfil')}<div class="title">Tu carta</div><div style="width:44px"></div></div>
+    <div class="top">${backBtn('perfil')}<div class="title">Tu tarjeta</div><div style="width:44px"></div></div>
     <p class="sub" style="font-size:14px;margin-top:6px">Puedes ajustarla hasta el ${fmtWhen(addDays(S.season.starts_on, -1))}. Después la mueven tus partidos.</p>
     <div class="box navy row-between" style="margin-top:14px;border-radius:20px;padding:12px 20px">
       <div><div class="label" style="color:rgba(255,255,255,.65)">Tu nivel</div><div style="margin-top:4px;font-size:13px;color:rgba(255,255,255,.75)">La media de tus barritas</div></div>
@@ -1755,7 +1796,7 @@ function screenEditCard() {
         <input class="slider" type="range" min="30" max="99" step="1" value="${v.attrs[k]}" data-k="${k}" aria-label="${l}"></label>`).join('')}
     </div>
     <p class="hint" style="margin-top:10px">Sé honesto: en tus 5 primeros partidos el nivel se ajusta muy rápido.</p>
-    <button class="btn block" id="save" style="margin-top:16px">Guardar mi carta</button>
+    <button class="btn block" id="save" style="margin-top:16px">Guardar mi tarjeta</button>
   </main>${nav('perfil')}`);
   const paint = () => {
     document.getElementById('mean').textContent = Math.round(mean());
@@ -1765,7 +1806,7 @@ function screenEditCard() {
   paint();
   const btn = document.getElementById('save');
   btn.addEventListener('click', () => busy(btn, async () => {
-    try { S.me = (await api('POST', 'me', { attrs: v.attrs })).me; toast('Carta guardada.', true); go('perfil'); }
+    try { S.me = (await api('POST', 'me', { attrs: v.attrs })).me; toast('Tarjeta guardada.', true); go('perfil'); }
     catch (err) { toast(err.message); }
   }));
 }
@@ -1956,13 +1997,14 @@ function paintPlayer(d, own, o) {
       <div class="pill light">${esc(pill)}</div>
       ${own ? `<a class="icon-btn" href="#/ajustes" aria-label="Ajustes">${I.gear}</a>` : '<div style="width:44px"></div>'}</div>
     <div style="margin-top:14px">${cardHTML(p)}</div>
-    <div style="margin-top:12px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+    <button class="share-pop" id="share-card" type="button">Compartir tarjeta</button>
+    <div class="pill-row" style="margin-top:12px;display:flex;justify-content:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:0 12px">
       <span class="pill light">${p.hand === 'zurdo' ? 'Zurdo' : 'Diestro'}</span>
       <span class="pill light">Revés a ${p.backhand === 'una' ? 'una mano' : 'dos manos'}</span>
       ${p.ageTag ? `<span class="pill light">${p.ageTag === 'Junior' ? 'Junior' : `${esc(p.ageTag)} años`}</span>` : ''}
       ${own ? `<span class="pill light">@${esc(p.username)}</span>` : ''}
     </div>
-    ${own && !S.season.started && !p.matches_total ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi carta · hasta el ${fmtWhen(addDays(S.season.starts_on, -1), false)}</a>` : ''}
+    ${own && !S.season.started && !p.matches_total ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta · hasta el ${fmtWhen(addDays(S.season.starts_on, -1), false)}</a>` : ''}
     <div class="tiles" style="margin-top:12px">
       <div class="tile"><b>${p.matches_total}</b><span>Jugados</span></div>
       <div class="tile"><b style="color:var(--ok)">${p.won}</b><span>Ganados</span></div>
@@ -1979,6 +2021,11 @@ function paintPlayer(d, own, o) {
     ${own && S.me.is_admin ? `<a class="btn block ghost" style="margin-top:22px" href="#/admin">Panel del club</a>` : ''}
   </main>${nav(own ? 'perfil' : 'ranking')}`);
   bindTilt($app);
+  const cardEl = $app.querySelector('.fut'), sharePop = document.getElementById('share-card');
+  if (cardEl && sharePop) {
+    cardEl.addEventListener('click', () => sharePop.classList.toggle('on'));
+    sharePop.addEventListener('click', () => shareCard(p));
+  }
   if (!o.refresh) stagger($app.querySelector('.screen'));
 }
 
