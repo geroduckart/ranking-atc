@@ -13,14 +13,24 @@ export function db() {
   const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url) || url.includes('host=/');
   _sql = postgres(url, {
     prepare: false,              // necesario con el "Transaction pooler" de Supabase
-    max: 3,
-    idle_timeout: 20,
+    max: 4,                      // varias consultas a la vez (van en paralelo)
+    idle_timeout: 60,            // reutiliza la conexión entre peticiones seguidas (abrirla cuesta ~0,5 s)
+    max_lifetime: 60 * 10,
+    connect_timeout: 8,
     ssl: local ? false : 'require',
     // fechas y horas como texto, tal cual: '2026-11-14', '2026-11-14 10:30:00'
     types: { rawDates: { to: 1082, from: [1082, 1114], serialize: (x) => x, parse: (x) => x } },
   });
   return _sql;
 }
+/** Tira la conexión (por si el pooler la ha cortado) para que la siguiente se abra limpia. */
+export function resetDb() {
+  const old = _sql; _sql = null;
+  if (old) old.end({ timeout: 1 }).catch(() => {});
+}
+const CONN_ERRORS = new Set(['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE', 'CONNECTION_CLOSED', 'CONNECTION_ENDED',
+  'CONNECTION_DESTROYED', 'CONNECT_TIMEOUT', '57P01', '57P03', '08000', '08003', '08006', '08001', '08004']);
+export const isConnError = (e) => !!e && (CONN_ERRORS.has(e.code) || /terminat|closed|timeout|ECONNRESET|socket/i.test(String(e.message || '')));
 
 /* ── PIN ─────────────────────────────────────────────────────────────── */
 export function hashPin(pin) {
