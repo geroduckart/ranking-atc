@@ -179,6 +179,10 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fut.silver{background:linear-gradient(155deg,#F1F3F6 0%,#C9CED6 50%,#9DA5B1 100%)}
 .fut.bronze{background:linear-gradient(155deg,#F0CDA8 0%,#C98F5B 50%,#9C6537 100%)}
 .fut.special{background:radial-gradient(120% 80% at 80% 0%,#1D3A66 0%,#12294A 45%,#0B1B33 100%);color:#fff}
+.fut.diamond{background:linear-gradient(155deg,#FFFFFF 0%,#E4F1FA 28%,#B9D7EC 58%,#8FB8D8 82%,#6E9CC2 100%)}
+.fut.diamond::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(118deg,transparent 34%,rgba(255,255,255,.72) 46%,transparent 56%),
+             linear-gradient(62deg,transparent 60%,rgba(255,255,255,.45) 70%,transparent 78%)}
 .fut-top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:8px}
 .fut-lvl{display:flex;flex-direction:column;align-items:center;line-height:1}
 .fut-lvl b{font-size:50px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
@@ -524,6 +528,11 @@ const EN = {/*DICT*/
   "PIN (4 cifras)": "PIN (4 digits)",
   "PIN (# cifras)": "PIN ($1 digits)",
   "Edad": "Age",
+  "Cómo apareces en tu tarjeta": "How your name shows on your card",
+  "O escríbelo tú": "Or write your own",
+  "hasta 18 caracteres": "up to 18 characters",
+  "Así se verá:": "This is how it looks:",
+  "El nombre de la tarjeta: hasta 18 caracteres, solo letras, puntos y guiones.": "Card name: up to 18 characters, letters, dots and hyphens only.",
   "Tu nombre y tu usuario": "Your name and username",
   "Si cambias el usuario, a partir de ahora entrarás con el nuevo.": "If you change your username, from now on you'll log in with the new one.",
   "sin espacios": "no spaces",
@@ -1204,6 +1213,26 @@ const fmt = (n, d = 1) => Number(n).toLocaleString(EN_ON ? 'en-GB' : 'es-ES', { 
 const signed = (n, d = 1) => (n > 0 ? '+' : n < 0 ? '−' : '±') + fmt(Math.abs(n), d);
 const lvl = (n) => Math.round(Number(n));
 const first = (s) => String(s || '').trim().split(/\s+/)[0];
+/** Opciones de nombre para la tarjeta, a partir del nombre completo. */
+function nameOptions(full) {
+  const p = String(full || '').trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return [];
+  const o = [p[0]];
+  if (p.length > 1) {
+    o.push(`${p[0][0]}. ${p.slice(1).join(' ')}`);
+    o.push(`${p[0]} ${p[1][0]}.`);
+    o.push(p[1]);
+    if (p.length > 2) o.push(`${p[0]} ${p[1]}`);
+    o.push(p.map((w) => w[0]).join('.') + '.');
+  }
+  return [...new Set(o.map((x) => x.trim()).filter((x) => x && x.length <= 18))];
+}
+/** Lo que se ve en la tarjeta: lo que haya elegido, o el automático de siempre. */
+function cardName(p) {
+  if (p.card_name) return p.card_name;
+  const parts = String(p.full_name || '').trim().split(/\s+/);
+  return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : parts[0];
+}
 const initials = (s) => String(s || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 const DAYS = EN_ON ? ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] : ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const DAYS_S = EN_ON ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] : ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -1237,10 +1266,10 @@ function ago(iso) {
   if (s < 604800) return `hace ${Math.floor(s / 86400)} días`;
   const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
 }
-const tierOf = (l) => (l >= 85 ? 'special' : l >= 70 ? 'gold' : l >= 50 ? 'silver' : 'bronze');
-const ZONE_TIER = { oro: 'gold', plata: 'silver', bronce: 'bronze', challenger: 'special' };
-/** Desde que hay cuadros, la tarjeta es la de tu Máster. Antes, la de tu nivel. */
-const cardTier = (p) => (S.season && S.season.phase === 'masters' && p.zone && ZONE_TIER[p.zone]) || tierOf(p.level);
+/** 91+ diamante · 81–90 oro · 71–80 plata · 61–70 bronce · 50–60 azul marino. */
+const tierOf = (l) => (l >= 91 ? 'diamond' : l >= 81 ? 'gold' : l >= 71 ? 'silver' : l >= 61 ? 'bronze' : 'special');
+/** El diamante hay que ganárselo: mientras eres provisional, por alto que te pongas, es oro. */
+const cardTier = (p) => { const t = tierOf(p.level); return t === 'diamond' && p.provisional ? 'gold' : t; };
 const isMe = (id) => S.me && S.me.id === id;
 
 const I = {
@@ -1543,8 +1572,7 @@ async function busy(btn, fn) {
 function cardHTML(p) {
   const t = cardTier(p);
   const logo = t === 'special' ? LOGO_W : LOGO_N;
-  const parts = String(p.full_name).trim().split(/\s+/);
-  const short = parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : parts[0];
+  const short = cardName(p);
   return `<div class="fut-wrap"><div class="fut ${t}">
     <div class="fut-top">
       <div class="fut-lvl"><b>${lvl(p.level)}</b><span>NIVEL</span>${p.provisional ? '<i>PROVISIONAL</i>' : ''}</div>
@@ -1586,15 +1614,23 @@ async function shareCard(p) {
 
   const tier = cardTier(p);
   const face = g.createLinearGradient(cx, cy, cx + cw * 0.6, cy + ch);
-  if (tier === 'special') { face.addColorStop(0, '#1D3A66'); face.addColorStop(0.45, '#12294A'); face.addColorStop(1, '#0B1B33'); }
+  if (tier === 'diamond') { face.addColorStop(0, '#FFFFFF'); face.addColorStop(0.28, '#E4F1FA'); face.addColorStop(0.58, '#B9D7EC'); face.addColorStop(0.82, '#8FB8D8'); face.addColorStop(1, '#6E9CC2'); }
+  else if (tier === 'special') { face.addColorStop(0, '#1D3A66'); face.addColorStop(0.45, '#12294A'); face.addColorStop(1, '#0B1B33'); }
   else if (tier === 'silver') { face.addColorStop(0, '#F1F3F6'); face.addColorStop(0.5, '#C9CED6'); face.addColorStop(1, '#9DA5B1'); }
   else if (tier === 'bronze') { face.addColorStop(0, '#F0CDA8'); face.addColorStop(0.5, '#C98F5B'); face.addColorStop(1, '#9C6537'); }
   else { face.addColorStop(0, '#F4E2A1'); face.addColorStop(0.45, '#D8B65A'); face.addColorStop(1, '#B8913A'); }
   g.fillStyle = face; g.fillRect(cx, cy, cw, ch);
+  if (tier === 'diamond') {
+    for (const [a, b, op] of [[0.34, 0.56, 0.72], [0.60, 0.78, 0.45]]) {
+      const sh = g.createLinearGradient(cx, cy + ch * a, cx + cw, cy + ch * b);
+      sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, `rgba(255,255,255,${op})`); sh.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = sh; g.fillRect(cx, cy, cw, ch);
+    }
+  }
 
   const k = cw / 700;                       // todo escala con el ancho de la tarjeta
   const ink = tier === 'special' ? '#FFFFFF' : '#12294A';
-  const big = tier === 'special' ? '#E35B2A' : '#12294A';
+  const big = tier === 'special' ? '#E35B2A' : tier === 'diamond' ? '#1A4D7A' : '#12294A';
   const padX = cx + 62 * k, rightX = cx + cw - 62 * k;
 
   g.fillStyle = big; g.textAlign = 'left'; g.font = F(700, 132 * k);
@@ -1611,8 +1647,7 @@ async function shareCard(p) {
   const crest = await load(tier === 'special' ? LOGO_W : LOGO_N);
   if (crest) { const iw = 230 * k; g.drawImage(crest, rightX - iw, cy + 104 * k, iw, iw * crest.height / crest.width); }
 
-  const parts = String(p.full_name).trim().split(/\s+/);
-  const short = (parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : parts[0]).toUpperCase();
+  const short = cardName(p).toUpperCase();
   g.textAlign = 'center';
   g.strokeStyle = tier === 'special' ? 'rgba(255,255,255,.25)' : 'rgba(18,41,74,.22)';
   g.lineWidth = 2 * k; g.beginPath(); g.moveTo(padX, cy + 352 * k); g.lineTo(rightX, cy + 352 * k); g.stroke();
@@ -2441,6 +2476,14 @@ async function screenSettings() {
       <p class="hint" style="margin:0 4px">Si cambias el usuario, a partir de ahora entrarás con el nuevo.</p>
       <div class="err hidden" id="ide"></div>
       <button class="btn sm navy">Guardar</button></form></div>
+    <div class="sec"><span class="label">Cómo apareces en tu tarjeta</span><div class="box">
+      <div class="chips" id="cn-opts" style="flex-wrap:wrap;gap:6px">${
+        nameOptions(me.full_name).map((o) => `<button type="button" class="chip" style="min-width:0;height:38px;font-size:13.5px" data-cn="${esc(o)}" aria-pressed="${cardName(me) === o}">${esc(o)}</button>`).join('')}</div>
+      <label class="field" style="margin-top:12px">O escríbelo tú<input class="input" id="cn-free" maxlength="18" value="${esc(me.card_name || '')}" placeholder="hasta 18 caracteres"></label>
+      <p class="hint" style="margin:8px 4px 0">Así se verá: <b id="cn-prev">${esc(cardName(me).toUpperCase())}</b></p>
+      <div class="err hidden" id="cne"></div>
+      <button class="btn sm navy" id="cn-save" style="margin-top:12px">Guardar</button>
+    </div></div>
     <div class="sec"><span class="label">Tu juego</span><div class="box" style="display:flex;flex-direction:column;gap:10px">
       <div class="row-between"><b style="font-size:15px">Juegas con</b><div class="seg" style="width:220px" data-k="hand"><button data-v="diestro">Diestro</button><button data-v="zurdo">Zurdo</button></div></div>
       <div class="row-between"><b style="font-size:15px">Revés</b><div class="seg" style="width:220px" data-k="backhand"><button data-v="una">A una mano</button><button data-v="dos">A dos manos</button></div></div>
@@ -2478,6 +2521,22 @@ async function screenSettings() {
     catch (err) { toast(err.message || 'No se ha podido usar esa foto.'); }
   });
   document.getElementById('nophoto')?.addEventListener('click', async () => { try { S.me = (await api('POST', 'me', { photo: null })).me; screenSettings(); } catch (err) { toast(err.message); } });
+  {
+    const opts = document.getElementById('cn-opts'), free = document.getElementById('cn-free'), prev = document.getElementById('cn-prev');
+    const pinta = (v) => {
+      prev.textContent = (v || cardName({ ...S.me, card_name: null })).toUpperCase();
+      opts.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cn === v ? 'true' : 'false'));
+    };
+    opts.addEventListener('click', (e2) => { const b = e2.target.closest('.chip'); if (!b) return; free.value = b.dataset.cn; pinta(b.dataset.cn); });
+    free.addEventListener('input', () => pinta(free.value.trim()));
+    document.getElementById('cn-save').addEventListener('click', (e2) => {
+      const btn = e2.currentTarget;
+      busy(btn, async () => {
+        try { S.me = (await api('POST', 'me', { card_name: free.value.trim() })).me; toast('Guardado.', true); screenSettings(); }
+        catch (err) { setErr(document.getElementById('cne'), err.message); }
+      });
+    });
+  }
   document.getElementById('idf').addEventListener('submit', (e) => {
     e.preventDefault(); const f = e.target;
     const err = (m) => setErr(document.getElementById('ide'), m);
