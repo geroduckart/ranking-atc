@@ -97,7 +97,10 @@ export default async function handler(req) {
         return json({ error: /phone/.test(q) ? 'Ya hay una cuenta con ese móvil.' : /username/.test(q) ? 'Ese usuario ya existe. Prueba con otro.' : 'Ese dato ya está en uso.' }, 409);
       }
       // La pista de la causa ayuda a arreglarlo sin bucear en los registros; no lleva datos de nadie.
-      const pista = e && e.code ? ` (${e.code}${e.column_name ? ' · ' + e.column_name : ''}${e.constraint_name ? ' · ' + e.constraint_name : ''})` : '';
+      // En 42703 (columna que no existe) y 42P01 (tabla que no existe) Postgres deja el nombre
+      // solo en el mensaje, así que lo enseñamos: casi siempre es que falta ejecutar el SQL.
+      const falta = e && (e.code === '42703' || e.code === '42P01') ? ' · ' + String(e.message || '').slice(0, 80) + ' · falta ejecutar el SQL de migración' : '';
+      const pista = e && e.code ? ` (${e.code}${e.column_name ? ' · ' + e.column_name : ''}${e.constraint_name ? ' · ' + e.constraint_name : ''}${falta})` : '';
       return json({ error: 'Error del servidor. Inténtalo de nuevo en un momento.' + pista }, 500);
     }
   }
@@ -487,7 +490,7 @@ on('GET', 'ping', async () => {
   const t = Date.now(); await sql`select 1`; const first = Date.now() - t;
   const t2 = Date.now(); await sql`select 1`; const second = Date.now() - t2;
   // Comprobación del esquema: si falta algo, el alta fallará con «Error del servidor».
-  const want = { players: ['lang', 'phone', 'wa_consent', 'wa_consent_at', 'wa_consent_src'], challenges: ['day_reminded'] };
+  const want = { players: ['lang', 'phone', 'wa_consent', 'wa_consent_at', 'wa_consent_src', 'band_bonus', 'card_name', 'feed_seen_at'], challenges: ['day_reminded'] };
   const falta = [];
   const cols = await sql`select table_name, column_name, is_nullable from information_schema.columns
     where table_schema = 'public' and table_name in ('players','challenges')`;
