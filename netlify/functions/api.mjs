@@ -310,13 +310,15 @@ on('POST', 'forgot', async () => {
 on('GET', 'me', async ({ req }) => {
   const uid = sessionUid(req).u;
   const sql = db();
-  const [p, S, [todo]] = await Promise.all([auth(req), season(sql), sql`select
+  const [p, S, [todo], [board]] = await Promise.all([auth(req), season(sql), sql`select
       (select count(*) from challenges where status = 'pending' and proposed_by <> ${uid} and (challenger = ${uid} or challenged = ${uid}))::int as respond,
       (select count(*) from matches where status = 'pending' and reported_by <> ${uid} and (p1 = ${uid} or p2 = ${uid}))::int as confirm,
       (select count(*) from challenges c where c.status = 'accepted' and (c.challenger = ${uid} or c.challenged = ${uid})
          and c.play_at::date <= ${madridToday()}::date
-         and not exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')))::int as report`]);
-  return { me: selfView(p), season: seasonView(S), todo: todo.respond + todo.confirm + todo.report };
+         and not exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')))::int as report`,
+    boardNews(sql, uid),
+  ]);
+  return { me: selfView(p), season: seasonView(S), todo: todo.respond + todo.confirm + todo.report, board: board.n };
 });
 function seasonView(S) {
   const today = madridToday();
@@ -376,7 +378,7 @@ on('POST', 'me', async ({ req, body }) => {
     const [{ n }] = await sql`select count(*)::int as n from matches where status = 'confirmed' and (p1 = ${p.id} or p2 = ${p.id})`;
     if (n > 0) fail('Ya tienes partidos jugados: tus barritas las mueven tus partidos.');
     const a = R.checkAttrs(body.attrs);
-    if (!a) fail('Cada golpe entre 50 y 99.');
+    if (!a) fail('Valora cada golpe entre 50 y 99.');
     const lvl = R.levelFromAttrs(a);
     upd.attrs = sql.json(a); upd.start_level = lvl; upd.level = lvl;
   }
@@ -702,7 +704,7 @@ on('POST', 'challenge/:id/cancel', async ({ req, params, out }) => {
   if (!c || c.challenger !== me.id) fail('Solo quien ha retado puede cancelar el reto.');
   if (!['pending', 'accepted'].includes(c.status)) fail('Este reto ya no está abierto.');
   const [hasMatch] = await sql`select 1 from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
-  if (hasMatch) fail('Este partido ya tiene resultado.');
+  if (hasMatch) fail('Este partido ya tiene un resultado.');
   await sql`update challenges set status = 'cancelled', responded_by = ${me.id}, updated_at = now() where id = ${id}`;
   const [o] = await sql`select * from players where id = ${c.challenged}`;
   if (o && wants(o, 'challenges')) out.push(() => mail(o.email, `${firstName(me.full_name)} ha cancelado el reto`, {
@@ -951,6 +953,31 @@ on('POST', 'masters/:id/result', async ({ req, params, body, out }) => {
 /* ════════════════════════════════════════════════════════════════════
    Tablón
    ════════════════════════════════════════════════════════════════════ */
+/**
+ * Novedades del tablón que te tocan desde la última vez que lo abriste:
+ * publicaciones donde sales, comentarios de otros en esas o en las que has comentado,
+ * y me gusta de otros a las tuyas. Lo que haces tú no cuenta.
+ */
+const boardNews = (sql, uid) => sql`
+  with visto as (select feed_seen_at as t from players where id = ${uid}),
+       mias as (select id from feed where actor = ${uid} or target = ${uid}),
+       comentadas as (select distinct post_id as id from comments where author = ${uid})
+  select (
+      (select count(*) from feed, visto
+         where feed.created_at > visto.t and feed.target = ${uid} and feed.actor is distinct from ${uid})
+    + (select count(*) from comments c, visto
+         where c.created_at > visto.t and c.author is distinct from ${uid}
+           and (c.post_id in (select id from mias) or c.post_id in (select id from comentadas)))
+    + (select count(*) from likes l, visto
+         where l.created_at > visto.t and l.player <> ${uid} and l.post_id in (select id from mias))
+  )::int as n`;
+
+on('POST', 'feed/seen', async ({ req }) => {
+  const uid = sessionUid(req).u;
+  await db()`update players set feed_seen_at = now() where id = ${uid}`;
+  return { ok: true };
+});
+
 on('GET', 'feed', async ({ req, url }) => {
   const uid = sessionUid(req).u;
   const sql = db();
@@ -1120,7 +1147,7 @@ on('GET', 'admin', async ({ req }) => {
     order by (m.status = 'disputed') desc, (m.status = 'pending') desc, m.id desc limit 150`;
   // Agenda: retos abiertos y partidos programados de todo el club
   const agenda = await sql`select c.id, c.status, c.play_at::text as play_at, c.proposed_by, c.challenger, c.challenged,
-      a.full_name as n1, b.full_name as n2, a.email as e1, b.email as e2, a.level as l1, b.level as l2,
+      a.full_name as n1, b.full_name as n2, a.phone as e1, b.phone as e2, a.level as l1, b.level as l2,
       (select m.status from matches m where m.challenge_id = c.id and m.status <> 'annulled' order by m.id desc limit 1) as match_status
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
     where c.status in ('pending','accepted') order by c.play_at`;
@@ -1154,7 +1181,7 @@ on('POST', 'admin/player/:id', async ({ req, params, body }) => {
   let needRecompute = false;
   if (body.attrs) {
     const a = R.checkAttrs(body.attrs);
-    if (!a) fail('Cada golpe entre 50 y 99.');
+    if (!a) fail('Valora cada golpe entre 50 y 99.');
     upd.attrs = sql.json(a);
     upd.start_level = R.levelFromAttrs(a);
     needRecompute = true;
