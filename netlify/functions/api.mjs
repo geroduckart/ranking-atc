@@ -92,7 +92,13 @@ export default async function handler(req) {
       if (e instanceof SyntaxError) return json({ error: 'Petición no válida.' }, 400);
       console.error(e);
       if (isConnError(e)) resetDb();
-      return json({ error: 'Error del servidor. Inténtalo de nuevo en un momento.' }, 500);
+      if (e && e.code === '23505') {   // unicidad: usuario o móvil repetido
+        const q = String(e.constraint_name || e.constraint || '');
+        return json({ error: /phone/.test(q) ? 'Ya hay una cuenta con ese móvil.' : /username/.test(q) ? 'Ese usuario ya existe. Prueba con otro.' : 'Ese dato ya está en uso.' }, 409);
+      }
+      // La pista de la causa ayuda a arreglarlo sin bucear en los registros; no lleva datos de nadie.
+      const pista = e && e.code ? ` (${e.code}${e.column_name ? ' · ' + e.column_name : ''}${e.constraint_name ? ' · ' + e.constraint_name : ''})` : '';
+      return json({ error: 'Error del servidor. Inténtalo de nuevo en un momento.' + pista }, 500);
     }
   }
   return json({ error: 'No encontrado.' }, 404);
@@ -262,8 +268,9 @@ on('POST', 'signup', async ({ body }) => {
   const lvl = R.levelFromAttrs(attrs);
   const [dupU] = await sql`select 1 from players where username = ${username}`;
   if (dupU) fail('Ese usuario ya existe. Prueba con otro.');
-  const [dupP] = await sql`select 1 from players where phone = ${wa} and active`;
-  if (dupP) fail('Ya hay una cuenta con ese móvil. Si es tuya, pide en el club que te cambien el PIN.');
+  const [dupP] = await sql`select active from players where phone = ${wa}`;
+  if (dupP) fail(dupP.active ? 'Ya hay una cuenta con ese móvil. Si es tuya, pide en el club que te cambien el PIN.'
+    : 'Ese móvil ya se usó en una cuenta dada de baja. Pide en el club que la reactiven.');
   const isAdmin = (process.env.ADMIN_USERNAME || '').toLowerCase().split(',').map((s) => s.trim()).includes(username);
   const [p] = await sql`insert into players (username, full_name, pin_hash, birth_date, hand, backhand, attrs, start_level, level, is_admin, phone, wa_consent, wa_consent_at, wa_consent_src)
     values (${username}, ${full_name}, ${hashPin(body.pin)}, ${birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin}, ${wa}, true, ${new Date()}, 'app')
