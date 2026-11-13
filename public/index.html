@@ -314,7 +314,10 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .howbox{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:22px;padding:14px 16px;margin-top:10px}
 .howbox h3{margin:0 0 6px;font-size:16px}
 .howbox p{margin:0 0 8px}.howbox p:last-child{margin-bottom:0}
-.howbox ul{margin:0;padding-left:20px}.howbox ul+p{margin-top:9px}.howbox li{margin-bottom:5px}.howbox li:last-child{margin-bottom:0}
+.howbox ul{margin:0;padding-left:20px}.howbox ul+p{margin-top:9px}
+.ej{background:var(--soft);border-radius:14px;padding:11px 13px;margin-top:11px}
+.ej .t{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.howbox .ej p{margin:0;font-size:14.5px;line-height:1.5}.howbox .ej p+p{margin-top:5px}.howbox li{margin-bottom:5px}.howbox li:last-child{margin-bottom:0}
 details.adm{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:18px;padding:10px 14px}
 details.adm + details.adm{margin-top:8px}
 details.adm summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px}
@@ -1117,7 +1120,21 @@ const EN = {/*DICT*/
   "Desde el día 30 solo puedes retar a tu grupo de 8 de la clasificación y a los grupos de justo encima y justo debajo.": "From day 30 you can only challenge your group of 8 in the standings, plus the groups just above and just below.",
   "Los Másters": "The Masters",
   "Al acabar la fase regular se montan cuadros de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger. Para entrar hay que haber jugado al menos 5 partidos.": "When the regular phase ends, draws of 8 are set up from the points standings: Gold, Silver, Bronze and Challenger. You need at least 5 matches played to get in.",
-  "Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Nunca baja: si ya lo tenías más alto, se queda como está.": "On entry your level moves into your group's band: Gold 81–99, Silver 71–80, Bronze 61–70, Challenger 50–60. It never goes down: if yours was already higher, it stays.",
+  "Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Dentro de la banda, el número que te toca depende del puesto con el que entras: el 1.º de su grupo se lleva el tope y el 8.º el suelo.": "On entry your level moves into your group's band: Gold 81–99, Silver 71–80, Bronze 61–70, Challenger 50–60. Within the band, the number you get depends on the place you come in at: 1st in the group takes the top and 8th the bottom.",
+  "por amor al tenis": "for the love of tennis",
+  "Tu móvil no lo ve nadie": "Nobody sees your mobile",
+  "Los demás jugadores ven tu nombre, tu nivel y tus partidos, nada más. Tu número no aparece en tu perfil ni se lo damos a nadie: solo sirve para mandarte los avisos por WhatsApp.": "Other players see your name, your level and your matches, nothing else. Your number is not on your profile and we don't give it to anyone: it is only used to send you the WhatsApp notices.",
+  "Tu móvil no lo verá ningún jugador: no aparece en tu perfil y no se lo damos a nadie.": "No player will see your mobile: it is not on your profile and we don't give it to anyone.",
+  "Ejemplo": "Example",
+  "Tienes nivel 64 y ganas a alguien de nivel 71.": "You are level 64 and you beat someone on level 71.",
+  "Son 3 puntos por ganar, más 1 extra porque te saca 7 niveles: 4 puntos.": "That's 3 points for the win, plus 1 extra because they are 7 levels above you: 4 points.",
+  "Tienes 68 y juegas contra alguien de 78.": "You are on 68 and you play someone on 78.",
+  "Si ganas 6-4 6-4, subes a 71 y él baja a 75.": "If you win 6-4 6-4, you go up to 71 and they drop to 75.",
+  "Si pierdes 4-6 4-6, bajas solo a 67 y él sube a 79.": "If you lose 4-6 4-6, you only drop to 67 and they go up to 79.",
+  "Ganarle vale casi tres puntos de nivel; perder contra él te cuesta medio.": "Beating them is worth almost three level points; losing to them costs you half of one.",
+  "Juan acaba 6.º de su grupo y entra en el Máster Plata, que va del 71 al 80. Al 6.º puesto le toca el 74.": "Juan finishes 6th in his group and goes into the Silver Masters, which runs from 71 to 80. 6th place gets 74.",
+  "Si Juan venía con 65, sube a 74.": "If Juan came in on 65, he goes up to 74.",
+  "Si venía con 76, se queda en 76: el nivel nunca baja al entrar en un Máster.": "If he came in on 76, he stays on 76: your level never goes down when you enter a Masters.",
   "¿Dudas? Habla con el club.": "Questions? Talk to the club.",
   "Normas completas y privacidad": "Full rules and privacy",
   "¿Cómo funciona?": "How it works",
@@ -1746,6 +1763,8 @@ async function shareCard(p) {
   g.fillText(EN_ON ? 'ATC Ranking' : 'Ranking ATC', W / 2, fy + 58);
   g.fillStyle = 'rgba(255,255,255,.5)'; g.font = F(600, 25);
   g.fillText('atcranking.netlify.app', W / 2, fy + 102);
+  g.fillStyle = 'rgba(247,162,126,.85)'; g.font = 'italic ' + F(600, 26);
+  g.fillText(EN_ON ? 'for the love of tennis' : 'por amor al tenis', W / 2, fy + 150);
 
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
   const file = new File([blob], `ranking-atc-${p.username}.png`, { type: 'image/png' });
@@ -1836,7 +1855,8 @@ function screenLogin() {
     <div class="ring" aria-hidden="true" style="width:420px;height:420px;border:1px solid rgba(255,255,255,.10);right:-260px;top:200px"></div>
     <div class="langsw dark" data-nt style="position:absolute;right:16px;top:calc(14px + var(--sat));z-index:2"><button data-lang="es" aria-pressed="${LANG === 'es'}">ES</button><button data-lang="en" aria-pressed="${LANG === 'en'}">EN</button></div>
     <img src="${LOGO_W}" alt="Almuñécar Tennis Club" style="width:200px;height:auto;position:relative">
-    <div style="margin-top:40px;text-align:center;position:relative">
+    <p style="margin:10px 0 0;font-size:14px;font-weight:500;font-style:italic;color:rgba(255,255,255,.6);position:relative">por amor al tenis</p>
+    <div style="margin-top:28px;text-align:center;position:relative">
       <div class="label" style="color:var(--peach);letter-spacing:.18em">Temporada 1 · 60 días</div>
       <h1>Ranking<br><span>del club.</span></h1>
       <p style="margin:16px auto 0;max-width:290px;font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)">Reta, juega y sube. Los mejores de cada grupo, al Máster.</p>
@@ -1893,13 +1913,14 @@ function screenSignup1() {
       <label class="field">PIN (4 cifras)<input class="input" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" value="${esc(v.pin || '')}" placeholder="••••" style="letter-spacing:.3em"></label>
       <label class="field">Edad<input class="input" name="age" type="number" inputmode="numeric" min="14" max="100" value="${esc(v.age || '')}" placeholder="años"></label>
       <p class="hint" style="margin:-4px 4px 0">En tu tarjeta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.</p>
-      <p class="hint">Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil.</p>
       <div class="field">Móvil de WhatsApp
         <div style="display:flex;gap:8px;margin-top:6px">
           <select class="input" name="cc" style="flex:none;width:132px">${DIAL.map(([c, es, en]) => `<option value="${c}" ${(v.cc || '+34') === c ? 'selected' : ''}>${c} ${EN_ON ? en : es}</option>`).join('')}</select>
           <input class="input" name="phone" type="tel" autocomplete="tel" inputmode="numeric" style="flex:1;min-width:0" value="${esc(v.phone || '')}" placeholder="600 000 000">
         </div>
       </div>
+      <p class="hint" style="margin:-6px 4px 0">Tu móvil no lo verá ningún jugador: no aparece en tu perfil y no se lo damos a nadie.</p>
+      <p class="hint" style="margin:-6px 4px 0">Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil.</p>
       <label class="check"><input type="checkbox" name="accept" ${v.accept ? 'checked' : ''}><span>Acepto la <a href="#/privacidad">política de privacidad</a> y las normas de la temporada.</span></label>
       <p class="hint" style="margin:2px 4px 0"><a href="#/como-funciona" style="font-weight:700;color:var(--orange)">Cómo funciona la liga</a><span>: puntos, nivel, retos y Másters en dos minutos.</span></p>
       <div class="err hidden" id="e"></div>
@@ -2664,6 +2685,7 @@ function screenHow() {
     <div class="top">${backBtn(back)}<div class="title">Cómo funciona</div><div style="width:44px"></div></div>
     <p class="sub" style="margin:16px 4px 4px">En dos minutos sabes de qué va la liga.</p>
 
+    <div class="howbox"><h3>Tu móvil no lo ve nadie</h3><p>Los demás jugadores ven tu nombre, tu nivel y tus partidos, nada más. Tu número no aparece en tu perfil ni se lo damos a nadie: solo sirve para mandarte los avisos por WhatsApp.</p></div>
     <h2>Hay dos clasificaciones</h2>
     <div class="howbox"><h3>Puntos</h3>
       <p>Quién ha ganado más partidos esta temporada. Es la que decide quién entra en cada Máster.</p></div>
@@ -2678,7 +2700,7 @@ function screenHow() {
       <div><b>0</b><span>Pierdes en 2 sets</span></div>
     </div>
     <div class="howbox"><p>Un punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.</p>
-      <p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p></div>
+      <p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Tienes nivel 64 y ganas a alguien de nivel 71.</p><p>Son 3 puntos por ganar, más 1 extra porque te saca 7 niveles: 4 puntos.</p></div></div>
 
     <h2>Cómo se mueve el nivel</h2>
     <div class="howbox"><p>Empiezas con el nivel de la valoración que te pones al registrarte. A partir de ahí lo mueven tus partidos, mirando dos cosas: a quién ganas y por cuántos juegos.</p>
@@ -2688,7 +2710,7 @@ function screenHow() {
         <li>Ganar al que va por debajo sube poco.</li>
         <li>En tus 5 primeros partidos se mueve el triple de rápido, para colocarte pronto donde te toca.</li>
       </ul>
-      <p>Cuando cambia tu nivel, las barritas de tu tarjeta se mueven solas con él.</p></div>
+      <p>Cuando cambia tu nivel, las barritas de tu tarjeta se mueven solas con él.</p><div class="ej"><span class="t">Ejemplo</span><p>Tienes 68 y juegas contra alguien de 78.</p><p>Si ganas 6-4 6-4, subes a 71 y él baja a 75.</p><p>Si pierdes 4-6 4-6, bajas solo a 67 y él sube a 79.</p><p>Ganarle vale casi tres puntos de nivel; perder contra él te cuesta medio.</p></div></div>
 
     <h2>Retos</h2>
     <div class="howbox"><ul>
@@ -2702,7 +2724,7 @@ function screenHow() {
 
     <h2>Los Másters</h2>
     <div class="howbox"><p>Al acabar la fase regular se montan cuadros de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger. Para entrar hay que haber jugado al menos 5 partidos.</p>
-      <p>Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Nunca baja: si ya lo tenías más alto, se queda como está.</p></div>
+      <p>Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Dentro de la banda, el número que te toca depende del puesto con el que entras: el 1.º de su grupo se lleva el tope y el 8.º el suelo.</p><div class="ej"><span class="t">Ejemplo</span><p>Juan acaba 6.º de su grupo y entra en el Máster Plata, que va del 71 al 80. Al 6.º puesto le toca el 74.</p><p>Si Juan venía con 65, sube a 74.</p><p>Si venía con 76, se queda en 76: el nivel nunca baja al entrar en un Máster.</p></div></div>
 
     <p class="hint" style="margin:18px 4px 0">¿Dudas? Habla con el club.</p>
     <a class="link" href="#/privacidad" style="text-align:center;display:block;margin-top:10px">Normas completas y privacidad</a>
