@@ -455,7 +455,21 @@ on('GET', 'ping', async () => {
   const sql = db();
   const t = Date.now(); await sql`select 1`; const first = Date.now() - t;
   const t2 = Date.now(); await sql`select 1`; const second = Date.now() - t2;
-  return { region: process.env.AWS_REGION || process.env.NETLIFY_REGION || '?', dbFirstMs: first, dbMs: second };
+  // Comprobación del esquema: si falta algo, el alta fallará con «Error del servidor».
+  const want = { players: ['lang', 'phone', 'wa_consent', 'wa_consent_at', 'wa_consent_src'], challenges: ['day_reminded'] };
+  const falta = [];
+  const cols = await sql`select table_name, column_name, is_nullable from information_schema.columns
+    where table_schema = 'public' and table_name in ('players','challenges')`;
+  const have = new Set(cols.map((c) => `${c.table_name}.${c.column_name}`));
+  for (const [tb, list] of Object.entries(want)) for (const c of list) if (!have.has(`${tb}.${c}`)) falta.push(`${tb}.${c}`);
+  const emailRow = cols.find((c) => c.table_name === 'players' && c.column_name === 'email');
+  if (emailRow && emailRow.is_nullable === 'NO') falta.push('players.email sigue siendo obligatoria');
+  return {
+    region: process.env.AWS_REGION || process.env.NETLIFY_REGION || '?', dbFirstMs: first, dbMs: second,
+    esquema: falta.length ? 'FALTA EJECUTAR EL SQL' : 'al día',
+    falta,
+    whatsapp: { token: !!process.env.WHATSAPP_TOKEN, phoneId: !!process.env.WHATSAPP_PHONE_ID },
+  };
 });
 
 on('GET', 'photo/:id', async ({ params }) => {
