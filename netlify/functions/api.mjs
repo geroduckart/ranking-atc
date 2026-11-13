@@ -141,7 +141,7 @@ async function season(sql = db()) {
 
 function selfView(p) {
   return {
-    id: p.id, username: p.username, full_name: p.full_name, phone: p.phone, birth_date: p.birth_date,
+    id: p.id, username: p.username, full_name: p.full_name, card_name: p.card_name, phone: p.phone, birth_date: p.birth_date,
     hand: p.hand, backhand: p.backhand, level: Number(p.level), start_level: Number(p.start_level),
     attrs: R.shownAttrs(p.attrs, p.start_level, p.level), photo_v: p.photo_v, is_admin: p.is_admin,
     notify: { challenges: wants(p, 'challenges'), results: wants(p, 'results'), drop: wants(p, 'drop'), reminders: wants(p, 'reminders') },
@@ -349,6 +349,12 @@ on('POST', 'me', async ({ req, body }) => {
       upd.username = u;
     }
   }
+  if ('card_name' in body) {
+    const cn = String(body.card_name || '').trim().replace(/\s+/g, ' ');
+    if (!cn) upd.card_name = null;                       // vacío: se vuelve al automático
+    else if (cn.length > 18 || !/^[\p{L}\p{M}0-9 .'’-]+$/u.test(cn)) fail('El nombre de la tarjeta: hasta 18 caracteres, solo letras, puntos y guiones.');
+    else upd.card_name = cn;
+  }
   if (body.hand) upd.hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   if (body.backhand) upd.backhand = body.backhand === 'una' ? 'una' : 'dos';
   if (body.notify && typeof body.notify === 'object') {
@@ -446,7 +452,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
   const row = [...st.qualified, ...st.others].find((r) => r.id === id) || { pts: 0, pj: 0, won: 0, pos: null, zone: null, missing: st.S.min_matches };
   const out = {
     player: {
-      id: p.id, full_name: p.full_name, username: p.username, hand: p.hand, backhand: p.backhand,
+      id: p.id, full_name: p.full_name, card_name: p.card_name, username: p.username, hand: p.hand, backhand: p.backhand,
       level: Number(p.level), start_level: Number(p.start_level), attrs: R.shownAttrs(p.attrs, p.start_level, p.level),
       photo_v: p.photo_v, ageTag: R.ageTag(ageOf(p)), since: String(p.created_at.toISOString?.() || p.created_at).slice(0, 10),
       pos: row.pos, zone: row.zone, pts: row.pts, pj: row.pj, won: row.won, missing: row.missing ?? 0,
