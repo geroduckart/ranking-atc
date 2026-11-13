@@ -334,6 +334,8 @@ details.adm summary::-webkit-details-marker{display:none}
 .langsw.dark{background:rgba(255,255,255,.1)}
 .langsw.dark button{color:rgba(255,255,255,.7)}
 .langsw.dark button[aria-pressed="true"]{background:#fff;color:var(--navy)}
+.promo-line{margin:12px 6px 0;font-size:13px;line-height:1.4;color:var(--muted);text-align:center}
+.promo-line::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:7px;vertical-align:middle}
 .promo{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:18px;background:var(--orange-soft);border:1px solid rgba(227,91,42,.35);font-size:14px;line-height:1.35}
 .promo b{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange)}
 .promo.dark{background:rgba(227,91,42,.16);border-color:rgba(247,162,126,.4);color:rgba(255,255,255,.9);text-align:center;max-width:320px}
@@ -484,10 +486,10 @@ const EN = {/*DICT*/
   "Un momento": "One moment",
   "Volver a la clasificación": "Back to standings",
   "Promoción de estreno": "Launch offer",
+  "Los # primeros partidos de la temporada: pista y bolas gratis.": "The first $1 matches of the season: free court and balls.",
   "Los 5 primeros partidos de la temporada, con pista y bolas gratis.": "The first 5 matches of the season: free court and balls.",
-  "Los # primeros partidos de la temporada tienen pista y bolas gratis. Sé de los primeros en jugar.": "The first $1 matches of the season get a free court and balls. Be one of the first to play.",
-  "Los # primeros partidos de la temporada tienen pista y bolas gratis. Quedan #.": "The first $1 matches of the season get a free court and balls. $2 left.",
-  "Los # primeros partidos de la temporada tienen pista y bolas gratis. Solo queda 1.": "The first $1 matches of the season get a free court and balls. Only 1 left.",
+  "Los # primeros partidos de la temporada: pista y bolas gratis. Quedan #.": "The first $1 matches of the season: free court and balls. $2 left.",
+  "Los # primeros partidos de la temporada: pista y bolas gratis. Solo queda #.": "The first $1 matches of the season: free court and balls. Only $2 left.",
   "Promoción · pista y bolas gratis": "Offer · free court and balls",
   "# de # partidos usados. Cuentan los primeros con resultado confirmado.": "$1 of $2 matches used. The first ones with a confirmed result count.",
   "#. * vs *": "$1. $2 vs $3",
@@ -1902,7 +1904,7 @@ async function screenRanking() {
     };
     let html = '';
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
-    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<div class="promo" style="margin-top:14px"><b>Promoción de estreno</b><span>Los ${d.promo.total} primeros partidos de la temporada tienen pista y bolas gratis. ${d.promo.left === d.promo.total ? 'Sé de los primeros en jugar.' : d.promo.left === 1 ? 'Solo queda 1.' : `Quedan ${d.promo.left}.`}</span></div>`;
+    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<p class="promo-line">Los ${d.promo.total} primeros partidos de la temporada: pista y bolas gratis. ${d.promo.left === d.promo.total ? '' : d.promo.left === 1 ? 'Solo queda 1.' : `Quedan ${d.promo.left}.`}</p>`;
     html += `<div class="search"><label class="sr" for="q">Buscar jugador</label>${I.search}<input id="q" class="input" placeholder="Buscar jugador" value="${esc(rankQuery)}" autocomplete="off"></div>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
@@ -1994,7 +1996,7 @@ function paintPlayer(d, own, o) {
       ${own ? `<a class="icon-btn" href="#/ajustes" aria-label="Ajustes">${I.gear}</a>` : '<div style="width:44px"></div>'}</div>
     <div style="margin-top:14px">${cardHTML(p)}</div>
     <button class="share-pop" id="share-card" type="button">Compartir tarjeta</button>
-    <div class="pill-row" style="margin-top:12px;display:flex;justify-content:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:0 12px">
+    <div class="pill-row" style="display:flex;justify-content:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px -18px 0;padding:8px 18px 14px">
       <span class="pill light">${p.hand === 'zurdo' ? 'Zurdo' : 'Diestro'}</span>
       <span class="pill light">Revés a ${p.backhand === 'una' ? 'una mano' : 'dos manos'}</span>
       ${p.ageTag ? `<span class="pill light">${p.ageTag === 'Junior' ? 'Junior' : `${esc(p.ageTag)} años`}</span>` : ''}
