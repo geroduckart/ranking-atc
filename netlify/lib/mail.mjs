@@ -12,6 +12,7 @@ export const setLangResolver = (f) => { langOf = f; };
 const NAVY = '#12294A', ORANGE = '#E35B2A', INK = '#0F1720', MUTED = '#546073', BG = '#FBFAF8', LINE = '#E0E2E8';
 
 export async function send({ to, subject, html, text }) {
+  if (!to) return { skipped: true };   // jugador sin email: el aviso va solo por WhatsApp
   const key = process.env.RESEND_API_KEY;
   const from = process.env.MAIL_FROM || 'Ranking ATC <avisos@almunecartennisclub.com>';
   const replyTo = process.env.MAIL_REPLY_TO || 'info@almunecartennisclub.com';
@@ -62,6 +63,7 @@ ${buttons.length ? `<tr><td align="center" style="padding:14px 20px 8px">${butto
 }
 
 export async function mail(to, subject, parts) {
+  if (!to) return { skipped: true };
   let lang = 'es';
   try { lang = await langOf(to); } catch (e) {}
   if (lang === 'en') {
