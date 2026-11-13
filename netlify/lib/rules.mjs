@@ -46,7 +46,7 @@ export const CHALLENGER_MAX = 16;
  * Al publicar los cuadros, el nivel de cada clasificado se recoloca dentro de la banda
  * de su Máster: el primero del grupo al tope, el último al suelo. Nunca baja a nadie.
  */
-export const BANDS = { oro: [82, 99], plata: [70, 81], bronce: [60, 69], challenger: [50, 59] };
+export const BANDS = { oro: [81, 99], plata: [71, 80], bronce: [61, 70], challenger: [50, 60] };
 export function bandLevel(tier, i, n) {
   const b = BANDS[tier];
   if (!b || n < 1) return null;
