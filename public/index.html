@@ -164,10 +164,9 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .btns .btn{flex:1;white-space:nowrap;padding:0 12px}
 
 .pill-row .pill{font-size:12px;padding:5px 9px;white-space:nowrap}
-.share-row{display:flex;justify-content:center;gap:8px;margin-top:12px}
-.share-pop{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--card-line);background:var(--card);color:var(--ink);font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(15,23,32,.07);transition:transform 160ms var(--ease)}
+.share-pop{display:flex;margin:10px auto 0;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13px;transition:transform 160ms var(--ease)}
 .share-pop:active{transform:scale(.96)}
-.share-pop svg{width:15px;height:15px;flex:none;color:var(--muted)}
+.share-pop svg{width:14px;height:14px;flex:none}
 /* Carta */
 .fut-wrap{display:flex;flex-direction:column;align-items:center}
 .fut{position:relative;width:min(272px,78vw);aspect-ratio:3/3.85;padding:20px 24px 16px;color:var(--navy);overflow:hidden;
@@ -819,7 +818,6 @@ const EN = {/*DICT*/
   "Tu juego": "Your game",
   "Idioma": "Language",
   "Compartir": "Share",
-  "Historia": "Story",
   "Móvil (WhatsApp, opcional)": "Mobile (WhatsApp, optional)",
   "Quiero recibir por WhatsApp solo avisos de mis partidos (retos, confirmaciones y recordatorios). Nunca enviaremos publicidad. Puedo darme de baja cuando quiera respondiendo BAJA; seguiré recibiendo los avisos por email y en la app.": "I want WhatsApp messages only about my matches (challenges, confirmations and reminders). We will never send advertising. I can unsubscribe at any time by replying STOP; I will keep receiving notices by email and in the app.",
   "App y emails": "App and emails",
@@ -1550,9 +1548,8 @@ function cardHTML(p) {
     <div class="fut-stats">${ATTRS.map(([k, l]) => `<div class="fs"><span>${l}</span><b>${p.attrs[k]}</b></div>`).join('')}</div>
   </div></div>`;
 }
-async function shareCard(p, fmt = 'post') {
-  const story = fmt === 'story';
-  const W = 1080, H = story ? 1920 : 1350;
+async function shareCard(p) {
+  const W = 1080, H = 1920;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
   const F = (w, px) => `${w} ${px}px Figtree, system-ui, -apple-system, sans-serif`;
@@ -1565,14 +1562,12 @@ async function shareCard(p, fmt = 'post') {
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
 
   // En historias, el escudo del club arriba (lejos de la interfaz de Instagram)
-  let cy = story ? 470 : 200;
-  if (story) {
-    const wm = await load(LOGO_W);
-    if (wm) { const iw = 380; g.drawImage(wm, (W - iw) / 2, 250, iw, iw * wm.height / wm.width); }
-  }
+  const cy = 470;
+  const wm = await load(LOGO_W);
+  if (wm) { const iw = 380; g.drawImage(wm, (W - iw) / 2, 250, iw, iw * wm.height / wm.width); }
 
   // La tarjeta, con su forma de banderín
-  const cw = story ? 720 : 700, ch = Math.round(cw * 3.85 / 3), cx = (W - cw) / 2;
+  const cw = 720, ch = Math.round(cw * 3.85 / 3), cx = (W - cw) / 2;
   const path = new Path2D();
   [[0.5, 0], [1, 0.06], [1, 0.88], [0.5, 1], [0, 0.88], [0, 0.06]].forEach(([fx, fy], i) => {
     const x = cx + cw * fx, y = cy + ch * fy; i ? path.lineTo(x, y) : path.moveTo(x, y);
@@ -1631,7 +1626,7 @@ async function shareCard(p, fmt = 'post') {
   g.restore();
 
   // Pie
-  const fy = cy + ch + (story ? 96 : 78);
+  const fy = cy + ch + 96;
   g.textAlign = 'center';
   g.fillStyle = '#F7A27E'; g.font = F(700, 28);
   g.fillText('@' + p.username, W / 2, fy);
@@ -1641,7 +1636,7 @@ async function shareCard(p, fmt = 'post') {
   g.fillText('atcranking.netlify.app', W / 2, fy + 102);
 
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-  const file = new File([blob], `ranking-atc-${p.username}${story ? '-historia' : ''}.png`, { type: 'image/png' });
+  const file = new File([blob], `ranking-atc-${p.username}.png`, { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], text: EN_ON ? 'My card on ATC Ranking' : 'Mi tarjeta en Ranking ATC' }); } catch (e) {}
     return;
@@ -2046,7 +2041,7 @@ function paintPlayer(d, own, o) {
       <div class="pill light">${esc(pill)}</div>
       ${own ? `<a class="icon-btn" href="#/ajustes" aria-label="Ajustes">${I.gear}</a>` : '<div style="width:44px"></div>'}</div>
     <div style="margin-top:14px">${cardHTML(p)}</div>
-    <div class="share-row"><button class="share-pop" id="share-post" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>Compartir</button><button class="share-pop" id="share-story" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 19h4"/></svg>Historia</button></div>
+    <button class="share-pop" id="share-card" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>Compartir</button>
     <div class="pill-row" style="display:flex;justify-content:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px -18px 0;padding:8px 18px 14px">
       <span class="pill light">${p.hand === 'zurdo' ? 'Zurdo' : 'Diestro'}</span>
       <span class="pill light">Revés a ${p.backhand === 'una' ? 'una mano' : 'dos manos'}</span>
@@ -2070,9 +2065,8 @@ function paintPlayer(d, own, o) {
     ${own && S.me.is_admin ? `<a class="btn block ghost" style="margin-top:22px" href="#/admin">Panel del club</a>` : ''}
   </main>${nav(own ? 'perfil' : 'ranking')}`);
   bindTilt($app);
-  const bPost = document.getElementById('share-post'), bStory = document.getElementById('share-story');
-  if (bPost) bPost.addEventListener('click', () => busy(bPost, () => shareCard(p, 'post')));
-  if (bStory) bStory.addEventListener('click', () => busy(bStory, () => shareCard(p, 'story')));
+  const bShare = document.getElementById('share-card');
+  if (bShare) bShare.addEventListener('click', () => busy(bShare, () => shareCard(p)));
   if (!o.refresh) stagger($app.querySelector('.screen'));
 }
 
