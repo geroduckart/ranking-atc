@@ -1268,8 +1268,7 @@ function ago(iso) {
 }
 /** 91+ diamante · 81–90 oro · 71–80 plata · 61–70 bronce · 50–60 azul marino. */
 const tierOf = (l) => (l >= 91 ? 'diamond' : l >= 81 ? 'gold' : l >= 71 ? 'silver' : l >= 61 ? 'bronze' : 'special');
-/** El diamante hay que ganárselo: mientras eres provisional, por alto que te pongas, es oro. */
-const cardTier = (p) => { const t = tierOf(p.level); return t === 'diamond' && p.provisional ? 'gold' : t; };
+const cardTier = (p) => tierOf(p.level);
 const isMe = (id) => S.me && S.me.id === id;
 
 const I = {
