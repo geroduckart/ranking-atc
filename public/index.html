@@ -334,7 +334,7 @@ details.adm summary::-webkit-details-marker{display:none}
 .langsw.dark{background:rgba(255,255,255,.1)}
 .langsw.dark button{color:rgba(255,255,255,.7)}
 .langsw.dark button[aria-pressed="true"]{background:#fff;color:var(--navy)}
-.promo-line{margin:12px 6px 0;font-size:13px;line-height:1.4;color:var(--muted);text-align:center}
+.promo-line{margin:12px 6px 0;font-size:12.5px;line-height:1.4;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .promo-line::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:7px;vertical-align:middle}
 .promo{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:18px;background:var(--orange-soft);border:1px solid rgba(227,91,42,.35);font-size:14px;line-height:1.35}
 .promo b{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange)}
@@ -486,10 +486,10 @@ const EN = {/*DICT*/
   "Un momento": "One moment",
   "Volver a la clasificación": "Back to standings",
   "Promoción de estreno": "Launch offer",
-  "Los # primeros partidos de la temporada: pista y bolas gratis.": "The first $1 matches of the season: free court and balls.",
+  "Los # primeros partidos: pista y bolas gratis.": "First $1 matches: free court and balls.",
   "Los 5 primeros partidos de la temporada, con pista y bolas gratis.": "The first 5 matches of the season: free court and balls.",
-  "Los # primeros partidos de la temporada: pista y bolas gratis. Quedan #.": "The first $1 matches of the season: free court and balls. $2 left.",
-  "Los # primeros partidos de la temporada: pista y bolas gratis. Solo queda #.": "The first $1 matches of the season: free court and balls. Only $2 left.",
+  "Quedan # de #: pista y bolas gratis.": "$1 of $2 left: free court and balls.",
+  "Solo queda #: pista y bolas gratis.": "Only $1 left: free court and balls.",
   "Promoción · pista y bolas gratis": "Offer · free court and balls",
   "# de # partidos usados. Cuentan los primeros con resultado confirmado.": "$1 of $2 matches used. The first ones with a confirmed result count.",
   "#. * vs *": "$1. $2 vs $3",
@@ -1884,7 +1884,7 @@ async function screenRanking() {
     };
     let html = '';
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
-    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<p class="promo-line">Los ${d.promo.total} primeros partidos de la temporada: pista y bolas gratis. ${d.promo.left === d.promo.total ? '' : d.promo.left === 1 ? 'Solo queda 1.' : `Quedan ${d.promo.left}.`}</p>`;
+    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<p class="promo-line">${d.promo.left === d.promo.total ? `Los ${d.promo.total} primeros partidos: pista y bolas gratis.` : d.promo.left === 1 ? 'Solo queda 1: pista y bolas gratis.' : `Quedan ${d.promo.left} de ${d.promo.total}: pista y bolas gratis.`}</p>`;
     html += `<div class="search"><label class="sr" for="q">Buscar jugador</label>${I.search}<input id="q" class="input" placeholder="Buscar jugador" value="${esc(rankQuery)}" autocomplete="off"></div>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
