@@ -523,6 +523,11 @@ const EN = {/*DICT*/
   "PIN (4 cifras)": "PIN (4 digits)",
   "PIN (# cifras)": "PIN ($1 digits)",
   "Edad": "Age",
+  "años": "years",
+  "Móvil de WhatsApp": "WhatsApp mobile",
+  "Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil.": "On WhatsApp we will only notify you about your matches: challenges, confirmations and reminders. We will never send you advertising, and you can turn off each notice under Profile.",
+  "Escribe tu móvil sin el prefijo del país: solo las cifras del número.": "Enter your mobile without the country code: just the digits of the number.",
+  "Revisa tu móvil de WhatsApp: elige el prefijo del país y escribe el número sin espacios.": "Check your WhatsApp mobile: pick the country code and enter the number with no spaces.",
   "En tu tarjeta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.": "Your card only shows your age band (Junior, +20, +30…), never your exact age.",
   "Acepto la": "I accept the",
   "política de privacidad": "privacy policy",
@@ -1687,13 +1692,15 @@ function screenLogin() {
 
 /* ── Registro, paso 1 ──────────────────────────────────────────────── */
 const DIAL = [
-  ['+34', 'España'], ['+44', 'Reino Unido'], ['+49', 'Alemania'], ['+33', 'Francia'],
-  ['+31', 'Países Bajos'], ['+32', 'Bélgica'], ['+353', 'Irlanda'], ['+39', 'Italia'],
-  ['+351', 'Portugal'], ['+41', 'Suiza'], ['+43', 'Austria'], ['+46', 'Suecia'],
-  ['+47', 'Noruega'], ['+45', 'Dinamarca'], ['+358', 'Finlandia'], ['+48', 'Polonia'],
-  ['+420', 'Chequia'], ['+40', 'Rumanía'], ['+380', 'Ucrania'], ['+7', 'Rusia'],
-  ['+1', 'EE. UU. / Canadá'], ['+212', 'Marruecos'], ['+54', 'Argentina'], ['+55', 'Brasil'],
-  ['+52', 'México'], ['+61', 'Australia'], ['+27', 'Sudáfrica'],
+  ['+34', 'España', 'Spain'], ['+44', 'Reino Unido', 'United Kingdom'], ['+49', 'Alemania', 'Germany'],
+  ['+33', 'Francia', 'France'], ['+31', 'Países Bajos', 'Netherlands'], ['+32', 'Bélgica', 'Belgium'],
+  ['+353', 'Irlanda', 'Ireland'], ['+39', 'Italia', 'Italy'], ['+351', 'Portugal', 'Portugal'],
+  ['+41', 'Suiza', 'Switzerland'], ['+43', 'Austria', 'Austria'], ['+46', 'Suecia', 'Sweden'],
+  ['+47', 'Noruega', 'Norway'], ['+45', 'Dinamarca', 'Denmark'], ['+358', 'Finlandia', 'Finland'],
+  ['+48', 'Polonia', 'Poland'], ['+420', 'Chequia', 'Czechia'], ['+40', 'Rumanía', 'Romania'],
+  ['+380', 'Ucrania', 'Ukraine'], ['+7', 'Rusia', 'Russia'], ['+1', 'EE. UU. / Canadá', 'USA / Canada'],
+  ['+212', 'Marruecos', 'Morocco'], ['+54', 'Argentina', 'Argentina'], ['+55', 'Brasil', 'Brazil'],
+  ['+52', 'México', 'Mexico'], ['+61', 'Australia', 'Australia'], ['+27', 'Sudáfrica', 'South Africa'],
 ];
 function screenSignup1() {
   const v = S.signup || {};
@@ -1707,10 +1714,10 @@ function screenSignup1() {
       <label class="field">PIN (4 cifras)<input class="input" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" value="${esc(v.pin || '')}" placeholder="••••" style="letter-spacing:.3em"></label>
       <label class="field">Edad<input class="input" name="age" type="number" inputmode="numeric" min="14" max="100" value="${esc(v.age || '')}" placeholder="años"></label>
       <p class="hint" style="margin:-4px 4px 0">En tu tarjeta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.</p>
-      <p class="hint">Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil. Elige el prefijo de tu país y escribe el número sin el prefijo. Tu móvil no se muestra a nadie, y de tu edad solo se ve la franja.</p>
+      <p class="hint">Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil.</p>
       <div class="field">Móvil de WhatsApp
         <div style="display:flex;gap:8px;margin-top:6px">
-          <select class="input" name="cc" style="flex:none;width:132px">${DIAL.map(([c, n]) => `<option value="${c}" ${(v.cc || '+34') === c ? 'selected' : ''}>${c} ${n}</option>`).join('')}</select>
+          <select class="input" name="cc" style="flex:none;width:132px">${DIAL.map(([c, es, en]) => `<option value="${c}" ${(v.cc || '+34') === c ? 'selected' : ''}>${c} ${EN_ON ? en : es}</option>`).join('')}</select>
           <input class="input" name="phone" type="tel" autocomplete="tel" inputmode="numeric" style="flex:1;min-width:0" value="${esc(v.phone || '')}" placeholder="600 000 000">
         </div>
       </div>
