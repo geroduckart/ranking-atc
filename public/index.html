@@ -304,6 +304,8 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 @keyframes spin{to{transform:rotate(360deg)}}
 .prose h2{font-size:18px;margin:22px 0 6px}
 .prose p,.prose li{font-size:15px;line-height:1.55;color:var(--ink)}
+.prose h3{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 4px}
+.prose h3+ul{margin-top:0}
 .pts3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px}
 .pts3 div{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:18px;padding:13px 6px;text-align:center}
 .pts3 b{display:block;font-size:30px;line-height:1;font-variant-numeric:tabular-nums;color:var(--navy)}
@@ -596,7 +598,7 @@ const EN = {/*DICT*/
   "Guardar mi tarjeta": "Save my card",
   "Valora cada golpe entre 50 y 99.": "Rate each stroke between 50 and 99.",
   "Cada golpe entre 50 y 99.": "Each stroke between 50 and 99.",
-  "¡Bienvenido al ranking! Ya puedes retar a quien quieras.": "Welcome to the ranking! You can now challenge anyone.",
+  "Ya estás dentro. Puedes retar a quien quieras.": "You're in. You can challenge anyone now.",
   "Puedes ajustarla hasta el *. Después la mueven tus partidos.": "You can adjust it until $1. After that, your matches move it.",
   "Tarjeta guardada.": "Card saved.",
   "Editar mi tarjeta · hasta el *": "Edit my card · until $1",
@@ -618,7 +620,7 @@ const EN = {/*DICT*/
   "Guardar PIN": "Save PIN",
   "Los dos PIN no coinciden.": "The two PINs don't match.",
   "El enlace ha caducado o ya se ha usado. Pide otro.": "The link has expired or has already been used. Request another.",
-  "PIN cambiado. ¡Dentro!": "PIN changed. You're in!",
+  "PIN cambiado. Ya puedes entrar.": "PIN changed. You can log in now.",
   "Jugados": "Played",
   "Ganados": "Won",
   "Nivel desde el inicio": "Level since start",
@@ -666,8 +668,8 @@ const EN = {/*DICT*/
   "Esa fecha ya ha pasado.": "That date has already passed.",
   "Esa hora ya ha pasado.": "That time has already passed.",
   "Elige un día dentro del próximo mes.": "Choose a day within the next month.",
-  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os queda # partido entre vosotros esta temporada.": "$1 has 7 days to reply and will get an email. Book the court at the club. You two have $2 match left this season.",
-  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os quedan # partidos entre vosotros esta temporada.": "$1 has 7 days to reply and will get an email. Book the court at the club. You two have $2 matches left this season.",
+  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os queda # partido entre vosotros esta temporada.": "$1 has 7 days to reply and will get a WhatsApp message. Book the court at the club. You two have $2 match left this season.",
+  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os quedan # partidos entre vosotros esta temporada.": "$1 has 7 days to reply and will get a WhatsApp message. Book the court at the club. You two have $2 matches left this season.",
   "Reto enviado a *.": "Challenge sent to $1.",
   "Ya tenéis un reto abierto.": "You already have an open challenge.",
   "Ya tienes un reto abierto con *.": "You already have an open challenge with $1.",
@@ -724,9 +726,9 @@ const EN = {/*DICT*/
   "Ver la clasificación": "View standings",
   "Rechazos libres que te quedan este mes:": "Free declines left this month:",
   "de 2. A partir del tercero, el partido cuenta como derrota 6-0 6-0.": "of 2. From the third one, the match counts as a 6-0 6-0 loss.",
-  "¡Partido aceptado! Reservad pista en el club.": "Match accepted! Book a court at the club.",
+  "Partido aceptado. Reservad pista en el club.": "Match accepted! Book a court at the club.",
   "¿No puedes jugar?": "Can't play?",
-  "Avisaremos a tu rival por WhatsApp.": "We'll let your opponent know by email.",
+  "Avisaremos a tu rival por WhatsApp.": "We'll let your opponent know on WhatsApp.",
   "Ojo:": "Careful:",
   "derrota 6-0 6-0": "6-0 6-0 loss",
   ". ¿Mejor proponer otra hora?": ". Better to suggest another time?",
@@ -746,8 +748,8 @@ const EN = {/*DICT*/
   "Propuesta de *": "Suggested by $1",
   "Proponer esta hora": "Suggest this time",
   "Mejor acepto la suya": "I'll accept theirs instead",
-  "* recibirá un aviso con tu propuesta. Podéis cambiar la hora # veces más.": "$1 will get an email with your suggestion. You can change the time $2 more times.",
-  "* recibirá un aviso con tu propuesta. Podéis cambiar la hora 1 vez más.": "$1 will get an email with your suggestion. You can change the time 1 more time.",
+  "* recibirá un aviso con tu propuesta. Podéis cambiar la hora # veces más.": "$1 will get your suggestion on WhatsApp. You can change the time $2 more times.",
+  "* recibirá un aviso con tu propuesta. Podéis cambiar la hora 1 vez más.": "$1 will get your suggestion on WhatsApp. You can change the time 1 more time.",
   "Propuesta enviada.": "Suggestion sent.",
   "Ya habéis cambiado la hora 3 veces. Habladlo directamente y que uno cree un reto nuevo.": "You have changed the time 3 times. Talk directly and have one of you create a new challenge.",
   "Te toca esperar a que responda tu rival.": "It's your opponent's turn to reply.",
@@ -818,7 +820,7 @@ const EN = {/*DICT*/
   "Ocultar comentarios": "Hide comments",
   "Borrar comentario": "Delete comment",
   "Ver más": "Load more",
-  "Todavía no hay nada. ¡Lanza el primer reto!": "Nothing here yet. Send the first challenge!",
+  "Todavía no hay nada. Lanza el primer reto.": "Nothing here yet. Send the first challenge.",
   "¿Borrar el comentario?": "Delete the comment?",
   "¿Borrar esta publicación?": "Delete this post?",
   "Se borra para todos, con sus comentarios.": "It will be deleted for everyone, along with its comments.",
@@ -871,25 +873,36 @@ const EN = {/*DICT*/
   "Cuenta borrada.": "Account deleted.",
   "Normas de la temporada": "Season rules",
   "Política de privacidad": "Privacy policy",
-  "Promoción de estreno: los 5 primeros partidos de la temporada con resultado confirmado tienen pista y bolas gratis. El club avisa a los jugadores.": "Launch offer: the first 5 matches of the season with a confirmed result get a free court and balls. The club will contact the players.",
-  "Puedes retar a cualquier jugador. El retado tiene 7 días para responder; si nadie responde, el reto caduca sin penalización.": "You can challenge any player. They have 7 days to reply; if nobody replies, the challenge expires with no penalty.",
-  "Puedes rechazar un reto sin penalización, pero si lo que no te va es la hora, mejor propón otra.": "You can decline a challenge with no penalty, but if the problem is the time, it's better to propose another.",
-  "Después del partido, uno pone el resultado y el otro lo confirma. Si no responde en 48 horas, se da por bueno. Si hay desacuerdo, decide el club.": "After the match, one player enters the result and the other confirms it. If there's no reply within 48 hours, it stands. If you disagree, the club decides.",
-  "Puntos: victoria 3, derrota en 3 sets 1, derrota en 2 sets 0, y +1 si ganas a alguien con 5 o más niveles por encima (cuando ninguno es provisional). Cuentan como máximo 3 partidos por semana y 1 partido por pareja en la temporada.": "Points: win 3, loss in 3 sets 1, loss in straight sets 0, and +1 if you beat someone 5 or more levels above you (when neither is provisional). A maximum of 3 matches a week and 1 match per pair count in the season.",
-  "El nivel se mueve con los resultados y con los juegos: ganar a alguien mejor sube mucho; perder ajustado contra alguien mejor casi no resta. Se mueve más rápido en tus 5 primeros partidos.": "Your level moves with results and games: beating someone better raises it a lot; losing narrowly to someone better barely lowers it. It moves faster in your first 5 matches.",
-  "Desde el día 30, solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.": "From day 30, you can only challenge your own group of 8 in the standings (1st–8th, 9th–16th, 17th–24th, 25th and up) and the groups just above and just below.",
-  "Para entrar en los Másters hay que jugar al menos 5 partidos. Los Másters se juegan por grupos de 8 según la clasificación (Oro, Plata, Bronce y Challenger).": "To enter the Masters you must play at least 5 matches. The Masters are played in groups of 8 by standings (Gold, Silver, Bronze and Challenger).",
+  "Jugar": "Playing",
+  "Resultados": "Results",
+  "Puntos": "Points",
+  "Nivel": "Level",
+  "Másters": "Masters",
+  "Promoción de estreno": "Launch offer",
+  "Puedes retar a cualquier jugador. Tiene 7 días para responder; si no contesta, el reto caduca y no pasa nada.": "You can challenge any player. They have 7 days to reply; if they don't, the challenge expires and nothing happens.",
+  "Rechazar un reto no penaliza. Si lo que no te va es la hora, propón otra en vez de rechazar.": "Declining a challenge carries no penalty. If the time is the problem, suggest another one instead of declining.",
+  "Cuentan como máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.": "A maximum of 3 matches a week count, and only 1 match against each opponent for the whole season.",
   "Las pistas se reservan en el club, como siempre.": "Courts are booked at the club, as usual.",
+  "Después del partido, uno pone el resultado y el otro lo confirma. Si no contesta en 48 horas, se da por bueno.": "After the match one of you enters the result and the other confirms it. If they don't reply within 48 hours, it stands.",
+  "Si no estáis de acuerdo, decide el club.": "If you disagree, the club decides.",
+  "Ganas: 3 puntos. Pierdes en 3 sets: 1 punto. Pierdes en 2 sets: 0 puntos.": "You win: 3 points. You lose in 3 sets: 1 point. You lose in 2 sets: 0 points.",
+  "Un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.": "One extra point if you beat someone 5 levels or more above you. It doesn't count if either of you is in their first 5 matches.",
+  "Va del 50 al 99 y lo mueven tus partidos: a quién ganas y por cuántos juegos. Ganar a alguien mejor sube mucho; perder ajustado contra alguien mejor casi no resta.": "It runs from 50 to 99 and your matches move it: who you beat and by how many games. Beating someone better raises it a lot; losing narrowly to someone better barely lowers it.",
+  "En tus 5 primeros partidos se mueve más rápido, para colocarte pronto donde te toca.": "In your first 5 matches it moves faster, so you land where you belong quickly.",
+  "Desde el día 30 solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.": "From day 30 you can only challenge your own group of 8 in the standings (1st–8th, 9th–16th, 17th–24th, 25th and up) and the groups just above and just below.",
+  "Para entrar en un Máster hay que haber jugado al menos 5 partidos. Los cuadros son de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger.": "To enter a Masters you need at least 5 matches played. The draws are groups of 8 from the points standings: Gold, Silver, Bronze and Challenger.",
+  "Al entrar, tu nivel se recoloca en la banda de tu grupo (Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si ya lo tenías más alto, se queda como está.": "On entry your level moves into your group's band (Gold 81–99, Silver 71–80, Bronze 61–70, Challenger 50–60) and your card becomes your group's. It never goes down: if yours was already higher, it stays.",
+  "Los 5 primeros partidos de la temporada con resultado confirmado llevan pista y bolas gratis. El club avisa a los jugadores.": "The first 5 matches of the season with a confirmed result get a free court and balls. The club contacts the players.",
   "Responsable:": "Data controller:",
   "Almuñécar Tennis Club. Contacto: info@almunecartennisclub.com.": "Almuñécar Tennis Club. Contact: info@almunecartennisclub.com.",
   "Qué datos guardamos:": "What data we keep:",
-  "nombre y apellidos, usuario, móvil de WhatsApp, PIN (cifrado), edad, tu valoración de juego, foto si la subes, y tus retos, partidos y comentarios.": "full name, username, email, PIN (encrypted), date of birth, your game ratings, a photo if you upload one, and your challenges, matches and comments.",
+  "nombre y apellidos, usuario, móvil de WhatsApp, PIN (cifrado), edad, tu valoración de juego, foto si la subes, y tus retos, partidos y comentarios.": "full name, username, WhatsApp mobile, PIN (encrypted), age, your game ratings, a photo if you upload one, and your challenges, matches and comments.",
   "Para qué:": "What for:",
   "para gestionar el ranking del club, enviarte los avisos que elijas y recuperar tu PIN. La base legal es tu consentimiento al registrarte.": "to run the club ranking, send you the notifications you choose and reset your PIN. The legal basis is your consent when you sign up.",
   "Quién lo ve:": "Who sees it:",
-  "solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más y para proteger a los menores (los retos con menores no llevan mensaje).": "only registered players see the ranking, profiles and board. Your email and date of birth are never shown to anyone; only your age band is visible (Junior, +20, +30…). Your date of birth is only used to check you are 14 or older and to protect minors (challenges involving minors carry no message).",
+  "solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más y para proteger a los menores (los retos con menores no llevan mensaje).": "only registered players see the ranking, profiles and board. Your mobile is never shown to anyone, and of your age only the band is visible (Junior, +20, +30…). Age is only used to check you are 14 or older and to protect minors (challenges involving minors carry no message).",
   "Proveedores:": "Providers:",
-  "la app funciona con Netlify (web), Supabase (base de datos, servidores en la UE) y WhatsApp de Meta (avisos), que tratan los datos solo por encargo del club.": "the app runs on Netlify (web), Supabase (database, servers in the EU) and Resend (emails), which process data only on behalf of the club.",
+  "la app funciona con Netlify (web), Supabase (base de datos, servidores en la UE) y WhatsApp de Meta (avisos), que tratan los datos solo por encargo del club.": "the app runs on Netlify (web), Supabase (database, servers in the EU) and Meta's WhatsApp (notices), which process data only on behalf of the club.",
   "Cuánto tiempo:": "For how long:",
   "mientras tengas cuenta. Puedes borrarla cuando quieras desde Ajustes; tus partidos se mantienen de forma anónima para no alterar la clasificación de tus rivales.": "for as long as you have an account. You can delete it at any time in Settings; your matches are kept anonymously so your opponents' standings don't change.",
   "Tus derechos:": "Your rights:",
@@ -917,12 +930,12 @@ const EN = {/*DICT*/
   "No hay partidos programados.": "No matches scheduled.",
   "Retos esperando respuesta": "Challenges awaiting reply",
   "Ninguno.": "None.",
-  "Email a *": "Email $1",
+  "WhatsApp a *": "WhatsApp $1",
   "Contactos": "Contacts",
-  "Emails de los # jugadores activos, para avisos del club.": "Emails of the $1 active players, for club notices.",
-  "Copiar todos los móviles": "Copy all emails",
-  "Emails copiados.": "Emails copied.",
-  "Emails": "Emails",
+  "Móviles de los # jugadores activos, para avisos del club.": "Mobiles of the $1 active players, for club notices.",
+  "Copiar todos los móviles": "Copy all mobiles",
+  "Móviles copiados.": "Mobiles copied.",
+  "Móviles": "Mobiles",
   "Sin confirmar": "Unconfirmed",
   "En disputa": "Disputed",
   "Confirmado": "Confirmed",
@@ -969,7 +982,7 @@ const EN = {/*DICT*/
   "Jugadores (CSV)": "Players (CSV)",
   "Partidos (CSV)": "Matches (CSV)",
   "¿Generar los cuadros de los Másters?": "Generate the Masters draws?",
-  "Se cierra la fase regular con la clasificación actual y se avisa a los clasificados.": "The regular phase closes with the current standings and qualified players are emailed.",
+  "Se cierra la fase regular con la clasificación actual y se avisa a los clasificados.": "The regular phase closes with the current standings and qualified players are notified.",
   "Generar": "Generate",
   "Cuadros generados.": "Draws generated.",
   "Todavía no hay al menos 2 jugadores clasificados.": "There aren't at least 2 qualified players yet.",
@@ -997,7 +1010,7 @@ const EN = {/*DICT*/
   "Haz una captura y mándasela a quien te ayuda con la app.": "Take a screenshot and send it to whoever helps you with the app.",
   "Midiendo…": "Measuring…",
   "Ranking del club": "Club ranking",
-  "Puedes elegir qué avisos recibes en la app, en Perfil. ·": "You can choose which emails you get in the app, under Profile. ·",
+  "Puedes elegir qué avisos recibes en la app, en Perfil. ·": "You can choose which notices you get in the app, under Profile. ·",
   "Abrir el ranking": "Open the ranking",
   "Hola *: alguien (seguramente tú) ha pedido cambiar el PIN de": "Hi $1: someone (probably you) has asked to change the PIN for",
   "Pulsa el botón para elegir uno nuevo. El enlace vale durante 1 hora.": "Tap the button to choose a new one. The link is valid for 1 hour.",
@@ -1008,7 +1021,7 @@ const EN = {/*DICT*/
   "* te ha retado": "$1 has challenged you",
   "no puede a la hora que dijiste y propone otra:": "can't make the time you said and suggests another:",
   "(nivel #) quiere jugar contigo:": "(level $1) wants to play you:",
-  "Ganando 6-4 6-4: # nivel · # pts. Perdiendo 4-6 4-6: # nivel · 0 pts (1 si le quitas un set).": "Winning 6-4 6-4: $1 level · $2 pts. Losing 4-6 4-6: $3 level · $4 pt (2 if you take a set).",
+  "Ganando 6-4 6-4: # nivel · # pts. Perdiendo 4-6 4-6: # nivel · 0 pts (1 si le quitas un set).": "Winning 6-4 6-4: $1 level · $2 pts. Losing 4-6 4-6: $3 level · 0 pts (1 if you take a set).",
   "Si aceptas, reservad pista en el club. El reto caduca a los # días si nadie responde.": "If you accept, book a court at the club. The challenge expires after $1 days if nobody replies.",
   "Partido confirmado con *": "Match confirmed with $1",
   "Jugáis": "It's",
@@ -1109,11 +1122,25 @@ const EN = {/*DICT*/
   "Normas completas y privacidad": "Full rules and privacy",
   "¿Cómo funciona?": "How it works",
   ": puntos, nivel, retos y Másters en dos minutos.": ": points, level, challenges and Masters in two minutes.",
+  "Nivel # · Tú": "Level $1 · You",
+  "Nivel # · provisional": "Level $1 · provisional",
+  "Empieza en # días · ya puedes retar": "Starts in $1 days · you can challenge now",
+  "Empieza mañana · ya puedes retar": "Starts tomorrow · you can challenge now",
+  "App y avisos": "App and notices",
+  "Te toca esperar a tu rival.": "It's your opponent's turn now.",
+  "Este reto ya está respondido.": "This challenge has already been answered.",
+  "No se ha podido leer esa imagen.": "That image could not be read.",
+  "En los retos con menores de 18 no hay mensaje: solo día y hora.": "Challenges with under-18s carry no message: just the day and time.",
+  "Escríbenos y te ponemos uno nuevo en un momento. Dinos tu usuario.": "Message us and we'll set a new one in a moment. Tell us your username.",
+  "No se presentó.": "Did not show up.",
+  "Ya habéis cambiado la hora 3 veces. Habladlo directamente y, si hace falta, que uno cree un reto nuevo.": "You've already changed the time 3 times. Sort it out between you and, if you need to, one of you can start a new challenge.",
+  "Avisaremos a tu rival por WhatsApp. Si lo que no te va es la hora, mejor propón otra.": "We'll let your opponent know on WhatsApp. If the time is the problem, suggest another one instead.",
+  "Pide en el club que te cambien el PIN: lo hacemos en un momento desde el panel.": "Ask at the club to change your PIN: we do it from the panel in a moment.",
   "¿Confirmas el resultado?": "Do you confirm the result?",
   "Enlace no válido": "Invalid link",
   "Entra en la app para continuar.": "Open the app to continue.",
-  "¡Partido aceptado!": "Match accepted!",
-  "*. Os hemos enviado un email a los dos. Recordad reservar pista en el club.": "$1. We've emailed you both. Remember to book a court at the club.",
+  "Partido aceptado.": "Match accepted.",
+  "*. Os hemos enviado un email a los dos. Recordad reservar pista en el club.": "$1. We've messaged you both on WhatsApp. Remember to book a court at the club.",
   "Reto rechazado": "Challenge declined",
   "Como era tu tercer rechazo del mes, el partido cuenta como derrota 6-0 6-0.": "As it was your third decline this month, the match counts as a 6-0 6-0 loss.",
   "Hecho": "Done",
@@ -1939,7 +1966,7 @@ function screenSignup2() {
     try {
       const d = await api('POST', 'signup', { ...v, phone: (v.cc || '+34') + String(v.phone || '').replace(/\D/g, '').replace(/^0+/, ''), accept: !!v.accept, lang: LANG });
       setSession(d); S.signup = null;
-      toast('¡Bienvenido al ranking! Ya puedes retar a quien quieras.', true);
+      toast('Ya estás dentro. Puedes retar a quien quieras.', true);
       go('');
     } catch (err) {
       setErr(document.getElementById('e'), err.message);
@@ -2207,7 +2234,7 @@ async function screenRetos() {
     try {
       if (b.dataset.act === 'accept') {
         await busy(b, () => api('POST', `challenge/${b.dataset.id}/respond`, { action: 'accept' }));
-        toast('¡Partido aceptado! Reservad pista en el club.', true); reloadRetos();
+        toast('Partido aceptado. Reservad pista en el club.', true); reloadRetos();
       } else if (b.dataset.act === 'reject') {
         const text = 'Avisaremos a tu rival por WhatsApp. Si lo que no te va es la hora, mejor propón otra.';
         if (!(await confirmBox('¿No puedes jugar?', text, 'No puedo'))) return;
@@ -2312,7 +2339,7 @@ async function screenCounter(id) {
     <div class="btns" style="margin-top:12px"><button class="btn sm ghost" id="acc">Mejor acepto la suya</button></div>
   </main>${nav('retos')}`);
   document.getElementById('acc').addEventListener('click', async (e) => {
-    try { await busy(e.currentTarget, () => api('POST', `challenge/${c.id}/respond`, { action: 'accept' })); toast('¡Partido aceptado!', true); go('retos'); } catch (err) { toast(err.message); }
+    try { await busy(e.currentTarget, () => api('POST', `challenge/${c.id}/respond`, { action: 'accept' })); toast('Partido aceptado.', true); go('retos'); } catch (err) { toast(err.message); }
   });
   if (c.countersLeft > 0) {
     const get = bindWhen(document.getElementById('w'));
@@ -2441,7 +2468,7 @@ function postHTML(p) {
 }
 function paintFeed() {
   const body = document.getElementById('body'); if (!body) return;
-  body.innerHTML = (feedPosts.length ? `<div style="margin-top:12px">${feedPosts.map(postHTML).join('')}</div>` : '<div class="empty">Todavía no hay nada. ¡Lanza el primer reto!</div>')
+  body.innerHTML = (feedPosts.length ? `<div style="margin-top:12px">${feedPosts.map(postHTML).join('')}</div>` : '<div class="empty">Todavía no hay nada. Lanza el primer reto.</div>')
     + (feedMore ? '<div style="text-align:center;margin-top:14px"><button class="btn sm ghost" id="more">Ver más</button></div>' : '');
   body.onclick = async (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -2688,17 +2715,37 @@ function screenPrivacy() {
   render(`<main class="screen nonav prose">
     <div class="top">${backBtn(back)}<div class="title">Privacidad y normas</div><div style="width:44px"></div></div>
     <h2>Normas de la temporada</h2>
+    <h3>Jugar</h3>
     <ul>
-      <li>Promoción de estreno: los 5 primeros partidos de la temporada con resultado confirmado tienen pista y bolas gratis. El club avisa a los jugadores.</li>
-      <li>Puedes retar a cualquier jugador. El retado tiene 7 días para responder; si nadie responde, el reto caduca sin penalización.</li>
-      <li>Puedes rechazar un reto sin penalización, pero si lo que no te va es la hora, mejor propón otra.</li>
-      <li>Después del partido, uno pone el resultado y el otro lo confirma. Si no responde en 48 horas, se da por bueno. Si hay desacuerdo, decide el club.</li>
-      <li>Al acabar la fase regular, tu nivel se recoloca en la banda de tu Máster (Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si tu nivel ya era más alto, se queda como está.</li>
-      <li>Puntos: victoria 3, derrota en 3 sets 1, derrota en 2 sets 0, y +1 si ganas a alguien con 5 o más niveles por encima (cuando ninguno es provisional). Cuentan como máximo 3 partidos por semana y 1 partido por pareja en la temporada.</li>
-      <li>El nivel se mueve con los resultados y con los juegos: ganar a alguien mejor sube mucho; perder ajustado contra alguien mejor casi no resta. Se mueve más rápido en tus 5 primeros partidos.</li>
-      <li>Desde el día 30, solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.</li>
-      <li>Para entrar en los Másters hay que jugar al menos 5 partidos. Los Másters se juegan por grupos de 8 según la clasificación (Oro, Plata, Bronce y Challenger).</li>
+      <li>Puedes retar a cualquier jugador. Tiene 7 días para responder; si no contesta, el reto caduca y no pasa nada.</li>
+      <li>Rechazar un reto no penaliza. Si lo que no te va es la hora, propón otra en vez de rechazar.</li>
+      <li>Cuentan como máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.</li>
       <li>Las pistas se reservan en el club, como siempre.</li>
+    </ul>
+    <h3>Resultados</h3>
+    <ul>
+      <li>Después del partido, uno pone el resultado y el otro lo confirma. Si no contesta en 48 horas, se da por bueno.</li>
+      <li>Si no estáis de acuerdo, decide el club.</li>
+    </ul>
+    <h3>Puntos</h3>
+    <ul>
+      <li>Ganas: 3 puntos. Pierdes en 3 sets: 1 punto. Pierdes en 2 sets: 0 puntos.</li>
+      <li>Un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.</li>
+    </ul>
+    <h3>Nivel</h3>
+    <ul>
+      <li>Va del 50 al 99 y lo mueven tus partidos: a quién ganas y por cuántos juegos. Ganar a alguien mejor sube mucho; perder ajustado contra alguien mejor casi no resta.</li>
+      <li>En tus 5 primeros partidos se mueve más rápido, para colocarte pronto donde te toca.</li>
+    </ul>
+    <h3>Másters</h3>
+    <ul>
+      <li>Desde el día 30 solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.</li>
+      <li>Para entrar en un Máster hay que haber jugado al menos 5 partidos. Los cuadros son de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger.</li>
+      <li>Al entrar, tu nivel se recoloca en la banda de tu grupo (Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si ya lo tenías más alto, se queda como está.</li>
+    </ul>
+    <h3>Promoción de estreno</h3>
+    <ul>
+      <li>Los 5 primeros partidos de la temporada con resultado confirmado llevan pista y bolas gratis. El club avisa a los jugadores.</li>
     </ul>
     <h2>Política de privacidad</h2>
     <p><b>Responsable:</b> Almuñécar Tennis Club. Contacto: info@almunecartennisclub.com.</p>
@@ -2737,7 +2784,7 @@ function paintAdmin() {
     for (const c of sched) (byDay[c.play_at.slice(0, 10)] ||= []).push(c);
     const mrow = (c, sub) => `<div class="box" style="padding:12px 14px"><div class="row-between"><div style="min-width:0"><b style="font-size:15px">${esc(c.n1)} <span style="color:var(--muted);font-weight:500">vs</span> ${esc(c.n2)}</b>
       <div class="when">${sub}</div></div><span class="badge" style="flex:none">${c.play_at.slice(11, 16)}</span></div>
-      <div style="display:flex;gap:14px;margin-top:8px"><a class="link orange" href="mailto:${esc(c.e1)}">Email a ${esc(first(c.n1))}</a><a class="link orange" href="mailto:${esc(c.e2)}">Email a ${esc(first(c.n2))}</a></div></div>`;
+      <div style="display:flex;gap:14px;margin-top:8px">${c.e1 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e1).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n1))}</a>` : ''}${c.e2 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e2).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n2))}</a>` : ''}</div></div>`;
     body = `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tile(active.length, 'Jugadores activos')}${tile(sched.filter((c) => c.play_at.slice(0, 10) <= week).length, 'Partidos en 7 días')}
         ${tile(pend.length, 'Retos sin responder')}${tile(toConfirm + disputed, disputed ? `Por confirmar · ${disputed} en disputa` : 'Resultados por confirmar', disputed)}</div>
       <div class="sec"><span class="label">Próximos partidos</span>${Object.keys(byDay).length ? Object.entries(byDay).map(([day, list]) =>
@@ -2746,7 +2793,7 @@ function paintAdmin() {
       <div class="sec"><span class="label">Retos esperando respuesta</span>${pend.length ? pend.map((c) => mrow(c, `${cap(fmtWhen(c.play_at.slice(0, 10), false))} · espera a ${esc(first(c.waitingFor))}`)).join('') : '<div class="empty">Ninguno.</div>'}</div>
       <div class="sec"><span class="label">Promoción · pista y bolas gratis</span><div class="box"><p class="hint" style="margin:0">${(d.promo?.matches || []).length} de ${d.promo?.total ?? 5} partidos usados. Cuentan los primeros con resultado confirmado.</p>
         ${(d.promo?.matches || []).map((m, i) => `<div class="when" style="margin-top:8px;color:var(--ink);font-weight:600">${i + 1}. ${esc(m.n1)} vs ${esc(m.n2)} · ${fmtWhen(m.played_on, false)}</div>`).join('')}</div></div>
-      <div class="sec"><span class="label">Contactos</span><div class="box"><p class="hint" style="margin:0 0 10px">Emails de los ${active.length} jugadores activos, para avisos del club.</p>
+      <div class="sec"><span class="label">Contactos</span><div class="box"><p class="hint" style="margin:0 0 10px">Móviles de los ${active.length} jugadores activos, para avisos del club.</p>
         <div class="btns"><button class="btn xs navy" id="copymails">Copiar todos los móviles</button></div></div></div>`;
   } else if (adminTab === 'partidos') {
     const st = { pending: ['Sin confirmar', ''], disputed: ['En disputa', 'bad'], confirmed: ['Confirmado', 'ok'], annulled: ['Anulado', ''] };
@@ -2804,8 +2851,8 @@ function paintAdmin() {
     try {
       if (b.id === 'copymails') {
         const list = adminData.players.filter((p) => p.active && !p.deleted && p.phone).map((p) => p.phone).join(', ');
-        try { await navigator.clipboard.writeText(list); toast('Emails copiados.', true); }
-        catch (err) { await sheet(`<h2>Emails</h2><textarea class="input" rows="6" style="margin-top:12px" readonly>${esc(list)}</textarea><div class="btns" style="margin-top:14px"><button class="btn ghost" data-close="no">Cerrar</button></div>`); }
+        try { await navigator.clipboard.writeText(list); toast('Móviles copiados.', true); }
+        catch (err) { await sheet(`<h2>Móviles</h2><textarea class="input" rows="6" style="margin-top:12px" readonly>${esc(list)}</textarea><div class="btns" style="margin-top:14px"><button class="btn ghost" data-close="no">Cerrar</button></div>`); }
         return;
       }
       if (b.dataset.mact) {
