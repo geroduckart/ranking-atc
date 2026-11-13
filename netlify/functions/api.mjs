@@ -385,8 +385,10 @@ async function anonymize(sql, id) {
   await sql.begin(async (tx) => {
     await tx`update challenges set status = 'cancelled', updated_at = now() where status in ('pending','accepted') and (challenger = ${id} or challenged = ${id})`;
     await tx`update players set full_name = 'Jugador eliminado', username = ${'eliminado_' + id.slice(0, 8)}, email = ${'eliminado-' + id + '@invalid'},
-      pin_hash = 'deleted', photo = null, active = false, session_v = session_v + 1, notify = '{}'::jsonb,
-      birth_date = '1900-01-01', reset_hash = null where id = ${id}`;
+      pin_hash = 'deleted', photo = null, active = false, is_admin = false, session_v = session_v + 1, notify = '{}'::jsonb,
+      birth_date = '1900-01-01', reset_hash = null,
+      phone = null, wa_consent = false, wa_consent_at = null, wa_consent_src = null
+      where id = ${id}`;
     await tx`delete from comments where author = ${id}`;
     await tx`delete from feed where (actor = ${id} or target = ${id}) and kind in ('new_player','admin','challenge','accepted')`;
     await tx`delete from likes where player = ${id}`;
