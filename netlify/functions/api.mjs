@@ -247,7 +247,7 @@ on('POST', 'signup', async ({ body }) => {
   const sql = db();
   const full_name = String(body.full_name || '').trim().replace(/\s+/g, ' ');
   const username = String(body.username || '').trim().toLowerCase();
-  if (full_name.length < 3 || full_name.length > 60) fail('Escribe tu nombre y apellidos.');
+  if (full_name.length < 2 || full_name.length > 60) fail('Escribe tu nombre.');
   if (!/^[a-z0-9._]{3,20}$/.test(username)) fail('El usuario debe tener de 3 a 20 letras, números, puntos o guiones bajos, sin espacios.');
   if (!validPin(body.pin)) fail('El PIN tiene que tener 4 cifras.');
   if (/^(\d)\1{3}$/.test(body.pin) || ['1234', '4321', '0123', '3210', '1212', '2121', '1122', '1313', '2580', '6969', '2000', '2001'].includes(body.pin)) fail('Ese PIN es demasiado fácil. Elige otro.');
@@ -334,6 +334,20 @@ on('POST', 'me', async ({ req, body }) => {
   const upd = {};
   if (body.lang) {   // idioma de la app y de los emails
     try { await sql`update players set lang = ${okLang(body.lang)} where id = ${p.id}`; p.lang = okLang(body.lang); } catch (e) {}
+  }
+  if (typeof body.full_name === 'string') {
+    const n = body.full_name.trim().replace(/\s+/g, ' ');
+    if (n.length < 2 || n.length > 60) fail('Escribe tu nombre.');
+    upd.full_name = n;
+  }
+  if (typeof body.username === 'string') {
+    const u = body.username.trim().toLowerCase();
+    if (u !== p.username) {
+      if (!/^[a-z0-9._]{3,20}$/.test(u)) fail('El usuario debe tener de 3 a 20 letras, números, puntos o guiones bajos, sin espacios.');
+      const [dup] = await sql`select 1 from players where username = ${u}`;
+      if (dup) fail('Ese usuario ya existe. Prueba con otro.');
+      upd.username = u;
+    }
   }
   if (body.hand) upd.hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   if (body.backhand) upd.backhand = body.backhand === 'una' ? 'una' : 'dos';
