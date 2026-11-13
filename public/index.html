@@ -164,10 +164,10 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .btns .btn{flex:1;white-space:nowrap;padding:0 12px}
 
 .pill-row .pill{font-size:12px;padding:5px 9px;white-space:nowrap}
-.share-pop{display:flex;margin:10px auto 0;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:999px;border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13px;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity 180ms ease,transform 240ms var(--ease)}
-.share-pop.on{opacity:1;transform:none;pointer-events:auto}
+.share-row{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.share-pop{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--card-line);background:var(--card);color:var(--ink);font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(15,23,32,.07);transition:transform 160ms var(--ease)}
 .share-pop:active{transform:scale(.96)}
-.share-pop svg{width:14px;height:14px;flex:none}
+.share-pop svg{width:15px;height:15px;flex:none;color:var(--muted)}
 /* Carta */
 .fut-wrap{display:flex;flex-direction:column;align-items:center}
 .fut{position:relative;width:min(272px,78vw);aspect-ratio:3/3.85;padding:20px 24px 16px;color:var(--navy);overflow:hidden;
@@ -819,6 +819,7 @@ const EN = {/*DICT*/
   "Tu juego": "Your game",
   "Idioma": "Language",
   "Compartir": "Share",
+  "Historia": "Story",
   "Móvil (WhatsApp, opcional)": "Mobile (WhatsApp, optional)",
   "Quiero recibir por WhatsApp solo avisos de mis partidos (retos, confirmaciones y recordatorios). Nunca enviaremos publicidad. Puedo darme de baja cuando quiera respondiendo BAJA; seguiré recibiendo los avisos por email y en la app.": "I want WhatsApp messages only about my matches (challenges, confirmations and reminders). We will never send advertising. I can unsubscribe at any time by replying STOP; I will keep receiving notices by email and in the app.",
   "App y emails": "App and emails",
@@ -1549,31 +1550,38 @@ function cardHTML(p) {
     <div class="fut-stats">${ATTRS.map(([k, l]) => `<div class="fs"><span>${l}</span><b>${p.attrs[k]}</b></div>`).join('')}</div>
   </div></div>`;
 }
-async function shareCard(p) {
-  const W = 1080, H = 1350, c = document.createElement('canvas');
-  c.width = W; c.height = H;
+async function shareCard(p, fmt = 'post') {
+  const story = fmt === 'story';
+  const W = 1080, H = story ? 1920 : 1350;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
   const F = (w, px) => `${w} ${px}px Figtree, system-ui, -apple-system, sans-serif`;
+  const load = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); setTimeout(() => ok(null), 2500); i.src = src; });
 
-  // Fondo: el mismo azul en degradado de los vídeos y las diapositivas
+  // Fondo: el azul en degradado de los vídeos y las diapositivas
   g.fillStyle = '#0B1B33'; g.fillRect(0, 0, W, H);
-  const bg = g.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, H * 1.15);
+  const bg = g.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, H * 1.1);
   bg.addColorStop(0, '#1A3760'); bg.addColorStop(0.5, '#12294A'); bg.addColorStop(1, '#0B1B33');
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
 
-  // La tarjeta, con su forma de banderín (la misma del clip-path de la app)
-  const cw = 700, ch = Math.round(cw * 3.85 / 3), cx = (W - cw) / 2, cy = 210;
-  const pt = (fx, fy) => [cx + cw * fx, cy + ch * fy];
+  // En historias, el escudo del club arriba (lejos de la interfaz de Instagram)
+  let cy = story ? 470 : 200;
+  if (story) {
+    const wm = await load(LOGO_W);
+    if (wm) { const iw = 380; g.drawImage(wm, (W - iw) / 2, 250, iw, iw * wm.height / wm.width); }
+  }
+
+  // La tarjeta, con su forma de banderín
+  const cw = story ? 720 : 700, ch = Math.round(cw * 3.85 / 3), cx = (W - cw) / 2;
   const path = new Path2D();
   [[0.5, 0], [1, 0.06], [1, 0.88], [0.5, 1], [0, 0.88], [0, 0.06]].forEach(([fx, fy], i) => {
-    const [x, y] = pt(fx, fy); i ? path.lineTo(x, y) : path.moveTo(x, y);
+    const x = cx + cw * fx, y = cy + ch * fy; i ? path.lineTo(x, y) : path.moveTo(x, y);
   });
   path.closePath();
-  g.save();
-  g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 60; g.shadowOffsetY = 26;
-  g.fillStyle = '#C9A24A'; g.fill(path);
-  g.restore();
+  g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 70; g.shadowOffsetY = 30;
+  g.fillStyle = '#C9A24A'; g.fill(path); g.restore();
   g.save(); g.clip(path);
+
   const tier = tierOf(p.level);
   const face = g.createLinearGradient(cx, cy, cx + cw * 0.6, cy + ch);
   if (tier === 'special') { face.addColorStop(0, '#1D3A66'); face.addColorStop(0.45, '#12294A'); face.addColorStop(1, '#0B1B33'); }
@@ -1581,66 +1589,59 @@ async function shareCard(p) {
   else if (tier === 'bronze') { face.addColorStop(0, '#F0CDA8'); face.addColorStop(0.5, '#C98F5B'); face.addColorStop(1, '#9C6537'); }
   else { face.addColorStop(0, '#F4E2A1'); face.addColorStop(0.45, '#D8B65A'); face.addColorStop(1, '#B8913A'); }
   g.fillStyle = face; g.fillRect(cx, cy, cw, ch);
+
+  const k = cw / 700;                       // todo escala con el ancho de la tarjeta
   const ink = tier === 'special' ? '#FFFFFF' : '#12294A';
   const big = tier === 'special' ? '#E35B2A' : '#12294A';
+  const padX = cx + 62 * k, rightX = cx + cw - 62 * k;
 
-  // Nivel, arriba a la izquierda
-  const padX = cx + 62;
-  g.fillStyle = big; g.textAlign = 'left'; g.font = F(700, 132);
-  g.fillText(lvl(p.level), padX, cy + 190);
-  g.fillStyle = ink; g.font = F(600, 30);
-  g.fillText('NIVEL', padX + 6, cy + 236);
+  g.fillStyle = big; g.textAlign = 'left'; g.font = F(700, 132 * k);
+  g.fillText(lvl(p.level), padX, cy + 190 * k);
+  g.fillStyle = ink; g.font = F(600, 30 * k);
+  g.fillText('NIVEL', padX + 6 * k, cy + 236 * k);
   if (p.provisional) {
-    const bw = 190, bx = padX, by = cy + 262;
+    const bw = 190 * k, by = cy + 262 * k;
     g.fillStyle = tier === 'special' ? 'rgba(255,255,255,.16)' : 'rgba(18,41,74,.14)';
-    g.beginPath(); g.roundRect(bx, by, bw, 44, 22); g.fill();
-    g.fillStyle = ink; g.font = F(700, 20); g.textAlign = 'center';
-    g.fillText('PROVISIONAL', bx + bw / 2, by + 29);
+    g.beginPath(); g.roundRect(padX, by, bw, 44 * k, 22 * k); g.fill();
+    g.fillStyle = ink; g.font = F(700, 20 * k); g.textAlign = 'center';
+    g.fillText('PROVISIONAL', padX + bw / 2, by + 29 * k);
   }
-  // Escudo del club, arriba a la derecha
-  try {
-    const img = new Image();
-    img.src = tier === 'special' ? LOGO_W : LOGO_N;
-    await new Promise((ok, no) => { img.onload = ok; img.onerror = no; setTimeout(no, 2500); });
-    const iw = 230; g.drawImage(img, cx + cw - 62 - iw, cy + 104, iw, iw * img.height / img.width);
-  } catch (e) {}
+  const crest = await load(tier === 'special' ? LOGO_W : LOGO_N);
+  if (crest) { const iw = 230 * k; g.drawImage(crest, rightX - iw, cy + 104 * k, iw, iw * crest.height / crest.width); }
 
-  // Nombre y temporada
   const parts = String(p.full_name).trim().split(/\s+/);
   const short = (parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : parts[0]).toUpperCase();
   g.textAlign = 'center';
   g.strokeStyle = tier === 'special' ? 'rgba(255,255,255,.25)' : 'rgba(18,41,74,.22)';
-  g.lineWidth = 2; g.beginPath(); g.moveTo(padX, cy + 352); g.lineTo(cx + cw - 62, cy + 352); g.stroke();
+  g.lineWidth = 2 * k; g.beginPath(); g.moveTo(padX, cy + 352 * k); g.lineTo(rightX, cy + 352 * k); g.stroke();
   g.fillStyle = ink;
-  let size = 60; g.font = F(700, size);
-  while (g.measureText(short).width > cw - 150 && size > 32) { size -= 2; g.font = F(700, size); }
-  g.fillText(short, cx + cw / 2, cy + 424);
-  g.font = F(600, 24);
-  g.fillText(`${(S.season && S.season.name) || 'Temporada 1'} · ATC${p.ageTag ? ' · ' + p.ageTag : ''}`.toUpperCase(), cx + cw / 2, cy + 464);
+  let size = 60 * k; g.font = F(700, size);
+  while (g.measureText(short).width > cw - 150 * k && size > 30) { size -= 2; g.font = F(700, size); }
+  g.fillText(short, cx + cw / 2, cy + 424 * k);
+  g.font = F(600, 24 * k);
+  g.fillText(`${(S.season && S.season.name) || 'Temporada 1'} · ATC${p.ageTag ? ' · ' + p.ageTag : ''}`.toUpperCase(), cx + cw / 2, cy + 464 * k);
 
-  // Los cinco golpes
-  ATTRS.forEach(([k, label], i) => {
-    const y = cy + 540 + i * 62;
-    g.textAlign = 'left'; g.font = F(600, 30); g.fillStyle = ink;
-    g.fillText(label, padX, y);
-    g.textAlign = 'right'; g.font = F(700, 34);
-    g.fillStyle = big; g.fillText(String(p.attrs[k]), cx + cw - 62, y);
+  ATTRS.forEach(([key, label], i) => {
+    const y = cy + (540 + i * 62) * k;
+    g.textAlign = 'left'; g.font = F(600, 30 * k); g.fillStyle = ink; g.fillText(label, padX, y);
+    g.textAlign = 'right'; g.font = F(700, 34 * k); g.fillStyle = big; g.fillText(String(p.attrs[key]), rightX, y);
     g.strokeStyle = tier === 'special' ? 'rgba(255,255,255,.14)' : 'rgba(18,41,74,.13)';
-    g.lineWidth = 1.5; g.beginPath(); g.moveTo(padX, y + 18); g.lineTo(cx + cw - 62, y + 18); g.stroke();
+    g.lineWidth = 1.5 * k; g.beginPath(); g.moveTo(padX, y + 18 * k); g.lineTo(rightX, y + 18 * k); g.stroke();
   });
   g.restore();
 
-  // Pie: usuario y marca
+  // Pie
+  const fy = cy + ch + (story ? 96 : 78);
   g.textAlign = 'center';
-  g.fillStyle = '#F7A27E'; g.font = F(700, 26);
-  g.fillText('@' + p.username, W / 2, cy + ch + 78);
-  g.fillStyle = 'rgba(255,255,255,.92)'; g.font = F(800, 40);
-  g.fillText(EN_ON ? 'ATC Ranking' : 'Ranking ATC', W / 2, cy + ch + 132);
-  g.fillStyle = 'rgba(255,255,255,.5)'; g.font = F(600, 24);
-  g.fillText('atcranking.netlify.app', W / 2, cy + ch + 174);
+  g.fillStyle = '#F7A27E'; g.font = F(700, 28);
+  g.fillText('@' + p.username, W / 2, fy);
+  g.fillStyle = 'rgba(255,255,255,.95)'; g.font = F(800, 44);
+  g.fillText(EN_ON ? 'ATC Ranking' : 'Ranking ATC', W / 2, fy + 58);
+  g.fillStyle = 'rgba(255,255,255,.5)'; g.font = F(600, 25);
+  g.fillText('atcranking.netlify.app', W / 2, fy + 102);
 
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-  const file = new File([blob], `ranking-atc-${p.username}.png`, { type: 'image/png' });
+  const file = new File([blob], `ranking-atc-${p.username}${story ? '-historia' : ''}.png`, { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], text: EN_ON ? 'My card on ATC Ranking' : 'Mi tarjeta en Ranking ATC' }); } catch (e) {}
     return;
@@ -2045,7 +2046,7 @@ function paintPlayer(d, own, o) {
       <div class="pill light">${esc(pill)}</div>
       ${own ? `<a class="icon-btn" href="#/ajustes" aria-label="Ajustes">${I.gear}</a>` : '<div style="width:44px"></div>'}</div>
     <div style="margin-top:14px">${cardHTML(p)}</div>
-    <button class="share-pop" id="share-card" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>Compartir</button>
+    <div class="share-row"><button class="share-pop" id="share-post" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>Compartir</button><button class="share-pop" id="share-story" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 19h4"/></svg>Historia</button></div>
     <div class="pill-row" style="display:flex;justify-content:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px -18px 0;padding:8px 18px 14px">
       <span class="pill light">${p.hand === 'zurdo' ? 'Zurdo' : 'Diestro'}</span>
       <span class="pill light">Revés a ${p.backhand === 'una' ? 'una mano' : 'dos manos'}</span>
@@ -2069,11 +2070,9 @@ function paintPlayer(d, own, o) {
     ${own && S.me.is_admin ? `<a class="btn block ghost" style="margin-top:22px" href="#/admin">Panel del club</a>` : ''}
   </main>${nav(own ? 'perfil' : 'ranking')}`);
   bindTilt($app);
-  const cardEl = $app.querySelector('.fut'), sharePop = document.getElementById('share-card');
-  if (cardEl && sharePop) {
-    cardEl.addEventListener('click', () => sharePop.classList.toggle('on'));
-    sharePop.addEventListener('click', () => shareCard(p));
-  }
+  const bPost = document.getElementById('share-post'), bStory = document.getElementById('share-story');
+  if (bPost) bPost.addEventListener('click', () => busy(bPost, () => shareCard(p, 'post')));
+  if (bStory) bStory.addEventListener('click', () => busy(bStory, () => shareCard(p, 'story')));
   if (!o.refresh) stagger($app.querySelector('.screen'));
 }
 
