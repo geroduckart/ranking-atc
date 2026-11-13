@@ -135,7 +135,7 @@ async function season(sql = db()) {
 
 function selfView(p) {
   return {
-    id: p.id, username: p.username, full_name: p.full_name, email: p.email, birth_date: p.birth_date,
+    id: p.id, username: p.username, full_name: p.full_name, phone: p.phone, birth_date: p.birth_date,
     hand: p.hand, backhand: p.backhand, level: Number(p.level), start_level: Number(p.start_level),
     attrs: R.shownAttrs(p.attrs, p.start_level, p.level), photo_v: p.photo_v, is_admin: p.is_admin,
     notify: { challenges: wants(p, 'challenges'), results: wants(p, 'results'), drop: wants(p, 'drop'), reminders: wants(p, 'reminders') },
@@ -241,18 +241,20 @@ on('POST', 'signup', async ({ body }) => {
   const sql = db();
   const full_name = String(body.full_name || '').trim().replace(/\s+/g, ' ');
   const username = String(body.username || '').trim().toLowerCase();
-  const email = String(body.email || '').trim().toLowerCase();
   if (full_name.length < 3 || full_name.length > 60) fail('Escribe tu nombre y apellidos.');
   if (!/^[a-z0-9._]{3,20}$/.test(username)) fail('El usuario debe tener de 3 a 20 letras, números, puntos o guiones bajos, sin espacios.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 120) fail('Revisa el email.');
   if (!validPin(body.pin)) fail('El PIN tiene que tener 6 cifras.');
   if (/^(\d)\1{5}$/.test(body.pin) || ['123456', '654321', '012345'].includes(body.pin)) fail('Ese PIN es demasiado fácil. Elige otro.');
-  const age = R.ageOn(String(body.birth_date || ''), new Date(madridToday() + 'T12:00:00Z'));
-  if (!Number.isFinite(age) || age > 100) fail('Revisa tu fecha de nacimiento.');
+  // Se pide la edad, no la fecha exacta. Por dentro se guarda una fecha aproximada
+  // (hoy menos esos años) para que las franjas +20, +30… sigan funcionando con el tiempo.
+  const age = Math.trunc(Number(body.age));
+  if (!Number.isFinite(age) || age < 1 || age > 100) fail('Revisa tu edad.');
   if (age < 14) fail('Para apuntarte al ranking hay que tener al menos 14 años.');
+  const [yy, mm, dd] = madridToday().split('-').map(Number);
+  const birth_date = `${yy - age}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
   if (body.accept !== true) fail('Tienes que aceptar la política de privacidad y las normas.');
-  const wa = body.wa_consent === true ? waPhone(body.phone) : null;
-  if (body.wa_consent === true && !wa) fail('Revisa tu móvil: pon 9 cifras o el número con prefijo, por ejemplo +34 600 000 000.');
+  const wa = waPhone(body.phone);
+  if (!wa) fail('Pon tu móvil de WhatsApp: 9 cifras, o el número con prefijo, por ejemplo +34 600 000 000.');
   const hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   const backhand = body.backhand === 'una' ? 'una' : 'dos';
   const attrs = R.checkAttrs(body.attrs);
@@ -260,11 +262,11 @@ on('POST', 'signup', async ({ body }) => {
   const lvl = R.levelFromAttrs(attrs);
   const [dupU] = await sql`select 1 from players where username = ${username}`;
   if (dupU) fail('Ese usuario ya existe. Prueba con otro.');
-  const [dupE] = await sql`select 1 from players where email = ${email}`;
-  if (dupE) fail('Ya hay una cuenta con ese email. Si es tuya, recupera tu PIN.');
+  const [dupP] = await sql`select 1 from players where phone = ${wa} and active`;
+  if (dupP) fail('Ya hay una cuenta con ese móvil. Si es tuya, pide en el club que te cambien el PIN.');
   const isAdmin = (process.env.ADMIN_USERNAME || '').toLowerCase().split(',').map((s) => s.trim()).includes(username);
-  const [p] = await sql`insert into players (username, full_name, email, pin_hash, birth_date, hand, backhand, attrs, start_level, level, is_admin, phone, wa_consent, wa_consent_at, wa_consent_src)
-    values (${username}, ${full_name}, ${email}, ${hashPin(body.pin)}, ${body.birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin}, ${wa}, ${wa !== null}, ${wa !== null ? new Date() : null}, ${wa !== null ? 'app' : null})
+  const [p] = await sql`insert into players (username, full_name, pin_hash, birth_date, hand, backhand, attrs, start_level, level, is_admin, phone, wa_consent, wa_consent_at, wa_consent_src)
+    values (${username}, ${full_name}, ${hashPin(body.pin)}, ${birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin}, ${wa}, true, ${new Date()}, 'app')
     returning *`;
   await sql`insert into feed (kind, actor, data) values ('new_player', ${p.id}, ${sql.json({ level: lvl })})`;
   if (body.lang === 'en') { try { await sql`update players set lang = 'en' where id = ${p.id}`; p.lang = 'en'; } catch (e) {} }
@@ -277,7 +279,7 @@ on('POST', 'login', async ({ body }) => {
   const [p] = await sql`select * from players where username = ${username}`;
   if (p && p.locked_until && new Date(p.locked_until) > new Date()) {
     const min = Math.ceil((new Date(p.locked_until) - Date.now()) / 60000);
-    fail(`Demasiados intentos. Prueba otra vez dentro de ${min} min o recupera tu PIN.`, 429);
+    fail(`Demasiados intentos. Prueba otra vez dentro de ${min} min, o pide en el club que te cambien el PIN.`, 429);
   }
   const ok = p && checkPin(String(body.pin || ''), p.pin_hash);
   if (!ok) {
@@ -293,32 +295,9 @@ on('POST', 'login', async ({ body }) => {
   return { token: signSession(p.id, p.session_v), me: selfView(p) };
 });
 
-on('POST', 'forgot', async ({ body, out }) => {
-  const sql = db();
-  const who = String(body.who || '').trim().toLowerCase();
-  if (!who) fail('Escribe tu usuario o tu email.');
-  const [p] = await sql`select * from players where (username = ${who} or email = ${who}) and active`;
-  if (p) {
-    const raw = randomToken();
-    await sql`update players set reset_hash = ${sha(raw)}, reset_expires = now() + interval '1 hour' where id = ${p.id}`;
-    out.push(() => mail(p.email, 'Crea un PIN nuevo', {
-      lines: [`Hola ${esc(firstName(p.full_name))}: alguien (seguramente tú) ha pedido cambiar el PIN de <b>${esc(p.username)}</b>.`,
-        'Pulsa el botón para elegir uno nuevo. El enlace vale durante 1 hora.'],
-      buttons: [{ label: 'Crear PIN nuevo', url: appUrl(`reset?t=${raw}`) }],
-      foot: 'Si no lo has pedido tú, ignora este email: tu PIN no cambia.',
-    }));
-  }
-  return { ok: true };
-});
-
-on('POST', 'reset', async ({ body }) => {
-  const sql = db();
-  if (!validPin(body.pin)) fail('El PIN tiene que tener 6 cifras.');
-  const [p] = await sql`select * from players where reset_hash = ${sha(String(body.token || ''))} and reset_expires > now() and active`;
-  if (!p) fail('El enlace ha caducado o ya se ha usado. Pide otro.');
-  const [u] = await sql`update players set pin_hash = ${hashPin(body.pin)}, session_v = session_v + 1, reset_hash = null,
-    reset_expires = null, failed_logins = 0, locked_until = null where id = ${p.id} returning *`;
-  return { token: signSession(u.id, u.session_v), me: selfView(u) };
+on('POST', 'forgot', async () => {
+  // Ya no se piden emails en el alta, así que el PIN lo cambia el club desde el panel.
+  fail('Pide en el club que te cambien el PIN: lo hacemos en un momento desde el panel.');
 });
 
 on('GET', 'me', async ({ req }) => {
@@ -1091,7 +1070,7 @@ on('GET', 'admin', async ({ req }) => {
   const sql = db();
   const st = await standings(sql);
   const rowOf = Object.fromEntries([...st.qualified, ...st.others].map((r) => [r.id, r]));
-  const players = await sql`select id, username, full_name, email, birth_date, hand, backhand, attrs, start_level, level,
+  const players = await sql`select id, username, full_name, phone, birth_date, hand, backhand, attrs, start_level, level,
     is_admin, active, muted, created_at from players order by full_name`;
   const matches = await sql`select m.*, a.full_name as n1, b.full_name as n2, r.full_name as reporter
     from matches m join players a on a.id = m.p1 join players b on b.id = m.p2 left join players r on r.id = m.reported_by
@@ -1306,8 +1285,8 @@ on('GET', 'admin/export', async ({ req, url }) => {
     const st = await standings(sql);
     const rowOf = Object.fromEntries([...st.qualified, ...st.others].map((r) => [r.id, r]));
     const ps = await sql`select * from players order by full_name`;
-    rows = [['usuario', 'nombre', 'email', 'nacimiento', 'mano', 'revés', 'nivel_inicial', 'nivel', 'puesto', 'puntos', 'partidos', 'victorias', 'activo', 'alta'],
-      ...ps.map((p) => [p.username, p.full_name, p.email, p.birth_date, p.hand, p.backhand === 'una' ? 'una mano' : 'dos manos', Number(p.start_level), Number(p.level),
+    rows = [['usuario', 'nombre', 'móvil', 'nacimiento', 'mano', 'revés', 'nivel_inicial', 'nivel', 'puesto', 'puntos', 'partidos', 'victorias', 'activo', 'alta'],
+      ...ps.map((p) => [p.username, p.full_name, p.phone || '', p.birth_date, p.hand, p.backhand === 'una' ? 'una mano' : 'dos manos', Number(p.start_level), Number(p.level),
         rowOf[p.id]?.pos ?? '', rowOf[p.id]?.pts ?? 0, rowOf[p.id]?.pj ?? 0, rowOf[p.id]?.won ?? 0, p.active ? 'sí' : 'no', String(p.created_at.toISOString?.() || p.created_at).slice(0, 10)])];
   } else {
     const ms = await sql`select m.*, a.full_name as n1, b.full_name as n2, w.full_name as nw from matches m
