@@ -304,6 +304,15 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 @keyframes spin{to{transform:rotate(360deg)}}
 .prose h2{font-size:18px;margin:22px 0 6px}
 .prose p,.prose li{font-size:15px;line-height:1.55;color:var(--ink)}
+.pts3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px}
+.pts3 div{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:18px;padding:13px 6px;text-align:center}
+.pts3 b{display:block;font-size:30px;line-height:1;font-variant-numeric:tabular-nums;color:var(--navy)}
+.pts3 span{display:block;margin-top:7px;font-size:12px;line-height:1.3;color:var(--muted);font-weight:600}
+.how-link{display:inline-block;margin-top:10px;font-size:13px;font-weight:700;color:#fff;opacity:.88;border-bottom:1px solid rgba(255,255,255,.38);padding-bottom:1px}
+.howbox{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:22px;padding:14px 16px;margin-top:10px}
+.howbox h3{margin:0 0 6px;font-size:16px}
+.howbox p{margin:0 0 8px}.howbox p:last-child{margin-bottom:0}
+.howbox ul{margin:0;padding-left:20px}.howbox ul+p{margin-top:9px}.howbox li{margin-bottom:5px}.howbox li:last-child{margin-bottom:0}
 details.adm{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:18px;padding:10px 14px}
 details.adm + details.adm{margin-top:8px}
 details.adm summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px}
@@ -537,7 +546,7 @@ const EN = {/*DICT*/
   "Si cambias el usuario, a partir de ahora entrarás con el nuevo.": "If you change your username, from now on you'll log in with the new one.",
   "sin espacios": "no spaces",
   "Es tu nombre para entrar, como en Instagram: con el usuario y el PIN accedes a la app. Sin espacios ni tildes. Luego puedes cambiar el nombre y el usuario en Ajustes.": "This is your login name, like on Instagram: your username and PIN get you into the app. No spaces or accents. You can change your name and username later in Settings.",
-  "Al acabar la fase regular, tu nivel se recoloca en la banda de tu Máster (Oro 82–99, Plata 70–81, Bronce 60–69, Challenger 50–59) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si tu nivel ya era más alto, se queda como está.": "When the regular phase ends, your level moves into your Masters band (Gold 82–99, Silver 70–81, Bronze 60–69, Challenger 50–59) and your card becomes your group's. It never goes down: if your level was already higher, it stays.",
+  "Al acabar la fase regular, tu nivel se recoloca en la banda de tu Máster (Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si tu nivel ya era más alto, se queda como está.": "When the regular phase ends, your level moves into your Masters band (Gold 81–99, Silver 71–80, Bronze 61–70, Challenger 50–60) and your card becomes your group's. It never goes down: if your level was already higher, it stays.",
   "años": "years",
   "Móvil de WhatsApp": "WhatsApp mobile",
   "Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil.": "On WhatsApp we will only notify you about your matches: challenges, confirmations and reminders. We will never send you advertising, and you can turn off each notice under Profile.",
@@ -836,7 +845,7 @@ const EN = {/*DICT*/
   "App y emails": "App and emails",
   "Puedes cambiarlas hasta que empiece la temporada (*). Después las mueven tus partidos.": "You can change them until the season starts ($1). After that, your matches move them.",
   "Tus barritas no se pueden tocar: las mueven tus partidos. Si hay un error grande, habla con el club.": "Your ratings can't be edited: your matches move them. If something is badly wrong, contact the club.",
-  "Emails que quieres recibir": "Emails you want to receive",
+  "Avisos que quieres recibir por WhatsApp": "Notices you want to get on WhatsApp",
   "Retos: me retan, aceptan o cambian la hora": "Challenges: when I'm challenged, accepted or the time changes",
   "Resultados que confirmar y confirmados": "Results to confirm and confirmed results",
   "Cuando bajo de puesto (máx. 1 al día)": "When I drop a place (max. 1 a day)",
@@ -1066,6 +1075,40 @@ const EN = {/*DICT*/
   "¿No puedes jugar contra *?": "Can't play $1?",
   "Este resultado ya está gestionado": "This result has already been handled",
   "Entra en la app para verlo.": "Open the app to see it.",
+  "Cómo funciona": "How it works",
+  "Cómo funciona la liga": "How the league works",
+  "En dos minutos sabes de qué va la liga.": "Two minutes and you'll know what the league is about.",
+  "Hay dos clasificaciones": "There are two rankings",
+  "Quién ha ganado más partidos esta temporada. Es la que decide quién entra en cada Máster.": "Who has won the most matches this season. This is the one that decides who goes into each Masters.",
+  "Lo bueno que eres, del 50 al 99. Es el número grande de tu tarjeta y no depende de cuántos partidos juegues.": "How good you are, from 50 to 99. It's the big number on your card, and it doesn't depend on how many matches you play.",
+  "Arriba del todo, en la clasificación, puedes cambiar de una a otra.": "At the top of the standings you can switch between the two.",
+  "Cómo se ganan puntos": "How you earn points",
+  "Ganas": "You win",
+  "Pierdes en 3 sets": "You lose in 3 sets",
+  "Pierdes en 2 sets": "You lose in 2 sets",
+  "Un punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.": "One extra point if you beat someone 5 levels or more above you.",
+  "Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.": "Points depend only on the result of the match. Neither age nor your starting self-rating changes these numbers.",
+  "Cómo se mueve el nivel": "How your level moves",
+  "Empiezas con el nivel de la valoración que te pones al registrarte. A partir de ahí lo mueven tus partidos, mirando dos cosas: a quién ganas y por cuántos juegos.": "You start at the level of the self-rating you give when you sign up. After that your matches move it, looking at two things: who you beat and by how many games.",
+  "Ganar a alguien mejor que tú sube mucho.": "Beating someone better than you moves it up a lot.",
+  "Perder ajustado contra alguien mejor casi no resta.": "Losing a close match to someone better barely costs you.",
+  "Ganar al que va por debajo sube poco.": "Beating someone below you moves it up very little.",
+  "En tus 5 primeros partidos se mueve el triple de rápido, para colocarte pronto donde te toca.": "In your first 5 matches it moves three times faster, so you land where you belong quickly.",
+  "Cuando cambia tu nivel, las barritas de tu tarjeta se mueven solas con él.": "When your level changes, the bars on your card move with it.",
+  "Retos": "Challenges",
+  "Puedes retar a quien quieras. Tiene 7 días para responder.": "You can challenge anyone. They have 7 days to reply.",
+  "Si no te va la hora, propón otra en vez de rechazar.": "If the time doesn't work for you, suggest another one instead of declining.",
+  "Rechazar un reto no penaliza.": "Declining a challenge carries no penalty.",
+  "Máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.": "Maximum 3 matches a week, and only 1 match against each opponent for the whole season.",
+  "Después del partido, uno pone el resultado y el otro lo confirma. Si no responde en 48 horas, se da por bueno.": "After the match one of you enters the result and the other confirms it. If they don't reply within 48 hours, it stands.",
+  "Desde el día 30 solo puedes retar a tu grupo de 8 de la clasificación y a los grupos de justo encima y justo debajo.": "From day 30 you can only challenge your group of 8 in the standings, plus the groups just above and just below.",
+  "Los Másters": "The Masters",
+  "Al acabar la fase regular se montan cuadros de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger. Para entrar hay que haber jugado al menos 5 partidos.": "When the regular phase ends, draws of 8 are set up from the points standings: Gold, Silver, Bronze and Challenger. You need at least 5 matches played to get in.",
+  "Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Nunca baja: si ya lo tenías más alto, se queda como está.": "On entry your level moves into your group's band: Gold 81–99, Silver 71–80, Bronze 61–70, Challenger 50–60. It never goes down: if yours was already higher, it stays.",
+  "¿Dudas? Habla con el club.": "Questions? Talk to the club.",
+  "Normas completas y privacidad": "Full rules and privacy",
+  "¿Cómo funciona?": "How it works",
+  ": puntos, nivel, retos y Másters en dos minutos.": ": points, level, challenges and Masters in two minutes.",
   "¿Confirmas el resultado?": "Do you confirm the result?",
   "Enlace no válido": "Invalid link",
   "Entra en la app para continuar.": "Open the app to continue.",
@@ -1318,9 +1361,9 @@ function logout(expired) {
 }
 async function refreshMe() {
   const d = await getJSON('me');
-  S.me = d.me; S.season = d.season; S.todo = d.todo;
+  S.me = d.me; S.season = d.season; S.todo = d.todo; S.board = d.board || 0;
   if (d.me && d.me.lang !== LANG && !S.langSent) { S.langSent = true; fetch('/api/me', { method: 'POST', headers: { Authorization: 'Bearer ' + S.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: LANG }) }).catch(() => {}); }
-  try { localStorage.setItem('atc_me', JSON.stringify({ t: tokTag(), me: d.me, season: d.season, todo: d.todo })); } catch (e) {}
+  try { localStorage.setItem('atc_me', JSON.stringify({ t: tokTag(), me: d.me, season: d.season, todo: d.todo, board: d.board })); } catch (e) {}
   return d;
 }
 
@@ -1373,7 +1416,8 @@ const TAB_KEYS = ['ranking', 'retos', 'tablon', 'perfil'];
 const NAV_ITEMS = [['', I.trophy, 'Ranking'], ['retos', I.ball, 'Partidos'], ['tablon', I.chat, 'Tablón'], ['perfil', I.user, 'Perfil']];
 function nav(active) {
   const i = TAB_KEYS.indexOf(active);
-  const inner = (it, k) => `${it[1]}<span>${it[2]}</span>${k === 1 && S.todo > 0 ? `<span class="dot">${S.todo}</span>` : ''}`;
+  const cuenta = (k) => (k === 1 ? S.todo : k === 2 ? S.board : 0) || 0;
+  const inner = (it, k) => `${it[1]}<span>${it[2]}</span>${cuenta(k) > 0 ? `<span class="dot">${cuenta(k)}</span>` : ''}`;
   return `<nav class="nav" aria-label="Principal" data-i="${i}"><span class="nav-ind" aria-hidden="true"></span>
     ${NAV_ITEMS.map((it, k) => `<a href="#/${it[0]}" draggable="false" ${k === i ? 'aria-current="page"' : ''}>${inner(it, k)}</a>`).join('')}
     <div class="nav-hi" aria-hidden="true">${NAV_ITEMS.map((it, k) => `<span>${inner(it, k)}</span>`).join('')}</div></nav>`;
@@ -1830,6 +1874,7 @@ function screenSignup1() {
         </div>
       </div>
       <label class="check"><input type="checkbox" name="accept" ${v.accept ? 'checked' : ''}><span>Acepto la <a href="#/privacidad">política de privacidad</a> y las normas de la temporada.</span></label>
+      <p class="hint" style="margin:2px 4px 0"><a href="#/como-funciona" style="font-weight:700;color:var(--orange)">Cómo funciona la liga</a><span>: puntos, nivel, retos y Másters en dos minutos.</span></p>
       <div class="err hidden" id="e"></div>
       <button class="btn block" style="margin-top:6px">Siguiente: mi tarjeta</button>
     </form>
@@ -1969,6 +2014,7 @@ async function screenRanking() {
   const sv0 = S.season;
   render(`<main class="screen"><header class="rank-head hero">
     <img src="${LOGO_W}" alt="Almuñécar Tennis Club"><h1>Clasificación</h1><div class="pill" id="pill">${sv0 && sv0.total ? esc(seasonPill(sv0)) : '&nbsp;'}</div><div id="seasonsub" class="season-sub">${sv0 && sv0.total ? seasonSub(sv0) : '&nbsp;'}</div>
+    <div><a class="how-link" href="#/como-funciona">¿Cómo funciona?</a></div>
     <div class="tabs slide" role="tablist" style="--t:${rankTab === 'nivel' ? 1 : 0}"><button role="tab" data-t="puntos" aria-selected="${rankTab === 'puntos'}">Puntos</button><button role="tab" data-t="nivel" aria-selected="${rankTab === 'nivel'}">Nivel</button></div>
   </header><div id="body"></div></main>${nav('ranking')}`);
   const body = document.getElementById('body');
@@ -2327,6 +2373,11 @@ async function screenResult(kind, id) {
 /* ── Tablón ────────────────────────────────────────────────────────── */
 let feedPosts = [], feedMore = false, openComments = new Set();
 async function screenFeed(append) {
+  if (!append && S.board) {                 // abrir el tablón apaga el aviso
+    S.board = 0;
+    document.querySelectorAll('.nav a:nth-child(4) .dot, .nav-hi span:nth-child(3) .dot').forEach((d) => d.remove());
+    api('POST', 'feed/seen').catch(() => {});
+  }
   if (append) {
     try {
       const d = await api('GET', 'feed?before=' + feedPosts[feedPosts.length - 1].id);
@@ -2490,7 +2541,7 @@ async function screenSettings() {
       : '<p class="hint" style="margin:8px 4px 0">Tus barritas no se pueden tocar: las mueven tus partidos. Si hay un error grande, habla con el club.</p>'}</div>
     <div class="sec"><span class="label">Idioma</span><div class="box row-between"><b style="font-size:15px">App y avisos</b>
       <div class="langsw" data-nt><button data-lang="es" aria-pressed="${LANG === 'es'}">Español</button><button data-lang="en" aria-pressed="${LANG === 'en'}">English</button></div></div></div>
-    <div class="sec"><span class="label">Emails que quieres recibir</span><div class="box" style="display:flex;flex-direction:column;gap:12px">
+    <div class="sec"><span class="label">Avisos que quieres recibir por WhatsApp</span><div class="box" style="display:flex;flex-direction:column;gap:12px">
       ${toggles.map(([k, l]) => `<label class="check" style="font-size:15px;color:var(--ink);align-items:center"><input type="checkbox" data-n="${k}" ${me.notify[k] ? 'checked' : ''}>${l}</label>`).join('')}
     </div></div>
     <div class="sec"><span class="label">Cambiar PIN</span><form class="box" id="pinf" style="display:flex;flex-direction:column;gap:10px" novalidate>
@@ -2499,6 +2550,7 @@ async function screenSettings() {
       <button class="btn sm navy">Cambiar PIN</button></form></div>
     <div class="sec" style="display:flex;flex-direction:column;gap:10px">
       <button class="btn block ghost" id="out">Cerrar sesión</button>
+      <a class="link" href="#/como-funciona" style="text-align:center">Cómo funciona la liga</a>
       <a class="link" href="#/privacidad" style="text-align:center">Política de privacidad y normas</a>
       <button class="link" id="del" style="color:var(--bad)">Borrar mi cuenta</button>
       <p class="hint" style="text-align:center">Ranking ATC · v${VERSION}</p>
@@ -2578,6 +2630,58 @@ function shrink(file) {
   });
 }
 
+/* ── Cómo funciona ─────────────────────────────────────────────────── */
+function screenHow() {
+  const back = S.me ? 'ranking' : 'login';
+  render(`<main class="screen nonav prose">
+    <div class="top">${backBtn(back)}<div class="title">Cómo funciona</div><div style="width:44px"></div></div>
+    <p class="sub" style="margin:16px 4px 4px">En dos minutos sabes de qué va la liga.</p>
+
+    <h2>Hay dos clasificaciones</h2>
+    <div class="howbox"><h3>Puntos</h3>
+      <p>Quién ha ganado más partidos esta temporada. Es la que decide quién entra en cada Máster.</p></div>
+    <div class="howbox"><h3>Nivel</h3>
+      <p>Lo bueno que eres, del 50 al 99. Es el número grande de tu tarjeta y no depende de cuántos partidos juegues.</p></div>
+    <p class="hint" style="margin:10px 4px 0">Arriba del todo, en la clasificación, puedes cambiar de una a otra.</p>
+
+    <h2>Cómo se ganan puntos</h2>
+    <div class="pts3">
+      <div><b>3</b><span>Ganas</span></div>
+      <div><b>1</b><span>Pierdes en 3 sets</span></div>
+      <div><b>0</b><span>Pierdes en 2 sets</span></div>
+    </div>
+    <div class="howbox"><p>Un punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.</p>
+      <p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p></div>
+
+    <h2>Cómo se mueve el nivel</h2>
+    <div class="howbox"><p>Empiezas con el nivel de la valoración que te pones al registrarte. A partir de ahí lo mueven tus partidos, mirando dos cosas: a quién ganas y por cuántos juegos.</p>
+      <ul>
+        <li>Ganar a alguien mejor que tú sube mucho.</li>
+        <li>Perder ajustado contra alguien mejor casi no resta.</li>
+        <li>Ganar al que va por debajo sube poco.</li>
+        <li>En tus 5 primeros partidos se mueve el triple de rápido, para colocarte pronto donde te toca.</li>
+      </ul>
+      <p>Cuando cambia tu nivel, las barritas de tu tarjeta se mueven solas con él.</p></div>
+
+    <h2>Retos</h2>
+    <div class="howbox"><ul>
+      <li>Puedes retar a quien quieras. Tiene 7 días para responder.</li>
+      <li>Si no te va la hora, propón otra en vez de rechazar.</li>
+      <li>Rechazar un reto no penaliza.</li>
+      <li>Máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.</li>
+      <li>Después del partido, uno pone el resultado y el otro lo confirma. Si no responde en 48 horas, se da por bueno.</li>
+      <li>Desde el día 30 solo puedes retar a tu grupo de 8 de la clasificación y a los grupos de justo encima y justo debajo.</li>
+    </ul></div>
+
+    <h2>Los Másters</h2>
+    <div class="howbox"><p>Al acabar la fase regular se montan cuadros de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger. Para entrar hay que haber jugado al menos 5 partidos.</p>
+      <p>Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Nunca baja: si ya lo tenías más alto, se queda como está.</p></div>
+
+    <p class="hint" style="margin:18px 4px 0">¿Dudas? Habla con el club.</p>
+    <a class="link" href="#/privacidad" style="text-align:center;display:block;margin-top:10px">Normas completas y privacidad</a>
+  </main>`);
+}
+
 /* ── Privacidad y normas ───────────────────────────────────────────── */
 function screenPrivacy() {
   const back = S.me ? 'ajustes' : 'registro';
@@ -2589,7 +2693,7 @@ function screenPrivacy() {
       <li>Puedes retar a cualquier jugador. El retado tiene 7 días para responder; si nadie responde, el reto caduca sin penalización.</li>
       <li>Puedes rechazar un reto sin penalización, pero si lo que no te va es la hora, mejor propón otra.</li>
       <li>Después del partido, uno pone el resultado y el otro lo confirma. Si no responde en 48 horas, se da por bueno. Si hay desacuerdo, decide el club.</li>
-      <li>Al acabar la fase regular, tu nivel se recoloca en la banda de tu Máster (Oro 82–99, Plata 70–81, Bronce 60–69, Challenger 50–59) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si tu nivel ya era más alto, se queda como está.</li>
+      <li>Al acabar la fase regular, tu nivel se recoloca en la banda de tu Máster (Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60) y la tarjeta pasa a ser la de tu grupo. Nunca baja: si tu nivel ya era más alto, se queda como está.</li>
       <li>Puntos: victoria 3, derrota en 3 sets 1, derrota en 2 sets 0, y +1 si ganas a alguien con 5 o más niveles por encima (cuando ninguno es provisional). Cuentan como máximo 3 partidos por semana y 1 partido por pareja en la temporada.</li>
       <li>El nivel se mueve con los resultados y con los juegos: ganar a alguien mejor sube mucho; perder ajustado contra alguien mejor casi no resta. Se mueve más rápido en tus 5 primeros partidos.</li>
       <li>Desde el día 30, solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.</li>
@@ -2765,7 +2869,7 @@ function paintAdmin() {
    Router
    ════════════════════════════════════════════════════════════════════ */
 function go(path) { const h = '#/' + path; if (location.hash === h) route(); else location.hash = h; }
-const PUBLIC = new Set(['login', 'registro', 'registro/carta', 'olvide', 'privacidad', 'diag']);
+const PUBLIC = new Set(['login', 'registro', 'registro/carta', 'olvide', 'privacidad', 'como-funciona', 'diag']);
 const DEPTH = { '': 0, ranking: 0, retos: 0, tablon: 0, perfil: 0, jugador: 1, masters: 1, ajustes: 1, carta: 2, privacidad: 1, reto: 1, resultado: 1, master: 1, retar: 2, admin: 2 };
 let lastDepth = null, lastTab = -1;
 async function route() {
@@ -2788,7 +2892,7 @@ async function route() {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('atc_me') || 'null'); } catch (e) {}
     if (saved && saved.t === tokTag() && saved.me) {
-      S.me = saved.me; S.season = saved.season; S.todo = saved.todo || 0;
+      S.me = saved.me; S.season = saved.season; S.todo = saved.todo || 0; S.board = saved.board || 0;
       refreshMe().then(updateDot).catch(() => {});
     } else {
       try { await refreshMe(); } catch (e) { if (!S.token) return; return errorScreen(e); }
@@ -2801,6 +2905,7 @@ async function route() {
     case 'registro': return parts[1] === 'carta' ? screenSignup2() : screenSignup1();
     case 'olvide': return screenForgot();
     case 'privacidad': return screenPrivacy();
+    case 'como-funciona': return screenHow();
     case 'jugador': return screenPlayer(parts[1]);
     case 'perfil': return screenPlayer(null);
     case 'retar': return screenChallenge(parts[1]);
