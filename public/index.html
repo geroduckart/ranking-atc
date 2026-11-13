@@ -3009,6 +3009,8 @@ async function route() {
   }
 }
 cacheLoad();
+// URLs sin hash para Meta / validadores externos
+if (location.pathname === '/privacy' || location.pathname === '/privacidad') { history.replaceState(null, '', '/#/privacidad'); }
 window.addEventListener('hashchange', route);
 // tocar la pestaña en la que ya estás la recarga
 document.addEventListener('click', (e) => { const l = e.target.closest('a[href^="#/"]'); if (l && l.getAttribute('href') === location.hash) { e.preventDefault(); route(); } });
