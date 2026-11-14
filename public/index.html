@@ -203,7 +203,8 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fs b{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 .spark{width:100%;height:46px}
 
-.pagehead{padding:10px 2px 0}
+.pagehead{padding:10px 2px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.linkbtn{background:none;border:0;padding:6px 10px;font:inherit;font-size:14px;font-weight:700;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 /* Barra inferior */
 .nav{position:absolute;z-index:30;left:0;right:0;bottom:calc(10px + var(--sab));margin:0 auto;width:calc(100% - 32px);max-width:420px;height:64px;
   display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;padding:5px;border-radius:999px;
@@ -522,11 +523,19 @@ const EN = {/*DICT*/
   "Los # primeros partidos: pista y bolas gratis.": "First $1 matches: free court and balls.",
   "Los 5 primeros partidos de la temporada, con pista y bolas gratis.": "The first 5 matches of the season: free court and balls.",
   "Quedan # de #: pista y bolas gratis.": "$1 of $2 left: free court and balls.",
+  "Quedan # partidos con pista y bolas gratis. ¡Corre!": "$1 free matches left (court and balls). Be quick!",
+  "Queda 1 partido con pista y bolas gratis. ¡Corre!": "1 free match left (court and balls). Be quick!",
+  "Ir a mi puesto": "Jump to me",
   "Solo queda #: pista y bolas gratis.": "Only $1 left: free court and balls.",
   "Promoción · pista y bolas gratis": "Offer · free court and balls",
   "# de # partidos usados. Cuentan los primeros con resultado confirmado.": "$1 of $2 matches used. The first ones with a confirmed result count.",
   "#. * vs *": "$1. $2 vs $3",
   "Reta, juega y sube. Los mejores de cada grupo, al Máster.": "Challenge, play and climb. The best in each group go to the Masters.",
+  "Reta a quien quieras, juega en el club y sube. Al final, Másters por niveles.": "Challenge anyone, play at the club, climb. Season ends with Masters for every level.",
+  "Temporada 1 · del 19 nov al 17 ene": "Season 1 · 19 Nov – 17 Jan",
+  "Los 5 primeros partidos que se jueguen en el club: pista y bolas gratis.": "The first 5 matches played at the club: free court and balls.",
+  "¿Primera vez? Te apuntas en un minuto.": "First time here? Sign up in a minute.",
+  "Apuntarme": "Sign me up",
   "del club.": "at the club.",
   "Usuario": "Username",
   "PIN": "PIN",
@@ -576,6 +585,9 @@ const EN = {/*DICT*/
   "política de privacidad": "privacy policy",
   "y las normas de la temporada.": "and the season rules.",
   "Siguiente: mi tarjeta": "Next: my card",
+  "Siguiente: crear mi tarjeta": "Next: create my card",
+  "Con él y tu PIN entrarás siempre. Sin espacios ni tildes.": "You'll log in with this and your PIN. No spaces or accents.",
+  "Solo para avisarte de tus partidos por WhatsApp. Nadie más lo ve y nunca te mandaremos publicidad.": "Only used to send your match alerts on WhatsApp. Nobody else sees it, and we'll never send you ads.",
   "Después entrarás siempre con tu usuario y tu PIN.": "From then on you'll always log in with your username and PIN.",
   "Escribe tu nombre.": "Enter your name.",
   "El usuario: de 3 a 20 letras o números, sin espacios ni tildes.": "Username: 3 to 20 letters or numbers, no spaces or accents.",
@@ -661,8 +673,10 @@ const EN = {/*DICT*/
   "puntos (3 + 1 extra)": "points (3 + 1 bonus)",
   "puntos (# + # extra)": "points ($1 + $2 bonus)",
   "puntos (# si ganas un set)": "points ($1 if you win a set)",
-  "La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Usad «Cancelar» solo si no vais a jugar.": "The time is a guide. If you end up playing earlier or later, or switch courts, there's no need to change anything: when you finish, one of you posts the result and that's it. Use \"Cancel\" only if you're not going to play.",
+  "La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Tocad «No vamos a jugar» solo si de verdad no vais a jugar.": "The time is a guide. If you end up playing earlier or later, or switch courts, there's no need to change anything: when you finish, one of you posts the result and that's it. Tap \"We won't play\" only if you really aren't going to play.",
   "Punto extra": "Bonus point",
+  "por ganar a alguien 5 o más niveles por encima. Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.": "for beating someone 5 or more levels above you. Based on a 6-4 6-4. Every set and game you win counts too.",
+  "Punto extra si ganas a alguien 5 o más niveles por encima. Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.": "Bonus point if you beat someone 5 or more levels above you. Based on a 6-4 6-4. Every set and game you win counts too.",
   "por ganar a alguien 5 o más niveles por encima. Calculado con un 6-4 6-4; los sets y juegos que ganes también cuentan.": "for beating someone 5 or more levels above you. Based on a 6-4 6-4; the sets and games you win count too.",
   "Punto extra si ganas a alguien 5 o más niveles por encima. Calculado con un 6-4 6-4; los sets y juegos que ganes también cuentan.": "Bonus point if you beat someone 5 or more levels above you. Based on a 6-4 6-4; the sets and games you win count too.",
   "Retar a *": "Challenge $1",
@@ -706,12 +720,24 @@ const EN = {/*DICT*/
   "# nivel · # pt": "$1 level · $2 pt",
   "6-0 6-0: #": "6-0 6-0: $1",
   "0-6 0-6: # · en 3 sets: +1 pt": "0-6 0-6: $1 · in 3 sets: +1 pt",
+  "Si ganas un set: 1 pt": "Win a set: 1 pt",
+  "# nivel · 0 pts": "$1 level · 0 pts",
+  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.": "$1 has 7 days to reply and will get a WhatsApp alert. Book the court at the club. You can only play each other once this season.",
   "Te toca responder": "Your turn to reply",
   "Resultados por confirmar": "Results to confirm",
   "Pon el resultado": "Enter the result",
   "Esperando a tu rival": "Waiting for your opponent",
   "Partidos programados": "Scheduled matches",
   "Últimos días": "Recent days",
+  "Historial": "History",
+  "No vamos a jugar": "We won't play",
+  "Ganas a * · * · no jugado": "Beat $1 · $2 · not played",
+  "Pierdes con * · * · no jugado": "Lost to $1 · $2 · not played",
+  "Ganas a * · *": "Beat $1 · $2",
+  "Pierdes con * · *": "Lost to $1 · $2",
+  "Según *:": "$1 says:",
+  "ganas *": "you won $1",
+  "pierdes *": "you lost $1",
   "* propone esta hora.": "$1 suggests this time.",
   "* te ha retado.": "$1 has challenged you.",
   "Acepto": "Accept",
@@ -1128,6 +1154,7 @@ const EN = {/*DICT*/
   "Cuando cambia tu nivel, las barritas de tu tarjeta se mueven solas con él.": "When your level changes, the bars on your card move with it.",
   "Retos": "Challenges",
   "Puedes retar a quien quieras. Tiene 7 días para responder.": "You can challenge anyone. They have 7 days to reply.",
+  "Puedes retar a quien quieras. Tiene 7 días para responder; si no contesta, el reto caduca y no pierdes nada.": "Challenge anyone you like. They have 7 days to reply; if they don't, the challenge expires at no cost to you.",
   "Si no te va la hora, propón otra en vez de rechazar.": "If the time doesn't work for you, suggest another one instead of declining.",
   "Rechazar un reto no penaliza.": "Declining a challenge carries no penalty.",
   "Máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.": "Maximum 3 matches a week, and only 1 match against each opponent for the whole season.",
@@ -1869,9 +1896,9 @@ function screenLogin() {
     <div class="langsw dark" data-nt style="position:absolute;right:16px;top:calc(14px + var(--sat));z-index:2"><button data-lang="es" aria-pressed="${LANG === 'es'}">ES</button><button data-lang="en" aria-pressed="${LANG === 'en'}">EN</button></div>
     <img src="${LOGO_W}" alt="Almuñécar Tennis Club" style="width:200px;height:auto;position:relative">
     <div style="margin-top:28px;text-align:center;position:relative">
-      <div class="label" style="color:var(--peach);letter-spacing:.18em">Temporada 1 · 60 días</div>
+      <div class="label" style="color:var(--peach);letter-spacing:.18em">Temporada 1 · del 19 nov al 17 ene</div>
       <h1>Ranking<br><span>del club.</span></h1>
-      <p style="margin:16px auto 0;max-width:290px;font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)">Reta, juega y sube. Los mejores de cada grupo, al Máster.</p>
+      <p style="margin:16px auto 0;max-width:290px;font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)">Reta a quien quieras, juega en el club y sube. Al final, Másters por niveles.</p>
     </div>
     <form id="f" novalidate>
       <label class="field">Usuario<input class="input" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="tu usuario" required></label>
@@ -1880,8 +1907,8 @@ function screenLogin() {
       <button class="btn block" style="margin-top:6px">Entrar</button>
     </form>
     <a href="#/olvide" style="margin-top:14px;font-size:14px;font-weight:600;color:var(--peach);position:relative">¿Olvidaste tu PIN?</a>
-    <div class="promo dark" style="margin-top:18px;position:relative"><b>Promoción de estreno</b><span>Los 5 primeros partidos de la temporada, con pista y bolas gratis.</span></div>
-    <div class="or"><p>¿Eres nuevo? Crea tu cuenta para jugar.</p><a class="btn ghost-dark block" style="height:52px;font-size:16px" href="#/registro">Crear cuenta</a></div>
+    <div class="promo dark" style="margin-top:18px;position:relative"><b>Promoción de estreno</b><span>Los 5 primeros partidos que se jueguen en el club: pista y bolas gratis.</span></div>
+    <div class="or"><p>¿Primera vez? Te apuntas en un minuto.</p><a class="btn ghost-dark block" style="height:52px;font-size:16px" href="#/registro">Apuntarme</a></div>
     <p style="margin-top:auto;padding-top:28px;font-size:12px;color:rgba(255,255,255,.5);position:relative">Solo para jugadores del Almuñécar Tennis Club</p>
   </main>`);
   const f = document.getElementById('f');
@@ -1921,7 +1948,7 @@ function screenSignup1() {
     <form id="f" novalidate style="margin-top:20px;display:flex;flex-direction:column;gap:14px">
       <label class="field">Nombre<input class="input" name="full_name" autocomplete="name" value="${esc(v.full_name || '')}" placeholder="Jesús, o Jesús Fernández"></label>
       <label class="field">Usuario<input class="input" name="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(v.username || '')}" placeholder="sin espacios, p. ej. jesusfernandez"></label>
-      <p class="hint" style="margin:-6px 4px 0">Es tu nombre para entrar, como en Instagram: con el usuario y el PIN accedes a la app. Sin espacios ni tildes. Luego puedes cambiar el nombre y el usuario en Ajustes.</p>
+      <p class="hint" style="margin:-6px 4px 0">Con él y tu PIN entrarás siempre. Sin espacios ni tildes.</p>
       <label class="field">PIN (4 cifras)<input class="input" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" value="${esc(v.pin || '')}" placeholder="••••" style="letter-spacing:.3em"></label>
       <label class="field">Edad<input class="input" name="age" type="number" inputmode="numeric" min="14" max="100" value="${esc(v.age || '')}" placeholder="años"></label>
       <p class="hint" style="margin:-4px 4px 0">En tu tarjeta solo se verá tu franja (Junior, +20, +30…), nunca tu edad exacta.</p>
@@ -1931,12 +1958,11 @@ function screenSignup1() {
           <input class="input" name="phone" type="tel" autocomplete="tel" inputmode="numeric" style="flex:1;min-width:0" value="${esc(v.phone || '')}" placeholder="600 000 000">
         </div>
       </div>
-      <p class="hint" style="margin:-6px 4px 0">Tu móvil no lo verá ningún jugador: no aparece en tu perfil y no se lo damos a nadie.</p>
-      <p class="hint" style="margin:-6px 4px 0">Por WhatsApp te avisaremos solo de tus partidos: retos, confirmaciones y recordatorios. Nunca te mandaremos publicidad, y puedes apagar cada aviso en Perfil.</p>
+      <p class="hint" style="margin:-6px 4px 0">Solo para avisarte de tus partidos por WhatsApp. Nadie más lo ve y nunca te mandaremos publicidad.</p>
       <label class="check"><input type="checkbox" name="accept" ${v.accept ? 'checked' : ''}><span>Acepto la <a href="#/privacidad">política de privacidad</a> y las normas de la temporada.</span></label>
       <p class="hint" style="margin:2px 4px 0"><a href="#/como-funciona" style="font-weight:700;color:var(--orange)">Cómo funciona la liga</a><span>: puntos, nivel, retos y Másters en dos minutos.</span></p>
       <div class="err hidden" id="e"></div>
-      <button class="btn block" style="margin-top:6px">Siguiente: mi tarjeta</button>
+      <button class="btn block" style="margin-top:6px">Siguiente: crear mi tarjeta</button>
     </form>
   </main>`);
   const f = document.getElementById('f');
@@ -2098,8 +2124,9 @@ async function screenRanking() {
     };
     let html = '';
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
-    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<p class="promo-line">${d.promo.left === d.promo.total ? `Los ${d.promo.total} primeros partidos: pista y bolas gratis.` : d.promo.left === 1 ? 'Solo queda 1: pista y bolas gratis.' : `Quedan ${d.promo.left} de ${d.promo.total}: pista y bolas gratis.`}</p>`;
+    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<p class="promo-line">${d.promo.left === d.promo.total ? `Los ${d.promo.total} primeros partidos: pista y bolas gratis.` : d.promo.left === 1 ? 'Queda 1 partido con pista y bolas gratis. ¡Corre!' : `Quedan ${d.promo.left} partidos con pista y bolas gratis. ¡Corre!`}</p>`;
     html += `<div class="search"><label class="sr" for="q">Buscar jugador</label>${I.search}<input id="q" class="input" placeholder="Buscar jugador" value="${esc(rankQuery)}" autocomplete="off"></div>`;
+    if (!q && S.me && [...d.qualified, ...d.others].some((r) => isMe(r.id))) html += `<p style="margin:8px 6px 0;text-align:right"><button type="button" class="linkbtn" id="goto-me">Ir a mi puesto</button></p>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
       let lastZone = null;
@@ -2121,6 +2148,13 @@ async function screenRanking() {
     }
     body.innerHTML = html;
     if (enter) stagger(body);
+    const gm = document.getElementById('goto-me');
+    if (gm) gm.addEventListener('click', () => {
+      const r = document.querySelector('.prow.me'); if (!r) return;
+      r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      r.style.transition = 'box-shadow .3s'; r.style.boxShadow = '0 0 0 4px rgba(227,91,42,.35)';
+      setTimeout(() => { r.style.boxShadow = ''; }, 1400);
+    });
     const qi = document.getElementById('q');
     qi.addEventListener('input', () => { rankQuery = qi.value; const pos = qi.selectionStart; paint(); const n = document.getElementById('q'); n.focus(); n.setSelectionRange(pos, pos); });
   };
@@ -2173,7 +2207,7 @@ function stakesHTML(p, st) {
       </div>
       <p class="stk-foot">Nivel ${lvl(p.level)} · ${gapTxt}</p>
     </div>
-    <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4; los sets y juegos que ganes también cuentan.</p></div>`;
+    <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
 }
 function paintPlayer(d, own, o) {
   const p = d.player;
@@ -2205,13 +2239,13 @@ function paintPlayer(d, own, o) {
       ${own ? `<span class="pill light">@${esc(p.username)}</span>` : ''}
     </div>
     ${own && !S.season.started && !p.matches_total ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta · hasta el ${fmtWhen(addDays(S.season.starts_on, -1), false)}</a>` : ''}
+    ${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
     ${cta}
     <div class="tiles" style="margin-top:12px">
       <div class="tile"><b>${p.matches_total}</b><span>Jugados</span></div>
       <div class="tile"><b style="color:var(--ok)">${p.won}</b><span>Ganados</span></div>
       <div class="tile"><b>${signed(p.level - p.start_level)}</b><span>Nivel desde el inicio</span></div>
     </div>
-    ${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
     ${d.preview ? '' : d.recent.length ? `<div class="sec"><span class="label">Últimos partidos</span>
       ${levels.length > 2 ? `<div class="box" style="padding:10px 12px;margin-bottom:8px">${spark(levels)}</div>` : ''}
       <div class="list">${d.recent.map((m) => `<a class="mrow" href="#/jugador/${m.rival_id}"><span class="wl${m.won ? '' : ' l'}">${m.won ? 'G' : 'P'}</span>
@@ -2244,13 +2278,13 @@ async function screenChallenge(id) {
       </div>
       <div style="margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
         <div style="background:rgba(31,157,107,.2);border-radius:12px;padding:9px 10px"><div class="label" style="color:#7FD8B2;letter-spacing:.1em">Si ganas</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.win)} nivel · +${v.stakes.ptsWin} pts</div><div style="font-size:12px;opacity:.7;margin-top:2px">6-0 6-0: ${signed(v.stakes.winBig)}</div></div>
-        <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:9px 10px"><div class="label" style="color:rgba(255,255,255,.65);letter-spacing:.1em">Si pierdes</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.loss)} nivel · +${v.stakes.ptsLoss} pt</div><div style="font-size:12px;opacity:.7;margin-top:2px">0-6 0-6: ${signed(v.stakes.lossBig)} · en 3 sets: +1 pt</div></div>
+        <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:9px 10px"><div class="label" style="color:rgba(255,255,255,.65);letter-spacing:.1em">Si pierdes</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.loss)} nivel · 0 pts</div><div style="font-size:12px;opacity:.7;margin-top:2px">Si ganas un set: 1 pt</div></div>
       </div>
     </div>
     ${whenPicker('w')}
     ${v.noMessage ? '<p class="hint" style="margin-top:14px">En los retos con menores de 18 no hay mensaje: solo día y hora.</p>'
       : `<label class="field" style="margin-top:14px">Mensaje (opcional)<textarea class="input" id="msg" rows="2" maxlength="200" placeholder="¿Te va bien? Reservo yo la pista."></textarea></label>`}
-    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Solo jugáis una vez entre vosotros esta temporada.</p>
+    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.</p>
     <div class="err hidden" id="e" style="margin-top:10px"></div>
     <button class="btn block" id="send" style="margin-top:16px">Enviar reto</button>
   </main>${nav('ranking')}`);
@@ -2268,7 +2302,7 @@ async function screenChallenge(id) {
 
 /* ── Retos ─────────────────────────────────────────────────────────── */
 async function screenRetos() {
-  render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px">Partidos</h1></div></div><div id="body"></div></main>${nav('retos')}`);
+  render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px">Partidos</h1></div><a class="btn sm" href="#/" style="align-self:center;flex:none">Retar a alguien</a></div><div id="body"></div></main>${nav('retos')}`);
   const body = document.getElementById('body');
   body.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -2327,7 +2361,7 @@ function paintRetos(d, o) {
     ...M.filter((n) => n.match && n.match.status === 'pending' && !n.match.iReported).map((n) => masterCard(n, resultBox(n.match, n.rival.name))),
   ].join(''));
   html += sec('Pon el resultado', [
-    ...report.map((c) => card(c, `<div class="btns"><a class="btn sm" href="#/resultado/${c.id}">Poner resultado</a>${c.iAmChallenger ? `<button class="btn sm ghost" data-cancel="${c.id}">Cancelar</button>` : ''}</div>`)),
+    ...report.map((c) => card(c, `<div class="btns"><a class="btn sm" href="#/resultado/${c.id}">Poner resultado</a></div>${c.iAmChallenger ? `<p style="margin:10px 0 0;text-align:center"><button type="button" class="linkbtn" data-cancel="${c.id}">No vamos a jugar</button></p>` : ''}`)),
     ...M.filter((n) => !n.match).map((n) => masterCard(n, `<p class="hint" style="margin-top:8px">Quedad entre vosotros y reservad pista. Después, uno pone el resultado.</p><div class="btns"><a class="btn sm" href="#/master/${n.id}">Poner resultado</a></div>`)),
   ].join(''));
   html += sec('Esperando a tu rival', [
@@ -2337,16 +2371,24 @@ function paintRetos(d, o) {
     ...waiting.map((c) => card(c, `<p class="hint" style="margin-top:8px">Esperando respuesta de ${esc(first(c.rival.name))}.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}">Cancelar reto</button></div>` : ''}`)),
   ].join(''));
   html += sec('Partidos programados', scheduled.map((c) => card(c, `<p class="hint" style="margin-top:8px">Reservad pista en el club. Después del partido, uno pone el resultado aquí.</p>
-    <p class="note">La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Usad «Cancelar» solo si no vais a jugar.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}">Cancelar</button></div>` : ''}`)).join(''));
-  html += sec('Últimos días', past.map((c) => `<div class="mrow" style="margin-top:6px"><span class="r">${esc(c.rival.name)} · ${fmtWhen(c.play_at.slice(0, 10), false)}</span><span class="badge ${c.status === 'done' ? 'ok' : ''}">${
-    { done: c.walkover ? 'No jugado (6-0 6-0)' : 'Jugado', rejected: 'Rechazado', expired: 'Caducado', cancelled: 'Cancelado' }[c.status] || c.status}</span></div>`).join(''));
+    <p class="note">La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Tocad «No vamos a jugar» solo si de verdad no vais a jugar.</p>${c.iAmChallenger ? `<p style="margin:10px 0 0;text-align:center"><button type="button" class="linkbtn" data-cancel="${c.id}">No vamos a jugar</button></p>` : ''}`)).join(''));
+  html += sec('Historial', past.map((c) => {
+    const m = c.match;
+    if (c.status === 'done' && m) {
+      const who = m.iWon ? `Ganas a ${esc(c.rival.name)}` : `Pierdes con ${esc(c.rival.name)}`;
+      const dl = m.delta == null ? '' : `<span class="badge ${m.delta >= 0 ? 'ok' : 'bad'}">${signed(m.delta)}</span>`;
+      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · no jugado' : ''}</span>${dl}</div>`;
+    }
+    return `<div class="mrow" style="margin-top:6px"><span class="r">${esc(c.rival.name)} · ${fmtWhen(c.play_at.slice(0, 10), false)}</span><span class="badge">${
+      { rejected: 'Rechazado', expired: 'Caducado', cancelled: 'Cancelado' }[c.status] || c.status}</span></div>`;
+  }).join(''));
   if (!html) html = `<div class="empty">No tienes retos abiertos.<br>Ve a la clasificación, entra en un jugador y rétale.<div style="margin-top:18px"><a class="btn sm" href="#/">Ver la clasificación</a></div></div>`;
   body.innerHTML = html;
   if (!o.refresh) stagger(body);
 }
 function resultBox(m, rival) {
-  return `<div class="box" style="margin-top:10px;background:var(--soft);border:0"><div style="font-size:13px;color:var(--muted);font-weight:600">${esc(first(rival))} ha puesto:</div>
-    <div style="font-size:20px;font-weight:700;margin-top:2px">${m.iWon ? 'Ganas' : 'Pierdes'} ${esc(m.score)}</div></div>
+  return `<div class="box" style="margin-top:10px;background:var(--soft);border:0"><div style="font-size:13px;color:var(--muted);font-weight:600">Según ${esc(first(rival))}:</div>
+    <div style="font-size:20px;font-weight:700;margin-top:2px">${m.iWon ? 'ganas' : 'pierdes'} ${esc(m.score)}</div></div>
     <div class="btns"><button class="btn sm" data-confirm="${m.id}">Confirmar</button><button class="btn sm ghost" data-dispute="${m.id}">No estoy de acuerdo</button></div>`;
 }
 function masterCard(n, inner) {
@@ -2735,7 +2777,7 @@ function screenHow() {
 
     <h2>Retos</h2>
     <div class="howbox"><ul>
-      <li>Puedes retar a quien quieras. Tiene 7 días para responder.</li>
+      <li>Puedes retar a quien quieras. Tiene 7 días para responder; si no contesta, el reto caduca y no pierdes nada.</li>
       <li>Si no te va la hora, propón otra en vez de rechazar.</li>
       <li>Rechazar un reto no penaliza.</li>
       <li>Máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.</li>
