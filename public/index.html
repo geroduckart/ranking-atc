@@ -673,6 +673,11 @@ const EN = {/*DICT*/
   "puntos (3 + 1 extra)": "points (3 + 1 bonus)",
   "Móvil de WhatsApp": "WhatsApp mobile",
   "Móvil guardado.": "Mobile saved.",
+  "Un punto extra si ganas a alguien que esté 5 niveles o más por encima de ti. No cuenta en los 5 primeros partidos de ninguno de los dos.": "One extra point if you beat someone 5 levels or more above you. It doesn't count in either player's first 5 matches.",
+  "Tienes nivel 64 y ganas a alguien de nivel 71: 3 puntos, más 1 extra porque te saca 7 niveles. Total, 4.": "You are level 64 and you beat someone on level 71: 3 points, plus 1 extra because they are 7 levels above you. 4 in total.",
+  "Ganas 6-4 6-4: 3 puntos.": "You win 6-4 6-4: 3 points.",
+  "Pierdes 6-4 3-6 7-10: 1 punto, porque le has quitado un set.": "You lose 6-4 3-6 7-10: 1 point, because you took a set.",
+  "Pierdes 4-6 3-6: 0 puntos.": "You lose 4-6 3-6: 0 points.",
   "Editar mi tarjeta": "Edit my card",
   "Ya hay una cuenta con ese móvil.": "There is already an account with that mobile.",
   "Editar mi tarjeta · hasta tu primer partido": "Edit my card · until your first match",
@@ -2204,13 +2209,14 @@ async function screenPlayer(id) {
 function stakesHTML(p, st) {
   const gap = Math.round(p.level) - Math.round(S.me.level);
   const gapTxt = gap > 0 ? `${gap} más que tú` : gap < 0 ? `${-gap} menos que tú` : 'tu mismo nivel';
+  const extra = st.ptsWin > 3;
   return `<div class="sec"><span class="label">Lo que te juegas</span>
-    <div class="box stake">
+    <div class="box stake${extra ? ' hot' : ''}">
       <div class="stk-row">
         <div class="stk-col ok">
           <span class="stk-cap">Si ganas</span>
           <b>+${st.ptsWin}</b>
-          <span class="stk-sub">puntos</span>
+          <span class="stk-sub">${extra ? 'puntos (3 + 1 extra)' : 'puntos'}</span>
           <span class="stk-lv">${signed(st.win)} nivel</span>
         </div>
         <div class="stk-col">
@@ -2222,7 +2228,7 @@ function stakesHTML(p, st) {
       </div>
       <p class="stk-foot">Nivel ${lvl(p.level)} · ${gapTxt}</p>
     </div>
-    <p class="hint" style="margin:8px 4px 0;text-align:center">Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
+    <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
 }
 function paintPlayer(d, own, o) {
   const p = d.player;
@@ -2795,7 +2801,8 @@ function screenHow() {
       <div><b>1</b><span>Pierdes en 3 sets</span></div>
       <div><b>0</b><span>Pierdes en 2 sets</span></div>
     </div>
-    <div class="howbox"><p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Tienes nivel 64 y ganas a alguien de nivel 71.</p><p>Son 3 puntos por ganar. Si pierdes pero le quitas un set, te llevas 1.</p></div></div>
+    <div class="howbox"><p>Un punto extra si ganas a alguien que esté 5 niveles o más por encima de ti. No cuenta en los 5 primeros partidos de ninguno de los dos.</p>
+      <p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Ganas 6-4 6-4: 3 puntos.</p><p>Pierdes 6-4 3-6 7-10: 1 punto, porque le has quitado un set.</p><p>Pierdes 4-6 3-6: 0 puntos.</p><p>Tienes nivel 64 y ganas a alguien de nivel 71: 3 puntos, más 1 extra porque te saca 7 niveles. Total, 4.</p></div></div>
 
     <h2>Cómo se mueve el nivel</h2>
     <div class="howbox"><p>Empiezas con el nivel de la valoración que te pones al registrarte. A partir de ahí lo mueven tus partidos, mirando dos cosas: a quién ganas y por cuántos juegos.</p>
@@ -2847,6 +2854,7 @@ function screenPrivacy() {
     <h3>Puntos</h3>
     <ul>
       <li>Ganas: 3 puntos. Pierdes en 3 sets: 1 punto. Pierdes en 2 sets: 0 puntos.</li>
+      <li>Un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.</li>
     </ul>
     <h3>Nivel</h3>
     <ul>
