@@ -85,7 +85,7 @@ export function madridNow(d = new Date()) {
     .format(d).replace('T', ' ');
 }
 export const madridToday = (d) => madridNow(d).slice(0, 10);
-const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 /** '2026-11-14 10:30:00' → 'sábado 14 de noviembre · 10:30' */
 export function fmtWhen(ts, { withMonth = true } = {}) {
