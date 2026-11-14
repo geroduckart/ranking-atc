@@ -1202,6 +1202,10 @@ const EN = {/*DICT*/
   "Nivel # · provisional": "Level $1 · provisional",
   "Empieza en # días · ya puedes retar": "Starts in $1 days · you can challenge now",
   "Empieza mañana · ya puedes retar": "Starts tomorrow · you can challenge now",
+  "Retos abiertos desde el *": "Challenges open on $1",
+  "Hoy, * · ya puedes retar": "Today, $1 · you can challenge now",
+  "Ya puedes retar · Partidos desde el *": "You can challenge now · Matches from $1",
+  "¡Ve preparando la raqueta!": "Get your racket ready!",
   "App y avisos": "App and notices",
   "Te toca esperar a tu rival.": "It's your opponent's turn now.",
   "Este reto ya está respondido.": "This challenge has already been answered.",
@@ -1382,7 +1386,7 @@ function cardName(p) {
 const initials = (s) => String(s || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 const DAYS = EN_ON ? ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] : ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const DAYS_S = EN_ON ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] : ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-const MONTHS = EN_ON ? ['January','February','March','April','May','June','July','August','September','October','November','December'] : ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const MONTHS = EN_ON ? ['January','February','March','April','May','June','July','August','September','October','November','December'] : ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function madridNow() {
   return new Intl.DateTimeFormat('sv-SE', { timeZone:'Europe/Madrid', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false })
     .format(new Date()).replace('T', ' ');
@@ -2108,7 +2112,10 @@ function seasonSub(sv) {
   const t = today();
   if (!sv.started) {
     const n = daysBetween(t, sv.starts_on);
-    return (n <= 1 ? 'Empieza mañana' : `Empieza en ${n} días`) + (sv.challengesOpen ? ' · ya puedes retar' : '');
+    const opens = sv.opensOn || sv.starts_on;
+    if (!sv.challengesOpen) return `Retos abiertos desde el ${fmtWhen(opens, false)}`;
+    if (t === opens) return `Hoy, ${fmtWhen(t, false)} · ya puedes retar`;
+    return `Ya puedes retar · Partidos desde el ${fmtWhen(sv.starts_on, false)}`;
   }
   if (sv.regularOver) return `Fase regular terminada · Másters del ${dm(nextDay(sv.ends_on))} al ${dm(sv.masters_end)}`;
   const left = sv.total - sv.day;
@@ -2241,7 +2248,7 @@ function paintPlayer(d, own, o) {
   if (!own && d.vs) {
     const v = d.vs;
     if (!v.canChallenge) cta = `<p class="hint" style="text-align:center;margin-top:18px">${S.season.phase === 'regular' ? 'Este jugador no está disponible.' : 'La fase regular ha terminado.'}</p>`;
-    else if (!(S.season.challengesOpen ?? S.season.started)) cta = `<p class="hint" style="text-align:center;margin-top:18px">Los retos se abren el ${fmtWhen(S.season.opensOn || S.season.starts_on)}. ¡Ve preparando la raqueta!</p>`;
+    else if (!(S.season.challengesOpen ?? S.season.started)) cta = `<p class="hint" style="text-align:center;margin-top:18px">Los retos se abren el ${fmtWhen(S.season.opensOn || S.season.starts_on)}.<br>¡Ve preparando la raqueta!</p>`;
     else if (v.bandBlock) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(v.bandBlock)}</p>`;
     else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · verlo</a>`;
     else if (v.pairLeft <= 0) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado vuestro partido de esta temporada.</p>`;
