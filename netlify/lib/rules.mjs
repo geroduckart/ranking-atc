@@ -31,7 +31,11 @@ export function migrateAttrs(a) {
 }
 export const MIN_LVL = 50, MAX_LVL = 99;
 export const K_PROV = 12, K_NORMAL = 4, PROV_MATCHES = 5, WIN_WEIGHT = 0.75, GAMES_WEIGHT = 0.25;
-export const WEEK_CAP = 3, PAIR_CAP = 1;
+export const WEEK_CAP = 3, PAIR_CAP = 1, PAIR_CAP_LATE = 2;
+/** Día de temporada (1 = primer día) de una fecha 'YYYY-MM-DD'. */
+export const seasonDay = (date, startsOn) => Math.round((Date.parse(String(date).slice(0, 10)) - Date.parse(String(startsOn).slice(0, 10))) / 864e5) + 1;
+/** Partidos que dan puntos contra el mismo rival: 1 hasta el día 30; desde entonces, una revancha más. */
+export const pairCap = (date, startsOn) => (startsOn && seasonDay(date, startsOn) >= BAND_FROM_DAY ? PAIR_CAP_LATE : PAIR_CAP);
 export const PTS_WIN = 3, PTS_LOSS = 0, PTS_LOSS_3SETS = 1, PTS_BONUS = 1, BONUS_GAP = 5;
 /** Desde este día de la fase regular, solo se puede retar a tu grupo de 8 y a los de al lado. */
 export const BAND_FROM_DAY = 30, BAND_SIZE = 8, BAND_LAST = 3;
@@ -157,7 +161,7 @@ export function isoWeek(day) {
  * matches: [{ id, p1, p2, winner, sets, walkover, master_id, played_on }] confirmados, en orden.
  * Devuelve { level: {id: n}, count: {id: n}, perMatch: {matchId: {...}} }.
  */
-export function replay(players, matches) {
+export function replay(players, matches, { startsOn } = {}) {
   const level = {}, count = {};
   for (const p of players) { level[p.id] = Number(p.start_level); count[p.id] = 0; }
   // Empujón de las bandas: se aplica al pasar a los Másters, así los partidos del
@@ -192,7 +196,7 @@ export function replay(players, matches) {
     let pts1 = 0, pts2 = 0;
     if (!m.master_id) {
       const pairKey = [m.p1, m.p2].sort().join('|');
-      if ((pairUsed[pairKey] || 0) < PAIR_CAP) {
+      if ((pairUsed[pairKey] || 0) < pairCap(m.played_on, startsOn)) {
         pairUsed[pairKey] = (pairUsed[pairKey] || 0) + 1;
         const wk = isoWeek(m.played_on);
         const bonusOk = !prov1 && !prov2;
