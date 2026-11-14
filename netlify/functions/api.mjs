@@ -34,7 +34,7 @@ export const config = { path: '/api/*' };
 const OPEN_LIMIT = 5;            // retos pendientes que puede tener abiertos un jugador
 const COUNTER_LIMIT = 3;         // contrapropuestas de hora por reto
 const CHALLENGE_DAYS = 3;        // caducidad de un reto
-const OPEN_DAYS_BEFORE = 1;      // los retos se abren 1 día antes del inicio (los partidos, desde el primer día)
+const OPEN_DAYS_BEFORE = 4;      // los retos se abren el 15 nov, 4 días antes del inicio (los partidos, desde el 19)
 const LOCK_FAILS = 5, LOCK_MIN = 15;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
