@@ -368,8 +368,20 @@ details.adm summary::-webkit-details-marker{display:none}
 .langsw.dark{background:rgba(255,255,255,.1)}
 .langsw.dark button{color:rgba(255,255,255,.7)}
 .langsw.dark button[aria-pressed="true"]{background:#fff;color:var(--navy)}
-.tip-line{margin:8px 10px 0;font-size:13px;line-height:1.4;color:var(--navy);text-align:center}
-.tip-line b{color:var(--orange)}
+.freebadge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 10px 5px 7px;border-radius:999px;background:var(--orange-soft);color:var(--orange);font-size:12px;font-weight:800;letter-spacing:-.005em}
+.freebadge svg{width:14px;height:14px}
+.freedot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:var(--orange-soft);color:var(--orange);vertical-align:-3px}
+.freedot svg{width:11px;height:11px}
+.perks{margin:12px 0 2px}
+.perks-k{display:block;margin:0 4px 6px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
+.perks-g{border-radius:16px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);overflow:hidden}
+.perk{display:flex;align-items:center;gap:10px;padding:8px 12px}
+.perk+.perk{border-top:1px solid var(--line)}
+.perk-i{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--orange-soft);color:var(--orange)}
+.perk-i svg{width:13px;height:13px}
+.perk-t{min-width:0;flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.perk-t b{font-size:12.5px;font-weight:800;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
+.perk-t span{font-size:11.5px;font-weight:600;line-height:1.3;color:var(--muted)}
 .promo-line{margin:12px 6px 0;font-size:12.5px;line-height:1.4;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .promo-line::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:7px;vertical-align:middle}
 .promo{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:18px;background:var(--orange-soft);border:1px solid rgba(227,91,42,.35);font-size:14px;line-height:1.35}
@@ -1231,12 +1243,32 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Ya habéis jugado.": "You two have already played.",
+  "Revancha desde el *.": "Rematch from $1.",
+  "Ya habéis jugado la ida y la revancha esta temporada.": "You've already played the match and the rematch this season.",
+  "Máximo 3 partidos por semana.": "Up to 3 matches a week.",
+  "Contra el mismo rival, 1 partido hasta el día 30.": "Against the same opponent, 1 match until day 30.",
+  "Desde el día 30 podéis jugar la revancha, una vez.": "From day 30 you can play a rematch, once.",
+  "Cuentan como máximo 3 partidos por semana.": "Up to 3 matches a week count.",
+  "Desde el día 30 se puede jugar la revancha, una vez. No hay más partidos entre los dos en la temporada.": "From day 30 a rematch can be played, once. No more matches between the two of you this season.",
+  "¡Premio! Pista y bolas gratis en este partido.": "Prize! Free court and balls for this match.",
+  "Los 5 primeros retos que se acepten llevan pista y bolas gratis.": "The first 5 challenges accepted get free court and balls.",
+  "Lo verás con la insignia en el partido. Si alguno se cancela, el premio pasa al siguiente.": "You'll see the badge on the match. If one is cancelled, the prize moves to the next.",
+  "Los 5 primeros retos que se acepten llevan pista y bolas gratis, con su insignia en el partido. Si alguno se cancela, el premio pasa al siguiente.": "The first 5 challenges accepted get free court and balls, with a badge on the match. If one is cancelled, the prize moves to the next.",
+  "Los # primeros retos aceptados": "First $1 accepted challenges",
+  "Quedan #": "$1 left",
+  "Queda 1": "1 left",
   "¿Ya tienes cuenta?": "Already have an account?",
   "Crear mi cuenta": "Create my account",
   "Es gratis y tardas un minuto.": "It's free and takes a minute.",
   "Para todos los que juegan en el Almuñécar Tennis Club": "For everyone who plays at Almuñécar Tennis Club",
-  "Aprovecha:": "Make the most of it:",
-  "hasta el * puedes retar a cualquiera.": "until $1 you can challenge anyone.",
+  "Aprovecha": "Make the most of it",
+  "Pista y bolas gratis": "Free court and balls",
+  "Los # primeros partidos": "First $1 matches",
+  "Queda 1 partido": "1 match left",
+  "Quedan # partidos": "$1 matches left",
+  "Reta a cualquiera": "Challenge anyone",
+  "Hasta el *": "Until $1",
   "En dos minutos sabes de qué va la liga. Lo que está en negrita es lo que tienes que recordar.": "Two minutes and you know how the league works. What's in bold is what you need to remember.",
   "1. Retas a quien quieras": "1. Challenge anyone you like",
   "Durante los primeros 30 días puedes retar a cualquier jugador.": "For the first 30 days you can challenge any player.",
@@ -1460,6 +1492,8 @@ const cardTier = (p) => tierOf(p.level);
 const isMe = (id) => S.me && S.me.id === id;
 
 const I = {
+  gift:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
+  bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
   back:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   close:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   trophy:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v2a3 3 0 0 1-3 3M7 6H4v2a3 3 0 0 0 3 3"/></svg>',
@@ -2194,9 +2228,10 @@ async function screenRanking() {
     };
     let html = '';
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
-    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') html += `<p class="promo-line">${d.promo.left === d.promo.total ? `Los ${d.promo.total} primeros partidos: pista y bolas gratis.` : d.promo.left === 1 ? 'Queda 1 partido con pista y bolas gratis. ¡Corre!' : `Quedan ${d.promo.left} partidos con pista y bolas gratis. ¡Corre!`}</p>`;
-    if (sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY) html += `<p class="tip-line"><b>Aprovecha:</b> hasta el ${fmtWhen(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))} puedes retar a cualquiera.</p>`;
-    if (!q && S.me && [...d.qualified, ...d.others].some((r) => isMe(r.id))) html += `<p style="margin:8px 6px 0;text-align:right"><button type="button" class="linkbtn" id="goto-me">Ir a mi puesto</button></p>`;
+    const perks = [];
+    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') perks.push([I.gift, 'Pista y bolas gratis', d.promo.left === d.promo.total ? `Los ${d.promo.total} primeros retos aceptados` : d.promo.left === 1 ? 'Queda 1' : `Quedan ${d.promo.left}`]);
+    if (sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY) perks.push([I.bolt, 'Reta a cualquiera', `Hasta el ${dm(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))}`]);
+    if (perks.length) html += `<section class="perks" aria-label="Aprovecha"><span class="perks-k">Aprovecha</span><div class="perks-g${perks.length === 1 ? ' one' : ''}">${perks.map(([ic, t, sub]) => `<div class="perk"><span class="perk-i">${ic}</span><span class="perk-t"><b>${t}</b><span>${sub}</span></span></div>`).join('')}</div></section>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
       let lastZone = null;
@@ -2218,13 +2253,6 @@ async function screenRanking() {
     }
     body.innerHTML = html;
     if (enter) stagger(body);
-    const gm = document.getElementById('goto-me');
-    if (gm) gm.addEventListener('click', () => {
-      const r = document.querySelector('.prow.me'); if (!r) return;
-      r.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      r.style.transition = 'box-shadow .3s'; r.style.boxShadow = '0 0 0 4px rgba(227,91,42,.35)';
-      setTimeout(() => { r.style.boxShadow = ''; }, 1400);
-    });
 
   };
   document.querySelector('.tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && D && b.dataset.t !== rankTab) { rankTab = b.dataset.t; paint(true); } });
@@ -2292,7 +2320,8 @@ function paintPlayer(d, own, o) {
     else if (!(S.season.challengesOpen ?? S.season.started)) cta = `<p class="hint" style="text-align:center;margin-top:18px">Los retos se abren el ${fmtWhen(S.season.opensOn || S.season.starts_on)}.<br>¡Ve preparando la raqueta!</p>`;
     else if (v.bandBlock) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(v.bandBlock)}</p>`;
     else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · verlo</a>`;
-    else if (v.pairLeft <= 0) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado vuestro partido de esta temporada.</p>`;
+    else if (v.rematchFrom) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado.<br>Revancha desde el ${fmtWhen(v.rematchFrom)}.</p>`;
+    else if (v.pairLeft <= 0) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado la ida y la revancha esta temporada.</p>`;
     else cta = `<a class="btn block" style="margin-top:18px" href="#/retar/${p.id}">Retar a ${esc(first(p.full_name))}</a>`;
   }
   render(`<main class="screen">
@@ -2377,8 +2406,8 @@ async function screenRetos() {
     const b = e.target.closest('button'); if (!b) return;
     try {
       if (b.dataset.act === 'accept') {
-        await busy(b, () => api('POST', `challenge/${b.dataset.id}/respond`, { action: 'accept' }));
-        toast('Partido aceptado. Reservad pista en el club.', true); reloadRetos();
+        const r = await busy(b, () => api('POST', `challenge/${b.dataset.id}/respond`, { action: 'accept' }));
+        toast(r && r.promo ? '¡Premio! Pista y bolas gratis en este partido.' : 'Partido aceptado. Reservad pista en el club.', true); reloadRetos();
       } else if (b.dataset.act === 'reject') {
         const text = 'Avisaremos a tu rival por WhatsApp. Si lo que no te va es la hora, mejor propón otra.';
         if (!(await confirmBox('¿No puedes jugar?', text, 'No puedo'))) return;
@@ -2418,7 +2447,7 @@ function paintRetos(d, o) {
   const past = CH.filter((c) => !['pending', 'accepted'].includes(c.status));
   const M = d.masters;
   const card = (c, inner) => `<div class="box"><div class="row-between"><a href="#/jugador/${c.rival.id}" style="display:flex;gap:10px;align-items:center;color:var(--ink);min-width:0">${avatar({ id: c.rival.id, full_name: c.rival.name, photo_v: c.rival.photo_v })}
-      <span style="min-width:0"><b style="display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a></div>${inner}</div>`;
+      <span style="min-width:0"><b style="display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a></div>${c.promo && ['accepted', 'done'].includes(c.status) ? freeBadge() : ''}${inner}</div>`;
   let html = '';
   const sec = (title, items) => items ? `<div class="sec"><span class="label">${title}</span>${items}</div>` : '';
   html += sec('Te toca responder', respond.map((c) => card(c, `
@@ -2446,7 +2475,7 @@ function paintRetos(d, o) {
     if (c.status === 'done' && m) {
       const who = m.iWon ? `Ganas a ${esc(c.rival.name)}` : `Pierdes con ${esc(c.rival.name)}`;
       const dl = m.delta == null ? '' : `<span class="badge ${m.delta >= 0 ? 'ok' : 'bad'}">${signed(m.delta)}</span>`;
-      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · no jugado' : ''}</span>${dl}</div>`;
+      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · no jugado' : ''}${c.promo ? ` <span class="freedot" title="Pista y bolas gratis">${I.gift}</span>` : ''}</span>${dl}</div>`;
     }
     return `<div class="mrow" style="margin-top:6px"><span class="r">${esc(c.rival.name)} · ${fmtWhen(c.play_at.slice(0, 10), false)}</span><span class="badge">${
       { rejected: 'Rechazado', expired: 'Caducado', cancelled: 'Cancelado' }[c.status] || c.status}</span></div>`;
@@ -2455,6 +2484,7 @@ function paintRetos(d, o) {
   body.innerHTML = html;
   if (!o.refresh) stagger(body);
 }
+const freeBadge = () => `<span class="freebadge">${I.gift}<span>Pista y bolas gratis</span></span>`;
 function resultBox(m, rival) {
   return `<div class="box" style="margin-top:10px;background:var(--soft);border:0"><div style="font-size:13px;color:var(--muted);font-weight:600">Según ${esc(first(rival))}:</div>
     <div style="font-size:20px;font-weight:700;margin-top:2px">${m.iWon ? 'ganas' : 'pierdes'} ${esc(m.score)}</div></div>
@@ -2839,7 +2869,8 @@ function screenHow() {
     <div class="howbox"><ul>
       <li><b>Durante los primeros 30 días puedes retar a cualquier jugador.</b> Aprovéchalo: desde el día 30 solo puedes retar a tu grupo de 8 de la clasificación y a los grupos de justo encima y justo debajo.</li>
       <li><b>Tu rival tiene 3 días para responder.</b> Si no contesta, el reto caduca y no pierdes nada.</li>
-      <li><b>Máximo 3 partidos por semana y 1 solo partido contra cada rival</b> en toda la temporada.</li>
+      <li><b>Máximo 3 partidos por semana.</b></li>
+      <li><b>Contra el mismo rival, 1 partido hasta el día 30.</b> Desde el día 30 podéis jugar la revancha, una vez.</li>
       <li>Si no te va la hora, propón otra en vez de rechazar. Rechazar un reto no penaliza.</li>
       <li>Las pistas se reservan en el club, como siempre.</li>
     </ul></div>
@@ -2861,7 +2892,7 @@ function screenHow() {
       <p>Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Dentro de la banda, el número que te toca depende del puesto con el que entras: el 1.º de su grupo se lleva el tope y el 8.º el suelo.</p><div class="ej"><span class="t">Ejemplo</span><p>Juan acaba 6.º de su grupo y entra en el Máster Plata, que va del 71 al 80. Al 6.º puesto le toca el 74.</p><p>Si Juan venía con 65, sube a 74.</p><p>Si venía con 76, se queda en 76: el nivel nunca baja al entrar en un Máster.</p></div></div>
 
     <h2>5. Promoción de estreno</h2>
-    <div class="howbox"><p><b>Los 5 primeros partidos de la temporada que se jueguen en el club: pista y bolas gratis.</b> El club avisa a los jugadores.</p></div>
+    <div class="howbox"><p><b>Los 5 primeros retos que se acepten llevan pista y bolas gratis.</b> Lo verás con la insignia en el partido. Si alguno se cancela, el premio pasa al siguiente.</p></div>
 
     <h2>Hay dos clasificaciones</h2>
     <div class="howbox"><h3>Puntos</h3>
@@ -2897,7 +2928,8 @@ function screenPrivacy() {
     <ul>
       <li><b>Durante los primeros 30 días puedes retar a cualquier jugador.</b> Desde el día 30, solo a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.</li>
       <li><b>Tu rival tiene 3 días para responder.</b> Si no contesta, el reto caduca y no pasa nada.</li>
-      <li><b>Cuentan como máximo 3 partidos por semana, y 1 solo partido contra cada rival</b> en toda la temporada.</li>
+      <li><b>Cuentan como máximo 3 partidos por semana.</b></li>
+      <li><b>Contra el mismo rival, 1 partido hasta el día 30.</b> Desde el día 30 se puede jugar la revancha, una vez. No hay más partidos entre los dos en la temporada.</li>
       <li>Rechazar un reto no penaliza. Si lo que no te va es la hora, propón otra en vez de rechazar.</li>
       <li>Las pistas se reservan en el club, como siempre.</li>
     </ul>
@@ -2923,7 +2955,7 @@ function screenPrivacy() {
     </ul>
     <h3>Promoción de estreno</h3>
     <ul>
-      <li>Los 5 primeros partidos de la temporada con resultado confirmado llevan pista y bolas gratis. El club avisa a los jugadores.</li>
+      <li>Los 5 primeros retos que se acepten llevan pista y bolas gratis, con su insignia en el partido. Si alguno se cancela, el premio pasa al siguiente.</li>
     </ul>
     <h2>Política de privacidad</h2>
     <p><b>Responsable:</b> Almuñécar Tennis Club. Contacto: info@almunecartennisclub.com.</p>
@@ -2966,10 +2998,10 @@ function paintAdmin() {
     body = `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tile(active.length, 'Jugadores activos')}${tile(sched.filter((c) => c.play_at.slice(0, 10) <= week).length, 'Partidos en 7 días')}
         ${tile(pend.length, 'Retos sin responder')}${tile(toConfirm + disputed, disputed ? `Por confirmar · ${disputed} en disputa` : 'Resultados por confirmar', disputed)}</div>
       <div class="sec"><span class="label">Próximos partidos</span>${Object.keys(byDay).length ? Object.entries(byDay).map(([day, list]) =>
-        `<div class="when" style="margin:10px 4px 6px;font-weight:700;color:var(--ink)">${day === t ? 'Hoy · ' : day < t ? 'Sin resultado · ' : ''}${cap(fmtWhen(day, true))}</div>${list.map((c) => mrow(c, `Nivel ${lvl(c.l1)} vs ${lvl(c.l2)}${day < t ? ' · falta poner el resultado' : ''}`)).join('')}`).join('')
+        `<div class="when" style="margin:10px 4px 6px;font-weight:700;color:var(--ink)">${day === t ? 'Hoy · ' : day < t ? 'Sin resultado · ' : ''}${cap(fmtWhen(day, true))}</div>${list.map((c) => mrow(c, `Nivel ${lvl(c.l1)} vs ${lvl(c.l2)}${c.promo ? ' · pista y bolas gratis' : ''}${day < t ? ' · falta poner el resultado' : ''}`)).join('')}`).join('')
         : '<div class="empty">No hay partidos programados.</div>'}</div>
       <div class="sec"><span class="label">Retos esperando respuesta</span>${pend.length ? pend.map((c) => mrow(c, `${cap(fmtWhen(c.play_at.slice(0, 10), false))} · espera a ${esc(first(c.waitingFor))}`)).join('') : '<div class="empty">Ninguno.</div>'}</div>
-      <div class="sec"><span class="label">Promoción · pista y bolas gratis</span><div class="box"><p class="hint" style="margin:0">${(d.promo?.matches || []).length} de ${d.promo?.total ?? 5} partidos usados. Cuentan los primeros con resultado confirmado.</p>
+      <div class="sec"><span class="label">Promoción · pista y bolas gratis</span><div class="box"><p class="hint" style="margin:0">${(d.promo?.matches || []).length} de ${d.promo?.total ?? 5} partidos usados. Cuentan los primeros retos aceptados; si uno se cancela, el hueco pasa al siguiente.</p>
         ${(d.promo?.matches || []).map((m, i) => `<div class="when" style="margin-top:8px;color:var(--ink);font-weight:600">${i + 1}. ${esc(m.n1)} vs ${esc(m.n2)} · ${fmtWhen(m.played_on, false)}</div>`).join('')}</div></div>
       <div class="sec"><span class="label">Contactos</span><div class="box"><p class="hint" style="margin:0 0 10px">Móviles de los ${active.length} jugadores activos, para avisos del club.</p>
         <div class="btns"><button class="btn xs navy" id="copymails">Copiar todos los móviles</button></div></div></div>`;
