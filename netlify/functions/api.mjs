@@ -152,6 +152,12 @@ function selfView(p) {
   };
 }
 
+/** La tarjeta se puede editar hasta que el jugador tenga su primer partido (puesto, en revisión o confirmado). */
+async function cardLocked(sql, id) {
+  const [{ n }] = await sql`select count(*)::int as n from matches where status <> 'annulled' and (p1 = ${id} or p2 = ${id})`;
+  return n > 0;
+}
+
 /** Recalcula niveles y puntos repitiendo todos los partidos confirmados. */
 async function recompute(sql) {
   const players = await sql`select id, start_level, band_bonus from players`;
@@ -253,8 +259,7 @@ on('POST', 'signup', async ({ body }) => {
   if (full_name.length < 2 || full_name.length > 60) fail('Escribe tu nombre.');
   if (!/^[a-z0-9._]{3,20}$/.test(username)) fail('El usuario debe tener de 3 a 20 letras, números, puntos o guiones bajos, sin espacios.');
   if (!validPin(body.pin)) fail('El PIN tiene que tener 4 cifras.');
-  const isTestAcct = username === 'test';
-  if (!isTestAcct && (/^(\d)\1{3}$/.test(body.pin) || ['1234', '4321', '0123', '3210', '1212', '2121', '1122', '1313', '2580', '6969', '2000', '2001'].includes(body.pin))) fail('Ese PIN es demasiado fácil. Elige otro.');
+  if ((/^(\d)\1{3}$/.test(body.pin) || ['1234', '4321', '0123', '3210', '1212', '2121', '1122', '1313', '2580', '6969', '2000', '2001'].includes(body.pin))) fail('Ese PIN es demasiado fácil. Elige otro.');
   // Se pide la edad, no la fecha exacta. Por dentro se guarda una fecha aproximada
   // (hoy menos esos años) para que las franjas +20, +30… sigan funcionando con el tiempo.
   const age = Math.trunc(Number(body.age));
@@ -303,7 +308,7 @@ on('POST', 'login', async ({ body }) => {
   }
   if (!p.active) fail('Esta cuenta está desactivada. Habla con el club.', 403);
   await sql`update players set failed_logins = 0, locked_until = null where id = ${p.id}`;
-  return { token: signSession(p.id, p.session_v), me: selfView(p) };
+  return { token: signSession(p.id, p.session_v), me: { ...selfView(p), card_locked: await cardLocked(db(), p.id) } };
 });
 
 on('POST', 'forgot', async () => {
@@ -322,7 +327,8 @@ on('GET', 'me', async ({ req }) => {
          and not exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')))::int as report`,
     boardNews(sql, uid),
   ]);
-  return { me: selfView(p), season: seasonView(S), todo: todo.respond + todo.confirm + todo.report, board: board.n };
+  const locked = await cardLocked(sql, uid);
+  return { me: { ...selfView(p), card_locked: locked }, season: seasonView(S), todo: todo.respond + todo.confirm + todo.report, board: board.n };
 });
 function seasonView(S) {
   const today = madridToday();
@@ -361,6 +367,15 @@ on('POST', 'me', async ({ req, body }) => {
     else if (cn.length > 18 || !/^[\p{L}\p{M}0-9 .'’-]+$/u.test(cn)) fail('El nombre de la tarjeta: hasta 18 caracteres, solo letras, puntos y guiones.');
     else upd.card_name = cn;
   }
+  if (typeof body.phone === 'string') {
+    const wa = waPhone(body.phone);
+    if (!wa) fail('Revisa tu móvil de WhatsApp: elige el prefijo del país y escribe el número sin espacios.');
+    if (wa !== p.phone) {
+      const [dup] = await sql`select 1 from players where phone = ${wa} and id <> ${p.id}`;
+      if (dup) fail('Ya hay una cuenta con ese móvil.');
+      upd.phone = wa; upd.wa_consent = true; upd.wa_consent_at = new Date(); upd.wa_consent_src = 'app';
+    }
+  }
   if (body.hand) upd.hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   if (body.backhand) upd.backhand = body.backhand === 'una' ? 'una' : 'dos';
   if (body.notify && typeof body.notify === 'object') {
@@ -375,21 +390,18 @@ on('POST', 'me', async ({ req, body }) => {
       upd.photo = ph;
     }
   }
-  // La carta (barritas) se puede cambiar hasta que empiece la temporada, si aún no has jugado
+  // La tarjeta (barritas) se puede cambiar hasta que juegues tu primer partido
   if (body.attrs) {
-    const S = await season(sql);
-    if (madridToday() >= String(S.starts_on)) fail('La temporada ya ha empezado: ahora tus barritas las mueven tus partidos.');
-    const [{ n }] = await sql`select count(*)::int as n from matches where status = 'confirmed' and (p1 = ${p.id} or p2 = ${p.id})`;
-    if (n > 0) fail('Ya tienes partidos jugados: tus barritas las mueven tus partidos.');
+    if (await cardLocked(sql, p.id)) fail('Ya has jugado tu primer partido: ahora tus barritas las mueven tus partidos.');
     const a = R.checkAttrs(body.attrs);
     if (!a) fail('Valora cada golpe entre 50 y 99.');
     const lvl = R.levelFromAttrs(a);
     upd.attrs = sql.json(a); upd.start_level = lvl; upd.level = lvl;
   }
-  if (!Object.keys(upd).length) return { me: selfView(p) };
+  if (!Object.keys(upd).length) return { me: { ...selfView(p), card_locked: await cardLocked(sql, p.id) } };
   const [u] = await sql`update players set ${sql(upd)}, photo_v = photo_v + ${'photo' in upd ? 1 : 0} where id = ${p.id} returning *`;
   if (body.attrs) await sql`update feed set data = jsonb_set(data, '{level}', to_jsonb(${Number(u.level)}::numeric)) where kind = 'new_player' and actor = ${p.id}`;
-  return { me: selfView(u) };
+  return { me: { ...selfView(u), card_locked: await cardLocked(sql, p.id) } };
 });
 
 on('POST', 'pin', async ({ req, body }) => {
