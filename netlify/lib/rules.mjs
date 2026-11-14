@@ -32,7 +32,7 @@ export function migrateAttrs(a) {
 export const MIN_LVL = 50, MAX_LVL = 99;
 export const K_PROV = 12, K_NORMAL = 4, PROV_MATCHES = 5, WIN_WEIGHT = 0.75, GAMES_WEIGHT = 0.25;
 export const WEEK_CAP = 3, PAIR_CAP = 1;
-export const PTS_WIN = 3, PTS_LOSS = 0, PTS_LOSS_3SETS = 1, PTS_BONUS = 1, BONUS_GAP = 5;
+export const PTS_WIN = 3, PTS_LOSS = 0, PTS_LOSS_3SETS = 1, PTS_BONUS = 0, BONUS_GAP = 5;   // punto extra desactivado en la Temporada 1
 /** Desde este día de la fase regular, solo se puede retar a tu grupo de 8 y a los de al lado. */
 export const BAND_FROM_DAY = 30, BAND_SIZE = 8, BAND_LAST = 3;
 export const TIERS = [
