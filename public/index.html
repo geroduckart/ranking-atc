@@ -671,6 +671,19 @@ const EN = {/*DICT*/
   "Nivel # · tu mismo nivel": "Level $1 · same as you",
   "puntos": "points",
   "puntos (3 + 1 extra)": "points (3 + 1 bonus)",
+  "Móvil de WhatsApp": "WhatsApp mobile",
+  "Móvil guardado.": "Mobile saved.",
+  "Editar mi tarjeta": "Edit my card",
+  "Ya hay una cuenta con ese móvil.": "There is already an account with that mobile.",
+  "Editar mi tarjeta · hasta tu primer partido": "Edit my card · until your first match",
+  "Puedes cambiarlas hasta que juegues tu primer partido. Después las mueven tus partidos.": "You can change them until you play your first match. After that your matches move them.",
+  "Puedes ajustarla hasta que juegues tu primer partido. Después la mueven tus partidos.": "You can adjust it until you play your first match. After that your matches move it.",
+  "Ya has jugado tu primer partido: tus barritas las mueven tus partidos.": "You've played your first match: your matches move your ratings now.",
+  "Ya has jugado tu primer partido: ahora tus barritas las mueven tus partidos.": "You've played your first match: your matches move your ratings now.",
+  "Prefijo": "Country code",
+  "Móvil": "Mobile",
+  "Son 3 puntos por ganar. Si pierdes pero le quitas un set, te llevas 1.": "That's 3 points for the win. If you lose but take a set, you get 1.",
+  "Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.": "Based on a 6-4 6-4. Every set and game you win counts too.",
   "puntos (# + # extra)": "points ($1 + $2 bonus)",
   "puntos (# si ganas un set)": "points ($1 if you win a set)",
   "La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Tocad «No vamos a jugar» solo si de verdad no vais a jugar.": "The time is a guide. If you end up playing earlier or later, or switch courts, there's no need to change anything: when you finish, one of you posts the result and that's it. Tap \"We won't play\" only if you really aren't going to play.",
@@ -1928,6 +1941,9 @@ function screenLogin() {
 }
 
 /* ── Registro, paso 1 ──────────────────────────────────────────────── */
+/** '+34600111222' → '+34' y '600111222' (prefijo más largo de la lista que encaje). */
+function phoneCC(ph) { ph = String(ph || ''); let best = '+34'; for (const [c] of DIAL) if (ph.startsWith(c) && c.length > (ph.startsWith(best) ? best.length : 0)) best = c; return ph.startsWith(best) ? best : '+34'; }
+function phoneRest(ph) { ph = String(ph || ''); const c = phoneCC(ph); return ph.startsWith(c) ? ph.slice(c.length) : ph.replace(/^\+/, ''); }
 const DIAL = [
   ['+34', 'España', 'Spain'], ['+44', 'Reino Unido', 'United Kingdom'], ['+49', 'Alemania', 'Germany'],
   ['+33', 'Francia', 'France'], ['+31', 'Países Bajos', 'Netherlands'], ['+32', 'Bélgica', 'Belgium'],
@@ -2038,10 +2054,10 @@ function screenSignup2() {
 function screenEditCard() {
   const v = { attrs: { ...S.me.attrs } };
   const mean = () => ATTRS.reduce((t, [k]) => t + v.attrs[k], 0) / ATTRS.length;
-  if (S.season && S.season.started) { toast('La temporada ya ha empezado: tus barritas las mueven tus partidos.'); return go('perfil'); }
+  if (S.me.card_locked) { toast('Ya has jugado tu primer partido: tus barritas las mueven tus partidos.'); return go('perfil'); }
   render(`<main class="screen">
     <div class="top">${backBtn('perfil')}<div class="title">Tu tarjeta</div><div style="width:44px"></div></div>
-    <p class="sub" style="font-size:14px;margin-top:6px">Puedes ajustarla hasta el ${fmtWhen(addDays(S.season.starts_on, -1))}. Después la mueven tus partidos.</p>
+    <p class="sub" style="font-size:14px;margin-top:6px">Puedes ajustarla hasta que juegues tu primer partido. Después la mueven tus partidos.</p>
     <div class="box navy row-between" style="margin-top:14px;border-radius:20px;padding:12px 20px">
       <div><div class="label" style="color:rgba(255,255,255,.65)">Tu nivel</div><div style="margin-top:4px;font-size:13px;color:rgba(255,255,255,.75)">La media de tus barritas</div></div>
       <div id="mean" style="font-size:48px;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums">${Math.round(mean())}</div>
@@ -2188,14 +2204,13 @@ async function screenPlayer(id) {
 function stakesHTML(p, st) {
   const gap = Math.round(p.level) - Math.round(S.me.level);
   const gapTxt = gap > 0 ? `${gap} más que tú` : gap < 0 ? `${-gap} menos que tú` : 'tu mismo nivel';
-  const extra = st.ptsWin > 3;
   return `<div class="sec"><span class="label">Lo que te juegas</span>
-    <div class="box stake${extra ? ' hot' : ''}">
+    <div class="box stake">
       <div class="stk-row">
         <div class="stk-col ok">
           <span class="stk-cap">Si ganas</span>
           <b>+${st.ptsWin}</b>
-          <span class="stk-sub">${extra ? 'puntos (3 + 1 extra)' : 'puntos'}</span>
+          <span class="stk-sub">puntos</span>
           <span class="stk-lv">${signed(st.win)} nivel</span>
         </div>
         <div class="stk-col">
@@ -2207,7 +2222,7 @@ function stakesHTML(p, st) {
       </div>
       <p class="stk-foot">Nivel ${lvl(p.level)} · ${gapTxt}</p>
     </div>
-    <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
+    <p class="hint" style="margin:8px 4px 0;text-align:center">Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
 }
 function paintPlayer(d, own, o) {
   const p = d.player;
@@ -2238,7 +2253,7 @@ function paintPlayer(d, own, o) {
       ${p.ageTag ? `<span class="pill light">${p.ageTag === 'Junior' ? 'Junior' : `${esc(p.ageTag)} años`}</span>` : ''}
       ${own ? `<span class="pill light">@${esc(p.username)}</span>` : ''}
     </div>
-    ${own && !S.season.started && !p.matches_total ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta · hasta el ${fmtWhen(addDays(S.season.starts_on, -1), false)}</a>` : ''}
+    ${own && !S.me.card_locked ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta</a>` : ''}
     ${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
     ${cta}
     <div class="tiles" style="margin-top:12px">
@@ -2637,6 +2652,14 @@ async function screenSettings() {
       <p class="hint" style="margin:0 4px">Si cambias el usuario, a partir de ahora entrarás con el nuevo.</p>
       <div class="err hidden" id="ide"></div>
       <button class="btn sm navy">Guardar</button></form></div>
+    <div class="sec"><span class="label">Móvil de WhatsApp</span><form class="box" id="phf" style="display:flex;flex-direction:column;gap:10px" novalidate>
+      <div style="display:flex;gap:8px">
+        <select class="input" name="cc" style="flex:none;width:132px" aria-label="Prefijo">${DIAL.map(([c, es, en]) => `<option value="${c}" ${phoneCC(me.phone) === c ? 'selected' : ''}>${c} ${EN_ON ? en : es}</option>`).join('')}</select>
+        <input class="input" name="phone" type="tel" autocomplete="tel" inputmode="numeric" style="flex:1;min-width:0" value="${esc(phoneRest(me.phone))}" placeholder="600 000 000" aria-label="Móvil">
+      </div>
+      <p class="hint" style="margin:0 4px">Solo para avisarte de tus partidos por WhatsApp. Nadie más lo ve y nunca te mandaremos publicidad.</p>
+      <div class="err hidden" id="phe"></div>
+      <button class="btn sm navy">Guardar</button></form></div>
     <div class="sec"><span class="label">Cómo apareces en tu tarjeta</span><div class="box">
       <div class="chips" id="cn-opts" style="flex-wrap:wrap;gap:6px">${
         nameOptions(me.full_name).map((o) => `<button type="button" class="chip" style="min-width:0;height:38px;font-size:13.5px" data-cn="${esc(o)}" aria-pressed="${cardName(me) === o}">${esc(o)}</button>`).join('')}</div>
@@ -2648,7 +2671,7 @@ async function screenSettings() {
     <div class="sec"><span class="label">Tu juego</span><div class="box" style="display:flex;flex-direction:column;gap:10px">
       <div class="row-between"><b style="font-size:15px">Juegas con</b><div class="seg" style="width:220px" data-k="hand"><button data-v="diestro">Diestro</button><button data-v="zurdo">Zurdo</button></div></div>
       <div class="row-between"><b style="font-size:15px">Revés</b><div class="seg" style="width:220px" data-k="backhand"><button data-v="una">A una mano</button><button data-v="dos">A dos manos</button></div></div>
-    </div>${S.season && !S.season.started ? `<a class="btn block ghost sm" style="margin-top:10px" href="#/carta">Editar mis barritas</a><p class="hint" style="margin:8px 4px 0">Puedes cambiarlas hasta que empiece la temporada (${fmtWhen(S.season.starts_on, false)}). Después las mueven tus partidos.</p>`
+    </div>${!me.card_locked ? `<a class="btn block ghost sm" style="margin-top:10px" href="#/carta">Editar mis barritas</a><p class="hint" style="margin:8px 4px 0">Puedes cambiarlas hasta que juegues tu primer partido. Después las mueven tus partidos.</p>`
       : '<p class="hint" style="margin:8px 4px 0">Tus barritas no se pueden tocar: las mueven tus partidos. Si hay un error grande, habla con el club.</p>'}</div>
     <div class="sec"><span class="label">Idioma</span><div class="box row-between"><b style="font-size:15px">App y avisos</b>
       <div class="langsw" data-nt><button data-lang="es" aria-pressed="${LANG === 'es'}">Español</button><button data-lang="en" aria-pressed="${LANG === 'en'}">English</button></div></div></div>
@@ -2699,6 +2722,16 @@ async function screenSettings() {
       });
     });
   }
+  document.getElementById('phf').addEventListener('submit', (e) => {
+    e.preventDefault(); const f = e.target;
+    const err = (m) => setErr(document.getElementById('phe'), m);
+    const digits = f.phone.value.replace(/\D/g, '').replace(/^0+/, '');
+    if (!/^\d{6,14}$/.test(digits)) return err('Escribe tu móvil sin el prefijo del país: solo las cifras del número.');
+    busy(f.querySelector('button'), async () => {
+      try { S.me = (await api('POST', 'me', { phone: f.cc.value + digits })).me; toast('Móvil guardado.', true); screenSettings(); }
+      catch (e2) { err(e2.message); }
+    });
+  });
   document.getElementById('idf').addEventListener('submit', (e) => {
     e.preventDefault(); const f = e.target;
     const err = (m) => setErr(document.getElementById('ide'), m);
@@ -2762,8 +2795,7 @@ function screenHow() {
       <div><b>1</b><span>Pierdes en 3 sets</span></div>
       <div><b>0</b><span>Pierdes en 2 sets</span></div>
     </div>
-    <div class="howbox"><p>Un punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.</p>
-      <p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Tienes nivel 64 y ganas a alguien de nivel 71.</p><p>Son 3 puntos por ganar, más 1 extra porque te saca 7 niveles: 4 puntos.</p></div></div>
+    <div class="howbox"><p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Tienes nivel 64 y ganas a alguien de nivel 71.</p><p>Son 3 puntos por ganar. Si pierdes pero le quitas un set, te llevas 1.</p></div></div>
 
     <h2>Cómo se mueve el nivel</h2>
     <div class="howbox"><p>Empiezas con el nivel de la valoración que te pones al registrarte. A partir de ahí lo mueven tus partidos, mirando dos cosas: a quién ganas y por cuántos juegos.</p>
@@ -2815,7 +2847,6 @@ function screenPrivacy() {
     <h3>Puntos</h3>
     <ul>
       <li>Ganas: 3 puntos. Pierdes en 3 sets: 1 punto. Pierdes en 2 sets: 0 puntos.</li>
-      <li>Un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.</li>
     </ul>
     <h3>Nivel</h3>
     <ul>
