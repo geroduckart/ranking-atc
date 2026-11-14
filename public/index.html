@@ -1217,7 +1217,7 @@ const EN = {/*DICT*/
   "Empieza en # días · ya puedes retar": "Starts in $1 days · you can challenge now",
   "Empieza mañana · ya puedes retar": "Starts tomorrow · you can challenge now",
   "Retos abiertos desde el *": "Challenges open on $1",
-  "Hoy, * · ya puedes retar": "Today, $1 · you can challenge now",
+  "Hoy, * · Ya puedes retar": "Today, $1 · You can challenge now",
   "Ya puedes retar · Partidos desde el *": "You can challenge now · Matches from $1",
   "¡Ve preparando la raqueta!": "Get your racket ready!",
   "App y avisos": "App and notices",
@@ -1243,6 +1243,21 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Falta 1 partido": "1 match to go",
+  "Faltan # partidos": "$1 matches to go",
+  "Provisional": "Provisional",
+  "Aún sin clasificar · Mínimo # partidos": "Not yet qualified · Minimum $1 matches",
+  "Aún sin clasificar · Mínimo # partido": "Not yet qualified · Minimum $1 match",
+  "Ya tenéis un reto abierto · Verlo": "You already have an open challenge · View it",
+  "No jugado": "Not played",
+  "Temporada 1 · Del 19 Nov al 17 Ene": "Season 1 · 19 Nov – 17 Jan",
+  "Espera a *": "Waiting for $1",
+  "Promoción · Pista y bolas gratis": "Offer · Free court and balls",
+  "Admin": "Admin",
+  "Alta *": "Joined $1",
+  "Quedan # días": "$1 days left",
+  "Queda 1 día": "1 day left",
+  "Último día": "Last day",
   "Ya habéis jugado.": "You two have already played.",
   "Revancha desde el *.": "Rematch from $1.",
   "Ya habéis jugado la ida y la revancha esta temporada.": "You've already played the match and the rematch this season.",
@@ -1990,7 +2005,7 @@ function screenLogin() {
     <div class="langsw dark" data-nt style="position:absolute;right:16px;top:calc(14px + var(--sat));z-index:2"><button data-lang="es" aria-pressed="${LANG === 'es'}">ES</button><button data-lang="en" aria-pressed="${LANG === 'en'}">EN</button></div>
     <img src="${LOGO_W}" alt="Almuñécar Tennis Club" style="width:200px;height:auto;position:relative">
     <div style="margin-top:28px;text-align:center;position:relative">
-      <div class="label" style="color:var(--peach);letter-spacing:.18em">Temporada 1 · del 19 nov al 17 ene</div>
+      <div class="label" style="color:var(--peach);letter-spacing:.18em">Temporada 1 · Del 19 Nov al 17 Ene</div>
       <h1>Ranking<br><span>del club.</span></h1>
       <p style="margin:16px auto 0;max-width:290px;font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)">Reta a quien quieras, juega en el club y sube. Al final, Másters por niveles.</p>
     </div>
@@ -2184,19 +2199,18 @@ const daysBetween = (a, b) => Math.round((Date.parse(String(b).slice(0, 10)) - D
 const nextDay = (d) => new Date(Date.parse(String(d).slice(0, 10)) + 864e5).toISOString().slice(0, 10);
 function seasonSub(sv) {
   if (sv.phase === 'closed') return 'Temporada terminada';
-  if (sv.phase === 'masters') return `Másters en juego · hasta el ${dm(sv.masters_end)}`;
+  if (sv.phase === 'masters') return `Másters en juego · Hasta el ${dm(sv.masters_end)}`;
   const t = today();
+  const bar = (pct) => `<div class="season-bar"><i style="width:${Math.max(3, Math.min(100, pct))}%"></i></div>`;
   if (!sv.started) {
-    const n = daysBetween(t, sv.starts_on);
     const opens = sv.opensOn || sv.starts_on;
     if (!sv.challengesOpen) return `Retos abiertos desde el ${fmtWhen(opens, false)}`;
-    if (t === opens) return `Hoy, ${fmtWhen(t, false)} · ya puedes retar`;
+    if (t === opens) return `Hoy, ${fmtWhen(t, false)} · Ya puedes retar`;
     return `Ya puedes retar · Partidos desde el ${fmtWhen(sv.starts_on, false)}`;
   }
   if (sv.regularOver) return `Fase regular terminada · Másters del ${dm(nextDay(sv.ends_on))} al ${dm(sv.masters_end)}`;
   const left = sv.total - sv.day;
-  const pct = Math.round(sv.day / sv.total * 100);
-  return `Día ${sv.day} de ${sv.total} · ${left === 0 ? 'último día' : left === 1 ? 'queda 1 día' : `quedan ${left} días`}<div class="season-bar"><i style="width:${pct}%"></i></div>`;
+  return `Día ${sv.day} de ${sv.total} · ${left === 0 ? 'Último día' : left === 1 ? 'Queda 1 día' : `Quedan ${left} días`}` + bar(Math.round(sv.day / sv.total * 100));
 }
 let rankTab = 'puntos', rankQuery = '';
 const seasonPill = (sv) => `${sv.name} · ${sv.total} días · ${dm(sv.starts_on)} al ${dm(sv.ends_on)}`;
@@ -2217,12 +2231,12 @@ async function screenRanking() {
     const match = (r) => !q || r.full_name.toLowerCase().includes(q) || r.username.toLowerCase().includes(q);
     const row = (r, i, mode) => {
       const me = isMe(r.id);
-      const tag = me ? ' · Tú' : r.provisional ? ' · provisional' : '';
+      const tag = me ? ' · Tú' : r.provisional ? ' · Provisional' : '';
       const right = mode === 'nivel'
         ? `<span class="num">${r.pj}</span><span class="big">${lvl(r.level)}</span>`
         : `<span class="num">${r.pj}</span><span class="big">${r.pts}</span>`;
       const pos = mode === 'nivel' ? i + 1 : r.pos ?? '–';
-      const sub = mode === 'puntos' && !r.pos ? `Nivel ${lvl(r.level)} · ${r.missing === 1 ? 'falta 1 partido' : `faltan ${r.missing} partidos`}` : `Nivel ${lvl(r.level)}${tag}`;
+      const sub = mode === 'puntos' && !r.pos ? `Nivel ${lvl(r.level)} · ${r.missing === 1 ? 'Falta 1 partido' : `Faltan ${r.missing} partidos`}` : `Nivel ${lvl(r.level)}${tag}`;
       return `<a class="prow${me ? ' me' : ''}" href="#/jugador/${r.id}"><span class="pos">${pos}</span>${avatar(r, (r.pos && r.pos <= 3 && mode === 'puntos') ? 'top3' : '')}
         <span class="who"><b>${esc(r.full_name)}</b><span>${esc(sub)}</span></span>${right}</a>`;
     };
@@ -2241,7 +2255,7 @@ async function screenRanking() {
         html += row(r, 0, 'puntos');
       }
       if (oth.length) {
-        html += `<div class="zone"><span>Aún sin clasificar · mínimo ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span style="white-space:nowrap;flex:none">PJ · Pts</span></div>`;
+        html += `<div class="zone"><span>Aún sin clasificar · Mínimo ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span style="white-space:nowrap;flex:none">PJ · Pts</span></div>`;
         html += oth.map((r) => row(r, 0, 'puntos')).join('');
       }
       if (!qual.length && !oth.length) html += `<div class="empty">${q ? 'No hay nadie con ese nombre.' : 'Todavía no hay jugadores.'}</div>`;
@@ -2309,7 +2323,7 @@ function stakesHTML(p, st) {
 function paintPlayer(d, own, o) {
   const p = d.player;
   S.season = d.season;
-  const pill = p.pos ? `${p.pos}.º · ${p.pts} pts · ${ZONES[p.zone][0]}` : `${p.pts} pts · ${p.missing === 1 ? 'falta 1 partido' : `faltan ${p.missing} partidos`}`;
+  const pill = p.pos ? `${p.pos}.º · ${p.pts} pts · ${ZONES[p.zone][0]}` : `${p.pts} pts · ${p.missing === 1 ? 'Falta 1 partido' : `Faltan ${p.missing} partidos`}`;
   // nivel tras cada uno de los últimos partidos (del más antiguo al actual)
   const levels = [p.level];
   for (const m of d.recent) levels.unshift(levels[0] - m.delta);
@@ -2319,7 +2333,7 @@ function paintPlayer(d, own, o) {
     if (!v.canChallenge) cta = `<p class="hint" style="text-align:center;margin-top:18px">${S.season.phase === 'regular' ? 'Este jugador no está disponible.' : 'La fase regular ha terminado.'}</p>`;
     else if (!(S.season.challengesOpen ?? S.season.started)) cta = `<p class="hint" style="text-align:center;margin-top:18px">Los retos se abren el ${fmtWhen(S.season.opensOn || S.season.starts_on)}.<br>¡Ve preparando la raqueta!</p>`;
     else if (v.bandBlock) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(v.bandBlock)}</p>`;
-    else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · verlo</a>`;
+    else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · Verlo</a>`;
     else if (v.rematchFrom) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado.<br>Revancha desde el ${fmtWhen(v.rematchFrom)}.</p>`;
     else if (v.pairLeft <= 0) cta = `<p class="hint" style="text-align:center;margin-top:18px">Ya habéis jugado la ida y la revancha esta temporada.</p>`;
     else cta = `<a class="btn block" style="margin-top:18px" href="#/retar/${p.id}">Retar a ${esc(first(p.full_name))}</a>`;
@@ -2347,7 +2361,7 @@ function paintPlayer(d, own, o) {
     ${d.preview ? '' : d.recent.length ? `<div class="sec"><span class="label">Últimos partidos</span>
       ${levels.length > 2 ? `<div class="box" style="padding:10px 12px;margin-bottom:8px">${spark(levels)}</div>` : ''}
       <div class="list">${d.recent.map((m) => `<a class="mrow" href="#/jugador/${m.rival_id}"><span class="wl${m.won ? '' : ' l'}">${m.won ? 'G' : 'P'}</span>
-        <span class="r">vs ${esc(m.rival)}${m.master ? ' · Máster' : ''}${m.walkover ? ' · no jugado' : ''}</span>
+        <span class="r">vs ${esc(m.rival)}${m.master ? ' · Máster' : ''}${m.walkover ? ' · No jugado' : ''}</span>
         <span class="s">${esc(m.score)}</span><span class="badge ${m.delta >= 0 ? 'ok' : 'bad'}">${signed(m.delta)}</span></a>`).join('')}</div></div>`
       : `<p class="hint" style="text-align:center;margin-top:22px">${own ? 'Todavía no has jugado. Ve a la clasificación y reta a alguien.' : 'Todavía no ha jugado ningún partido.'}</p>`}
     ${own && S.me.is_admin ? `<a class="btn block ghost" style="margin-top:22px" href="#/admin">Panel del club</a>` : ''}
@@ -2475,7 +2489,7 @@ function paintRetos(d, o) {
     if (c.status === 'done' && m) {
       const who = m.iWon ? `Ganas a ${esc(c.rival.name)}` : `Pierdes con ${esc(c.rival.name)}`;
       const dl = m.delta == null ? '' : `<span class="badge ${m.delta >= 0 ? 'ok' : 'bad'}">${signed(m.delta)}</span>`;
-      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · no jugado' : ''}${c.promo ? ` <span class="freedot" title="Pista y bolas gratis">${I.gift}</span>` : ''}</span>${dl}</div>`;
+      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · No jugado' : ''}${c.promo ? ` <span class="freedot" title="Pista y bolas gratis">${I.gift}</span>` : ''}</span>${dl}</div>`;
     }
     return `<div class="mrow" style="margin-top:6px"><span class="r">${esc(c.rival.name)} · ${fmtWhen(c.play_at.slice(0, 10), false)}</span><span class="badge">${
       { rejected: 'Rechazado', expired: 'Caducado', cancelled: 'Cancelado' }[c.status] || c.status}</span></div>`;
@@ -3000,8 +3014,8 @@ function paintAdmin() {
       <div class="sec"><span class="label">Próximos partidos</span>${Object.keys(byDay).length ? Object.entries(byDay).map(([day, list]) =>
         `<div class="when" style="margin:10px 4px 6px;font-weight:700;color:var(--ink)">${day === t ? 'Hoy · ' : day < t ? 'Sin resultado · ' : ''}${cap(fmtWhen(day, true))}</div>${list.map((c) => mrow(c, `Nivel ${lvl(c.l1)} vs ${lvl(c.l2)}${c.promo ? ' · pista y bolas gratis' : ''}${day < t ? ' · falta poner el resultado' : ''}`)).join('')}`).join('')
         : '<div class="empty">No hay partidos programados.</div>'}</div>
-      <div class="sec"><span class="label">Retos esperando respuesta</span>${pend.length ? pend.map((c) => mrow(c, `${cap(fmtWhen(c.play_at.slice(0, 10), false))} · espera a ${esc(first(c.waitingFor))}`)).join('') : '<div class="empty">Ninguno.</div>'}</div>
-      <div class="sec"><span class="label">Promoción · pista y bolas gratis</span><div class="box"><p class="hint" style="margin:0">${(d.promo?.matches || []).length} de ${d.promo?.total ?? 5} partidos usados. Cuentan los primeros retos aceptados; si uno se cancela, el hueco pasa al siguiente.</p>
+      <div class="sec"><span class="label">Retos esperando respuesta</span>${pend.length ? pend.map((c) => mrow(c, `${cap(fmtWhen(c.play_at.slice(0, 10), false))} · Espera a ${esc(first(c.waitingFor))}`)).join('') : '<div class="empty">Ninguno.</div>'}</div>
+      <div class="sec"><span class="label">Promoción · Pista y bolas gratis</span><div class="box"><p class="hint" style="margin:0">${(d.promo?.matches || []).length} de ${d.promo?.total ?? 5} partidos usados. Cuentan los primeros retos aceptados; si uno se cancela, el hueco pasa al siguiente.</p>
         ${(d.promo?.matches || []).map((m, i) => `<div class="when" style="margin-top:8px;color:var(--ink);font-weight:600">${i + 1}. ${esc(m.n1)} vs ${esc(m.n2)} · ${fmtWhen(m.played_on, false)}</div>`).join('')}</div></div>
       <div class="sec"><span class="label">Contactos</span><div class="box"><p class="hint" style="margin:0 0 10px">Móviles de los ${active.length} jugadores activos, para avisos del club.</p>
         <div class="btns"><button class="btn xs navy" id="copymails">Copiar todos los móviles</button></div></div></div>`;
@@ -3018,9 +3032,9 @@ function paintAdmin() {
     </details>`).join('') : '<div class="empty">Todavía no hay partidos.</div>';
   } else if (adminTab === 'jugadores') {
     body = `<p class="hint" style="margin:0 4px 10px">${d.players.filter((p) => p.active).length} jugadores activos.</p>` + d.players.filter((p) => !p.deleted).map((p) => `<details class="adm"><summary>${avatar(p)}
-        <span style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.full_name)}</b><br><span class="when">@${esc(p.username)} · nivel ${lvl(p.level)} · ${p.pj} PJ · ${p.age} años${p.is_admin ? ' · admin' : ''}${!p.active ? ' · desactivado' : ''}${p.muted ? ' · sin comentarios' : ''}</span></span></summary>
+        <span style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.full_name)}</b><br><span class="when">@${esc(p.username)} · Nivel ${lvl(p.level)} · ${p.pj} PJ · ${p.age} años${p.is_admin ? ' · Admin' : ''}${!p.active ? ' · desactivado' : ''}${p.muted ? ' · sin comentarios' : ''}</span></span></summary>
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px" data-p="${p.id}">
-        <div class="when">${esc(p.phone || 'sin móvil')} · alta ${fmtWhen(String(p.created_at).slice(0, 10), false)}</div>
+        <div class="when">${esc(p.phone || 'Sin móvil')} · Alta ${fmtWhen(String(p.created_at).slice(0, 10), false)}</div>
         <label class="field">Nombre<input class="input" data-f="full_name" value="${esc(p.full_name)}"></label>
         <div><div class="label" style="margin-bottom:6px">Valoración inicial (nivel inicial ${fmt(p.start_level)})</div>
           <div class="grid5">${ATTRS.map(([k, l]) => `<label style="font-size:11px;font-weight:700;color:var(--muted);text-align:center">${l.replace('servicio', 'serv.')}<input class="input" data-a="${k}" inputmode="numeric" value="${p.attrs[k]}"></label>`).join('')}</div></div>
