@@ -347,6 +347,20 @@ details.adm summary::-webkit-details-marker{display:none}
 .stk span{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-top:4px;line-height:1.25}
 .stk.ok{background:var(--ok-soft)}.stk.ok b,.stk.ok span{color:var(--ok)}
 .stk.bad b{color:var(--bad)}
+.stk-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stk-col{background:var(--soft);border-radius:14px;padding:11px 8px;text-align:center}
+.stk-col.ok{background:var(--ok-soft)}
+.stk-cap{display:block;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.stk-col.ok .stk-cap{color:var(--ok)}
+.stk-col b{display:block;font-size:27px;font-weight:800;line-height:1;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.stk-col.ok b{color:var(--ok)}
+.stk-sub{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-top:4px;line-height:1.25}
+.stk-col.ok .stk-sub{color:var(--ok)}
+.stk-lv{display:block;font-size:13.5px;font-weight:800;margin-top:8px;padding-top:7px;border-top:1px solid rgba(15,23,32,.09)}
+.stk-col.ok .stk-lv{border-top-color:rgba(31,157,107,.22)}
+.stk-foot{margin:10px 0 0;text-align:center;font-size:12.5px;font-weight:700;color:var(--muted)}
+.note{margin:8px 0 0;background:var(--soft);border-radius:12px;padding:9px 11px;font-size:12.5px;line-height:1.4;color:var(--muted);font-weight:600}
+.note b{color:var(--ink);font-weight:800}
 .langsw{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--soft)}
 .langsw button{border:0;background:transparent;height:32px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:700;color:var(--muted)}
 .langsw button[aria-pressed="true"]{background:var(--navy);color:#fff}
@@ -647,6 +661,7 @@ const EN = {/*DICT*/
   "puntos (3 + 1 extra)": "points (3 + 1 bonus)",
   "puntos (# + # extra)": "points ($1 + $2 bonus)",
   "puntos (# si ganas un set)": "points ($1 if you win a set)",
+  "La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Usad «Cancelar» solo si no vais a jugar.": "The time is a guide. If you end up playing earlier or later, or switch courts, there's no need to change anything: when you finish, one of you posts the result and that's it. Use \"Cancel\" only if you're not going to play.",
   "Punto extra": "Bonus point",
   "por ganar a alguien 5 o más niveles por encima. Calculado con un 6-4 6-4; los sets y juegos que ganes también cuentan.": "for beating someone 5 or more levels above you. Based on a 6-4 6-4; the sets and games you win count too.",
   "Punto extra si ganas a alguien 5 o más niveles por encima. Calculado con un 6-4 6-4; los sets y juegos que ganes también cuentan.": "Bonus point if you beat someone 5 or more levels above you. Based on a 6-4 6-4; the sets and games you win count too.",
@@ -2140,15 +2155,23 @@ function stakesHTML(p, st) {
   const gap = Math.round(p.level) - Math.round(S.me.level);
   const gapTxt = gap > 0 ? `${gap} más que tú` : gap < 0 ? `${-gap} menos que tú` : 'tu mismo nivel';
   const extra = st.ptsWin > 3;
-  const cell = (big, label, tone) => `<div class="stk ${tone}"><b>${big}</b><span>${label}</span></div>`;
   return `<div class="sec"><span class="label">Lo que te juegas</span>
     <div class="box stake${extra ? ' hot' : ''}">
-      <div class="stk-h"><b>Si ganas a ${esc(first(p.full_name))}</b><span>Nivel ${lvl(p.level)} · ${gapTxt}</span></div>
-      <div class="stk-g">${cell('+' + st.ptsWin, extra ? 'puntos (3 + 1 extra)' : 'puntos', 'ok')}${cell(signed(st.win), 'nivel', st.win >= 1.5 ? 'ok' : '')}</div>
-    </div>
-    <div class="box stake">
-      <div class="stk-h"><b>Si pierdes</b><span>Solo sumas si le quitas un set</span></div>
-      <div class="stk-g">${cell('+' + st.ptsLoss, `puntos (${st.ptsLoss3} si ganas un set)`, '')}${cell(signed(st.loss), 'nivel', st.loss > -1 ? '' : 'bad')}</div>
+      <div class="stk-row">
+        <div class="stk-col ok">
+          <span class="stk-cap">Si ganas</span>
+          <b>+${st.ptsWin}</b>
+          <span class="stk-sub">${extra ? 'puntos (3 + 1 extra)' : 'puntos'}</span>
+          <span class="stk-lv">${signed(st.win)} nivel</span>
+        </div>
+        <div class="stk-col">
+          <span class="stk-cap">Si pierdes</span>
+          <b>+${st.ptsLoss}</b>
+          <span class="stk-sub">puntos (${st.ptsLoss3} si ganas un set)</span>
+          <span class="stk-lv">${signed(st.loss)} nivel</span>
+        </div>
+      </div>
+      <p class="stk-foot">Nivel ${lvl(p.level)} · ${gapTxt}</p>
     </div>
     <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4; los sets y juegos que ganes también cuentan.</p></div>`;
 }
@@ -2182,13 +2205,13 @@ function paintPlayer(d, own, o) {
       ${own ? `<span class="pill light">@${esc(p.username)}</span>` : ''}
     </div>
     ${own && !S.season.started && !p.matches_total ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta · hasta el ${fmtWhen(addDays(S.season.starts_on, -1), false)}</a>` : ''}
+    ${cta}
     <div class="tiles" style="margin-top:12px">
       <div class="tile"><b>${p.matches_total}</b><span>Jugados</span></div>
       <div class="tile"><b style="color:var(--ok)">${p.won}</b><span>Ganados</span></div>
       <div class="tile"><b>${signed(p.level - p.start_level)}</b><span>Nivel desde el inicio</span></div>
     </div>
     ${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
-    ${cta}
     ${d.preview ? '' : d.recent.length ? `<div class="sec"><span class="label">Últimos partidos</span>
       ${levels.length > 2 ? `<div class="box" style="padding:10px 12px;margin-bottom:8px">${spark(levels)}</div>` : ''}
       <div class="list">${d.recent.map((m) => `<a class="mrow" href="#/jugador/${m.rival_id}"><span class="wl${m.won ? '' : ' l'}">${m.won ? 'G' : 'P'}</span>
@@ -2313,7 +2336,8 @@ function paintRetos(d, o) {
     ...M.filter((n) => n.match && (n.match.status === 'disputed' || n.match.iReported)).map((n) => masterCard(n, `<p class="hint" style="margin-top:8px">${n.match.status === 'disputed' ? 'Resultado en revisión por el club.' : `Has puesto ${esc(n.match.score)}. Falta que lo confirme tu rival.`}</p>`)),
     ...waiting.map((c) => card(c, `<p class="hint" style="margin-top:8px">Esperando respuesta de ${esc(first(c.rival.name))}.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}">Cancelar reto</button></div>` : ''}`)),
   ].join(''));
-  html += sec('Partidos programados', scheduled.map((c) => card(c, `<p class="hint" style="margin-top:8px">Reservad pista en el club. Después del partido, uno pone el resultado aquí.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}">Cancelar</button></div>` : ''}`)).join(''));
+  html += sec('Partidos programados', scheduled.map((c) => card(c, `<p class="hint" style="margin-top:8px">Reservad pista en el club. Después del partido, uno pone el resultado aquí.</p>
+    <p class="note">La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Usad «Cancelar» solo si no vais a jugar.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}">Cancelar</button></div>` : ''}`)).join(''));
   html += sec('Últimos días', past.map((c) => `<div class="mrow" style="margin-top:6px"><span class="r">${esc(c.rival.name)} · ${fmtWhen(c.play_at.slice(0, 10), false)}</span><span class="badge ${c.status === 'done' ? 'ok' : ''}">${
     { done: c.walkover ? 'No jugado (6-0 6-0)' : 'Jugado', rejected: 'Rechazado', expired: 'Caducado', cancelled: 'Cancelado' }[c.status] || c.status}</span></div>`).join(''));
   if (!html) html = `<div class="empty">No tienes retos abiertos.<br>Ve a la clasificación, entra en un jugador y rétale.<div style="margin-top:18px"><a class="btn sm" href="#/">Ver la clasificación</a></div></div>`;
