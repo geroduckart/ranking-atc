@@ -1,6 +1,6 @@
 /**
  * Ranking ATC — tareas automáticas cada hora:
- * retos caducados (7 días), recordatorios (3 días) y resultados sin confirmar (48 h).
+ * retos caducados (3 días), recordatorios (2 días) y resultados sin confirmar (48 h).
  */
 import { runCron } from './api.mjs';
 
