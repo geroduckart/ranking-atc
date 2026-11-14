@@ -33,7 +33,7 @@ export const config = { path: '/api/*' };
 
 const OPEN_LIMIT = 5;            // retos pendientes que puede tener abiertos un jugador
 const COUNTER_LIMIT = 3;         // contrapropuestas de hora por reto
-const CHALLENGE_DAYS = 7;        // caducidad de un reto
+const CHALLENGE_DAYS = 3;        // caducidad de un reto
 const OPEN_DAYS_BEFORE = 1;      // los retos se abren 1 día antes del inicio (los partidos, desde el primer día)
 const LOCK_FAILS = 5, LOCK_MIN = 15;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -584,7 +584,8 @@ on('GET', 'retos', async ({ req }) => {
   const sql = db();
   const [me, S, chs, nodes, rounds] = await Promise.all([auth(req), season(sql), sql`select c.id, c.challenger, c.challenged, c.play_at::text as play_at, c.proposed_by, c.counters, c.message, c.status,
       c.walkover, c.updated_at, a.full_name as challenger_name, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
-      m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner
+      m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner,
+      m.p1 as match_p1, m.p1_before as match_p1b, m.p1_after as match_p1a, m.p2_before as match_p2b, m.p2_after as match_p2a
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
     left join lateral (select * from matches mm where mm.challenge_id = c.id and mm.status <> 'annulled' order by mm.id desc limit 1) m on true
     where (c.challenger = ${uid} or c.challenged = ${uid})
@@ -606,7 +607,9 @@ on('GET', 'retos', async ({ req }) => {
       iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
       canReport: c.status === 'accepted' && c.play_at.slice(0, 10) <= today && !c.match_id && S.phase === 'regular',
       match: c.match_id ? { id: Number(c.match_id), status: c.match_status, score: R.fmtSets(c.match_sets, !iAmChallenger),
-        iReported: c.match_reporter === me.id, iWon: c.match_winner === me.id } : null,
+        iReported: c.match_reporter === me.id, iWon: c.match_winner === me.id,
+        delta: (c.match_p1 === me.id ? (c.match_p1a != null && c.match_p1b != null ? Number(c.match_p1a) - Number(c.match_p1b) : null)
+                                     : (c.match_p2a != null && c.match_p2b != null ? Number(c.match_p2a) - Number(c.match_p2b) : null)) } : null,
     };
   });
   const masters = nodes.map((n) => {
@@ -1394,7 +1397,7 @@ export async function runCron() {
   const sql = db();
   const out = [];
   const log = { expired: 0, reminded: 0, dayReminded: 0, autoConfirmed: 0 };
-  // 1. Retos sin respuesta en 7 días → caducan
+  // 1. Retos sin respuesta en 3 días → caducan
   const exp = await sql`update challenges set status = 'expired', updated_at = now()
     where status = 'pending' and created_at < now() - ${CHALLENGE_DAYS + ' days'}::interval returning *, play_at::text as play_at`;
   log.expired = exp.length;
@@ -1408,9 +1411,9 @@ export async function runCron() {
       }));
     }
   }
-  // 2. Recordatorio a los 3 días
+  // 2. Recordatorio a los 2 días (el reto caduca a los 3)
   const rem = await sql`update challenges set reminded = true
-    where status = 'pending' and not reminded and updated_at < now() - interval '3 days' returning *, play_at::text as play_at`;
+    where status = 'pending' and not reminded and updated_at < now() - interval '2 days' returning *, play_at::text as play_at`;
   log.reminded = rem.length;
   if (rem.length) {
     const P = await playersById(sql, rem.flatMap((c) => [c.challenger, c.challenged]));
