@@ -1121,7 +1121,6 @@ const EN = {/*DICT*/
   "Los Másters": "The Masters",
   "Al acabar la fase regular se montan cuadros de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger. Para entrar hay que haber jugado al menos 5 partidos.": "When the regular phase ends, draws of 8 are set up from the points standings: Gold, Silver, Bronze and Challenger. You need at least 5 matches played to get in.",
   "Al entrar, tu nivel se recoloca en la banda de tu grupo: Oro 81–99, Plata 71–80, Bronce 61–70, Challenger 50–60. Dentro de la banda, el número que te toca depende del puesto con el que entras: el 1.º de su grupo se lleva el tope y el 8.º el suelo.": "On entry your level moves into your group's band: Gold 81–99, Silver 71–80, Bronze 61–70, Challenger 50–60. Within the band, the number you get depends on the place you come in at: 1st in the group takes the top and 8th the bottom.",
-  "por amor al tenis": "for the love of tennis",
   "Tu móvil no lo ve nadie": "Nobody sees your mobile",
   "Los demás jugadores ven tu nombre, tu nivel y tus partidos, nada más. Tu número no aparece en tu perfil ni se lo damos a nadie: solo sirve para mandarte los avisos por WhatsApp.": "Other players see your name, your level and your matches, nothing else. Your number is not on your profile and we don't give it to anyone: it is only used to send you the WhatsApp notices.",
   "Tu móvil no lo verá ningún jugador: no aparece en tu perfil y no se lo damos a nadie.": "No player will see your mobile: it is not on your profile and we don't give it to anyone.",
@@ -1764,7 +1763,6 @@ async function shareCard(p) {
   g.fillStyle = 'rgba(255,255,255,.5)'; g.font = F(600, 25);
   g.fillText('atcranking.netlify.app', W / 2, fy + 102);
   g.fillStyle = 'rgba(247,162,126,.85)'; g.font = 'italic ' + F(600, 26);
-  g.fillText(EN_ON ? 'for the love of tennis' : 'por amor al tenis', W / 2, fy + 150);
 
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
   const file = new File([blob], `ranking-atc-${p.username}.png`, { type: 'image/png' });
@@ -1855,7 +1853,6 @@ function screenLogin() {
     <div class="ring" aria-hidden="true" style="width:420px;height:420px;border:1px solid rgba(255,255,255,.10);right:-260px;top:200px"></div>
     <div class="langsw dark" data-nt style="position:absolute;right:16px;top:calc(14px + var(--sat));z-index:2"><button data-lang="es" aria-pressed="${LANG === 'es'}">ES</button><button data-lang="en" aria-pressed="${LANG === 'en'}">EN</button></div>
     <img src="${LOGO_W}" alt="Almuñécar Tennis Club" style="width:200px;height:auto;position:relative">
-    <p style="margin:10px 0 0;font-size:14px;font-weight:500;font-style:italic;color:rgba(255,255,255,.6);position:relative">por amor al tenis</p>
     <div style="margin-top:28px;text-align:center;position:relative">
       <div class="label" style="color:var(--peach);letter-spacing:.18em">Temporada 1 · 60 días</div>
       <h1>Ranking<br><span>del club.</span></h1>
