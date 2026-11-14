@@ -700,8 +700,8 @@ const EN = {/*DICT*/
   "Esa fecha ya ha pasado.": "That date has already passed.",
   "Esa hora ya ha pasado.": "That time has already passed.",
   "Elige un día dentro del próximo mes.": "Choose a day within the next month.",
-  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os queda # partido entre vosotros esta temporada.": "$1 has 7 days to reply and will get a WhatsApp message. Book the court at the club. You two have $2 match left this season.",
-  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os quedan # partidos entre vosotros esta temporada.": "$1 has 7 days to reply and will get a WhatsApp message. Book the court at the club. You two have $2 matches left this season.",
+  "* tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os queda # partido entre vosotros esta temporada.": "$1 has 3 days to reply and will get a WhatsApp message. Book the court at the club. You two have $2 match left this season.",
+  "* tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista se reserva en el club. Os quedan # partidos entre vosotros esta temporada.": "$1 has 3 days to reply and will get a WhatsApp message. Book the court at the club. You two have $2 matches left this season.",
   "Reto enviado a *.": "Challenge sent to $1.",
   "Ya tenéis un reto abierto.": "You already have an open challenge.",
   "Ya tienes un reto abierto con *.": "You already have an open challenge with $1.",
@@ -722,7 +722,7 @@ const EN = {/*DICT*/
   "0-6 0-6: # · en 3 sets: +1 pt": "0-6 0-6: $1 · in 3 sets: +1 pt",
   "Si ganas un set: 1 pt": "Win a set: 1 pt",
   "# nivel · 0 pts": "$1 level · 0 pts",
-  "* tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.": "$1 has 7 days to reply and will get a WhatsApp alert. Book the court at the club. You can only play each other once this season.",
+  "* tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.": "$1 has 3 days to reply and will get a WhatsApp alert. Book the court at the club. You can only play each other once this season.",
   "Te toca responder": "Your turn to reply",
   "Resultados por confirmar": "Results to confirm",
   "Pon el resultado": "Enter the result",
@@ -923,7 +923,7 @@ const EN = {/*DICT*/
   "Nivel": "Level",
   "Másters": "Masters",
   "Promoción de estreno": "Launch offer",
-  "Puedes retar a cualquier jugador. Tiene 7 días para responder; si no contesta, el reto caduca y no pasa nada.": "You can challenge any player. They have 7 days to reply; if they don't, the challenge expires and nothing happens.",
+  "Puedes retar a cualquier jugador. Tiene 3 días para responder; si no contesta, el reto caduca y no pasa nada.": "You can challenge any player. They have 3 days to reply; if they don't, the challenge expires and nothing happens.",
   "Rechazar un reto no penaliza. Si lo que no te va es la hora, propón otra en vez de rechazar.": "Declining a challenge carries no penalty. If the time is the problem, suggest another one instead of declining.",
   "Cuentan como máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.": "A maximum of 3 matches a week count, and only 1 match against each opponent for the whole season.",
   "Las pistas se reservan en el club, como siempre.": "Courts are booked at the club, as usual.",
@@ -1153,8 +1153,8 @@ const EN = {/*DICT*/
   "En tus 5 primeros partidos se mueve el triple de rápido, para colocarte pronto donde te toca.": "In your first 5 matches it moves three times faster, so you land where you belong quickly.",
   "Cuando cambia tu nivel, las barritas de tu tarjeta se mueven solas con él.": "When your level changes, the bars on your card move with it.",
   "Retos": "Challenges",
-  "Puedes retar a quien quieras. Tiene 7 días para responder.": "You can challenge anyone. They have 7 days to reply.",
-  "Puedes retar a quien quieras. Tiene 7 días para responder; si no contesta, el reto caduca y no pierdes nada.": "Challenge anyone you like. They have 7 days to reply; if they don't, the challenge expires at no cost to you.",
+  "Puedes retar a quien quieras. Tiene 3 días para responder.": "You can challenge anyone. They have 3 days to reply.",
+  "Puedes retar a quien quieras. Tiene 3 días para responder; si no contesta, el reto caduca y no pierdes nada.": "Challenge anyone you like. They have 3 days to reply; if they don't, the challenge expires at no cost to you.",
   "Si no te va la hora, propón otra en vez de rechazar.": "If the time doesn't work for you, suggest another one instead of declining.",
   "Rechazar un reto no penaliza.": "Declining a challenge carries no penalty.",
   "Máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.": "Maximum 3 matches a week, and only 1 match against each opponent for the whole season.",
@@ -2284,7 +2284,7 @@ async function screenChallenge(id) {
     ${whenPicker('w')}
     ${v.noMessage ? '<p class="hint" style="margin-top:14px">En los retos con menores de 18 no hay mensaje: solo día y hora.</p>'
       : `<label class="field" style="margin-top:14px">Mensaje (opcional)<textarea class="input" id="msg" rows="2" maxlength="200" placeholder="¿Te va bien? Reservo yo la pista."></textarea></label>`}
-    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 7 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.</p>
+    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.</p>
     <div class="err hidden" id="e" style="margin-top:10px"></div>
     <button class="btn block" id="send" style="margin-top:16px">Enviar reto</button>
   </main>${nav('ranking')}`);
@@ -2777,7 +2777,7 @@ function screenHow() {
 
     <h2>Retos</h2>
     <div class="howbox"><ul>
-      <li>Puedes retar a quien quieras. Tiene 7 días para responder; si no contesta, el reto caduca y no pierdes nada.</li>
+      <li>Puedes retar a quien quieras. Tiene 3 días para responder; si no contesta, el reto caduca y no pierdes nada.</li>
       <li>Si no te va la hora, propón otra en vez de rechazar.</li>
       <li>Rechazar un reto no penaliza.</li>
       <li>Máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.</li>
@@ -2802,7 +2802,7 @@ function screenPrivacy() {
     <h2>Normas de la temporada</h2>
     <h3>Jugar</h3>
     <ul>
-      <li>Puedes retar a cualquier jugador. Tiene 7 días para responder; si no contesta, el reto caduca y no pasa nada.</li>
+      <li>Puedes retar a cualquier jugador. Tiene 3 días para responder; si no contesta, el reto caduca y no pasa nada.</li>
       <li>Rechazar un reto no penaliza. Si lo que no te va es la hora, propón otra en vez de rechazar.</li>
       <li>Cuentan como máximo 3 partidos por semana, y 1 solo partido contra cada rival en toda la temporada.</li>
       <li>Las pistas se reservan en el club, como siempre.</li>
