@@ -1,132 +1,108 @@
 /**
- * Ranking ATC — avisos por WhatsApp (Meta Cloud API).
+ * Ranking ATC — avisos por WhatsApp (Cloud API de Meta).
  *
- * Solo se envía a quien dio su consentimiento en el alta (players.wa_consent)
- * y tiene móvil guardado. Sin WHATSAPP_TOKEN o WHATSAPP_PHONE_ID no se envía
- * nada: el aviso se escribe en el registro de la función, igual que los emails.
+ * Variables de entorno (Netlify): WHATSAPP_TOKEN y WHATSAPP_PHONE_ID.
+ * Sin ellas no se envía nada: el aviso se escribe en el registro de la función.
  *
- * Variables de entorno (Netlify):
- *   WHATSAPP_TOKEN      token permanente de la app de Meta
- *   WHATSAPP_PHONE_ID   Phone Number ID del número emisor
- *   WHATSAPP_API        opcional, por defecto v21.0
+ * Solo se envía a quien tiene móvil y ha dado su consentimiento (wa_consent).
+ * Idioma: el del jugador (players.lang). Si la plantilla en inglés aún no está
+ * aprobada, se reintenta en español para que nadie se quede sin aviso.
+ *
+ * Plantillas (todas con 3 variables numéricas):
+ *   reto_recibido        {{1}} nombre · {{2}} quien reta   · {{3}} fecha límite («viernes 20»)
+ *   nueva_hora           {{1}} nombre · {{2}} rival        · {{3}} fecha y hora («sábado 21 a las 10:00»)
+ *   partido_confirmado   {{1}} nombre · {{2}} rival        · {{3}} fecha y hora
+ *   recordatorio_partido {{1}} nombre · {{2}} rival        · {{3}} hora («18:00»)
+ *   cuadro_publicado     {{1}} nombre · {{2}} Máster       · {{3}} rival de primera ronda
  */
-import { fmtWhen, fmtDay, madridToday, firstName } from './core.mjs';
 import { tr } from './i18n.mjs';
 
-const ready = () => !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
+const API = 'https://graph.facebook.com/v21.0';
+const TZ = 'Europe/Madrid';
 
-/**
- * Móvil en E.164 sin el '+', como lo quiere Meta.
- * Nueve cifras que empiezan por 6, 7 o 9 se toman como España.
- */
-export function waNumber(raw) {
-  let s = String(raw || '').replace(/[\s().-]/g, '');
-  if (/^00/.test(s)) s = '+' + s.slice(2);
-  if (/^[679]\d{8}$/.test(s)) s = '+34' + s;
-  return /^\+[1-9]\d{7,14}$/.test(s) ? s.slice(1) : null;
+const langOf = (p) => (p && p.lang === 'en' ? 'en' : 'es');
+const first = (name) => String(name || '').trim().split(/\s+/)[0] || '';
+const shown = (p) => (p && (p.card_name || p.full_name)) || '';
+
+// play_at llega como texto de Postgres («2026-11-20 17:00:00+00»): se pasa a ISO.
+function toDate(v) {
+  if (v instanceof Date) return v;
+  const s = String(v || '').trim().replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00');
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
 }
 
-/** El móvil al que escribir, o null si este jugador no debe recibir WhatsApp. */
-export const waTo = (p) => (p && p.wa_consent === true ? waNumber(p.phone) : null);
-
-/** Meta rechaza parámetros vacíos, con saltos de línea o con tabulaciones. */
-const param = (v) => {
-  const s = String(v ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
-  return s || '—';
-};
-
-/**
- * Envía una plantilla aprobada.
- * @param {string} to      móvil en E.164 sin '+'
- * @param {string} name    nombre de la plantilla en Meta
- * @param {string} lang    'es' o 'en'
- * @param {string[]} vars  valores de {{1}}, {{2}}… en orden
- */
-export async function sendTemplate(to, name, lang, vars = []) {
-  if (!to) return { skipped: true };
-  const parameters = vars.map((v) => ({ type: 'text', text: param(v) }));
-  if (globalThis.__waOutbox) globalThis.__waOutbox.push({ to, name, lang, vars: parameters.map((p) => p.text) });
-  if (!ready()) {
-    console.log(`[whatsapp sin enviar: falta WHATSAPP_TOKEN o WHATSAPP_PHONE_ID] → ${to}: ${name} (${lang})`);
-    return { skipped: true };
-  }
-  const url = `https://graph.facebook.com/${process.env.WHATSAPP_API || 'v21.0'}/${process.env.WHATSAPP_PHONE_ID}/messages`;
-  const body = {
-    messaging_product: 'whatsapp',
-    to,
-    type: 'template',
-    template: {
-      name,
-      language: { code: lang === 'en' ? 'en' : 'es' },
-      ...(parameters.length ? { components: [{ type: 'body', parameters }] } : {}),
-    },
-  };
-  try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) {
-      const txt = await r.text();
-      // 132001: la plantilla no existe en ese idioma. Se reintenta en español.
-      if (lang !== 'es' && /132001|does not exist/i.test(txt)) return sendTemplate(to, name, 'es', vars);
-      console.error('WhatsApp error', r.status, txt);
-      return { ok: false };
-    }
-    return { ok: true };
-  } catch (e) {
-    console.error('WhatsApp error', e);
-    return { ok: false };
-  }
+function day(d, lang) {
+  const loc = lang === 'en' ? 'en-GB' : 'es-ES';
+  const wd = new Intl.DateTimeFormat(loc, { timeZone: TZ, weekday: 'long' }).format(d);
+  const n = new Intl.DateTimeFormat(loc, { timeZone: TZ, day: 'numeric' }).format(d);
+  return lang === 'en' ? `${wd} ${n}` : `${wd.toLowerCase()} ${n}`;
+}
+function hour(d) {
+  return new Intl.DateTimeFormat('es-ES', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+}
+function when(v, lang) {
+  const d = toDate(v);
+  if (!d) return lang === 'en' ? 'the agreed time' : 'la hora acordada';
+  return lang === 'en' ? `${day(d, 'en')} at ${hour(d)}` : `${day(d, 'es')} a las ${hour(d)}`;
 }
 
-/* ── Fechas y nombres en el idioma del jugador ───────────────────────── */
-const lang = (p) => (p && p.lang === 'en' ? 'en' : 'es');
-/** 'viernes 20 de noviembre · 18:00' → en inglés si toca, y con '·' en 'a las'. */
-const cap = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
-const when = (ts, l) => {
-  const s = fmtWhen(ts);
-  return cap((l === 'en' ? tr(s, 'en') : s).replace(' · ', l === 'en' ? ' at ' : ' a las '));
-};
-/** Solo la fecha, sin hora: 'Viernes 20 de noviembre'. Acepta Date o texto. */
-const day = (ts, l) => {
-  const s = fmtDay(ts instanceof Date ? madridToday(ts) : ts);
-  return cap(l === 'en' ? tr(s, 'en') : s);
-};
+const CODE = { es: 'es', en: 'en' };
 
-/* ── Los cinco avisos ────────────────────────────────────────────────
-   Cada uno comprueba el consentimiento por su cuenta: si el jugador no lo
-   dio, la llamada no hace nada y el email sigue saliendo igual.          */
+async function post(to, name, lang, vars) {
+  const res = await fetch(`${API}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: String(to).replace(/^\+/, ''),
+      type: 'template',
+      template: {
+        name,
+        language: { code: CODE[lang] },
+        components: [{ type: 'body', parameters: vars.map((t) => ({ type: 'text', text: String(t).slice(0, 200) })) }],
+      },
+    }),
+  });
+  if (res.ok) return { ok: true };
+  let err = {};
+  try { err = (await res.json()).error || {}; } catch (e) {}
+  return { ok: false, code: err.code, msg: err.message || res.statusText };
+}
 
-/** Alguien te ha retado. La tercera variable es la fecha límite para responder. */
-export const waChallenge = (to, from, deadline) => {
-  const l = lang(to);
-  return sendTemplate(waTo(to), 'reto_recibido', l, [firstName(to.full_name), from.full_name, day(deadline, l)]);
-};
+async function send(p, name, varsFor) {
+  if (!p || !p.phone || p.wa_consent !== true) return;
+  const lang = langOf(p);
+  if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
+    console.log('[wa] sin credenciales, no se envía', name, lang, p.phone, varsFor(lang));
+    return;
+  }
+  let r = await post(p.phone, name, lang, varsFor(lang));
+  // 132001 = la plantilla no existe en ese idioma (o aún no está aprobada) → en español
+  if (!r.ok && lang === 'en' && r.code === 132001) r = await post(p.phone, name, 'es', varsFor('es'));
+  if (!r.ok) console.error('[wa] error', name, p.phone, r.code, r.msg);
+}
 
-/** Tu rival propone otra hora. */
-export const waCounter = (to, from, playAt) => {
-  const l = lang(to);
-  return sendTemplate(waTo(to), 'nueva_hora', l, [firstName(to.full_name), from.full_name, when(playAt, l)]);
-};
+/** Te han retado. deadline = fecha límite para responder (Date). */
+export const waChallenge = (to, from, deadline) =>
+  send(to, 'reto_recibido', (l) => [first(to.full_name), shown(from), day(toDate(deadline) || new Date(), l)]);
 
-/** El reto se ha aceptado: ya hay partido. */
-export const waConfirmed = (to, rival, playAt) => {
-  const l = lang(to);
-  return sendTemplate(waTo(to), 'partido_confirmado', l, [firstName(to.full_name), rival.full_name, when(playAt, l)]);
-};
+/** El rival propone otra hora. */
+export const waCounter = (to, from, playAt) =>
+  send(to, 'nueva_hora', (l) => [first(to.full_name), shown(from), when(playAt, l)]);
 
-/** El día antes del partido. */
-export const waReminder = (to, rival, playAt) => {
-  const l = lang(to);
-  const time = String(playAt).replace('T', ' ').split(' ')[1]?.slice(0, 5) || '';
-  return sendTemplate(waTo(to), 'recordatorio_partido', l, [firstName(to.full_name), rival.full_name, time]);
-};
+/** Partido confirmado. */
+export const waConfirmed = (p, rival, playAt) =>
+  send(p, 'partido_confirmado', (l) => [first(p.full_name), shown(rival), when(playAt, l)]);
 
-/** Se ha publicado el cuadro de los Másters. */
-export const waDraw = (to, tierName, rival) => {
-  const l = lang(to);
-  return sendTemplate(waTo(to), 'cuadro_publicado', l,
-    [firstName(to.full_name), l === 'en' ? tr(tierName, 'en') : tierName, rival ? rival.full_name : (l === 'en' ? 'to be decided' : 'por decidir')]);
-};
+/** Recordatorio el día antes: solo la hora. */
+export const waReminder = (p, rival, playAt) =>
+  send(p, 'recordatorio_partido', () => [first(p.full_name), shown(rival), toDate(playAt) ? hour(toDate(playAt)) : '--:--']);
+
+/** Cuadro del Máster publicado. tname = «Máster Oro»…; rival puede faltar (exento). */
+export const waDraw = (p, tname, rival) =>
+  send(p, 'cuadro_publicado', (l) => [
+    first(p.full_name),
+    l === 'en' ? tr(tname, 'en') : tname,
+    rival ? shown(rival) : l === 'en' ? 'to be decided' : 'por decidir',
+  ]);
