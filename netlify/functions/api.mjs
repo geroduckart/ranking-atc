@@ -149,7 +149,7 @@ function selfView(p) {
     hand: p.hand, backhand: p.backhand, level: Number(p.level), start_level: Number(p.start_level),
     attrs: R.shownAttrs(p.attrs, p.start_level, p.level), photo_v: p.photo_v, is_admin: p.is_admin,
     notify: { challenges: wants(p, 'challenges'), results: wants(p, 'results'), drop: wants(p, 'drop'), reminders: wants(p, 'reminders') },
-    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)), lang: okLang(p.lang), wa: p.wa_consent === true,
+    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)), lang: okLang(p.lang), wa: p.wa_consent === true, injured: injuredUntil(p),
   };
 }
 
@@ -178,11 +178,13 @@ async function recompute(sql) {
   }
 }
 
+/** Fecha 'YYYY-MM-DD' hasta la que el jugador está lesionado, o null si no lo está (o ya pasó). */
+const injuredUntil = (p) => { if (!p || !p.injured_until) return null; const d = p.injured_until instanceof Date ? p.injured_until.toISOString().slice(0, 10) : String(p.injured_until).slice(0, 10); return d >= madridToday() ? d : null; };
 /** Clasificación actual + nº de partidos de cada jugador (para «provisional»). */
 async function standings(sql = db()) {
   const [S, players, ms] = await Promise.all([
     season(sql),
-    sql`select id, full_name, username, level, photo_v, attrs, start_level, hand, backhand, birth_date from players where active`,
+    sql`select id, full_name, username, level, photo_v, attrs, start_level, hand, backhand, birth_date, injured_until::text as injured_until from players where active`,
     sql`select id, p1, p2, winner, master_id, p1_pts, p2_pts from matches where status = 'confirmed'`,
   ]);
   const count = {};
@@ -393,6 +395,22 @@ on('POST', 'me', async ({ req, body }) => {
       upd.photo = ph;
     }
   }
+  // Lesionado: nadie puede retarle hasta esa fecha (incluida). null = ya está bien.
+  let cancelled = 0;
+  if ('injured_until' in body) {
+    if (body.injured_until === null || body.injured_until === '') upd.injured_until = null;
+    else {
+      const d = String(body.injured_until);
+      const S = await season(sql);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < madridToday()) fail('Elige una fecha a partir de hoy.');
+      if (d > String(S.masters_end).slice(0, 10)) fail(`Elige una fecha antes del ${fmtDay(S.masters_end)}.`);
+      upd.injured_until = d;
+      // los retos que aún nadie ha aceptado se cancelan
+      const c = await sql`update challenges set status = 'cancelled', updated_at = now()
+        where status = 'pending' and (challenger = ${p.id} or challenged = ${p.id}) returning id`;
+      cancelled = c.length;
+    }
+  }
   // La tarjeta (barritas) se puede cambiar hasta que juegues tu primer partido
   if (body.attrs) {
     if (await cardLocked(sql, p.id)) fail('Ya has jugado tu primer partido: ahora tus barritas las mueven tus partidos.');
@@ -404,7 +422,7 @@ on('POST', 'me', async ({ req, body }) => {
   if (!Object.keys(upd).length) return { me: { ...selfView(p), card_locked: await cardLocked(sql, p.id) } };
   const [u] = await sql`update players set ${sql(upd)}, photo_v = photo_v + ${'photo' in upd ? 1 : 0} where id = ${p.id} returning *`;
   if (body.attrs) await sql`update feed set data = jsonb_set(data, '{level}', to_jsonb(${Number(u.level)}::numeric)) where kind = 'new_player' and actor = ${p.id}`;
-  return { me: { ...selfView(u), card_locked: await cardLocked(sql, p.id) } };
+  return { me: { ...selfView(u), card_locked: await cardLocked(sql, p.id) }, cancelled };
 });
 
 on('POST', 'pin', async ({ req, body }) => {
@@ -443,7 +461,7 @@ const rowView = (r) => ({ id: r.id, full_name: r.full_name, username: r.username
   // lo justo para pintar la carta al instante al abrir la ficha (la edad, solo la franja)
   attrs: R.shownAttrs(r.attrs, r.start_level, r.level), start_level: Number(r.start_level), hand: r.hand, backhand: r.backhand,
   ageTag: R.ageTag(R.ageOn(r.birth_date, new Date(madridToday() + 'T12:00:00Z'))),
-  pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional });
+  pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional, injured: injuredUntil(r) });
 
 on('GET', 'ranking', async ({ req }) => {
   const [, st, used] = await Promise.all([auth(req), standings(), promoUsed(db())]);
@@ -477,7 +495,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
       level: Number(p.level), start_level: Number(p.start_level), attrs: R.shownAttrs(p.attrs, p.start_level, p.level),
       photo_v: p.photo_v, ageTag: R.ageTag(ageOf(p)), since: String(p.created_at.toISOString?.() || p.created_at).slice(0, 10),
       pos: row.pos, zone: row.zone, pts: row.pts, pj: row.pj, won: row.won, missing: row.missing ?? 0,
-      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0,
+      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0, injured: injuredUntil(p),
     },
     recent: recent.map((m) => {
       const mine = m.p1 === id;
@@ -495,6 +513,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
       stakes: stakes(me, st.count[me.id] || 0, p, st.count[id] || 0),
       noMessage: isMinor(me) || isMinor(p),
       canChallenge: p.active && st.S.phase === 'regular',
+      meInjured: injuredUntil(me),
       bandBlock: bandBlock(st, st.S, me.id, id),
     };
   }
@@ -550,6 +569,8 @@ on('POST', 'challenge', async ({ req, body, out }) => {
   const at = checkWhen(body.date, body.time, S);
   const [rv] = await sql`select * from players where id = ${to} and active`;
   if (!rv) fail('Ese jugador no está disponible.');
+  if (injuredUntil(me)) fail(`Estás marcado como lesionado hasta el ${fmtDay(injuredUntil(me))}. Si ya estás bien, cámbialo en tu perfil.`);
+  if (injuredUntil(rv)) fail(`${firstName(rv.full_name)} está lesionado hasta el ${fmtDay(injuredUntil(rv))}. Podrás retarle después.`);
   let message = String(body.message || '').trim().slice(0, 200) || null;
   if (isMinor(me) || isMinor(rv)) message = null;
   const blocked = bandBlock(await standings(sql), S, me.id, to);
