@@ -390,7 +390,8 @@ details.adm summary::-webkit-details-marker{display:none}
 .perk+.perk{border-top:1px solid var(--line)}
 .perk-i{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--orange-soft);color:var(--orange)}
 .perk-i svg{width:13px;height:13px}
-.perk-t{min-width:0;flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.perk-t{min-width:0;flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:10px;white-space:nowrap}
+.perk-t span{overflow:hidden;text-overflow:ellipsis}
 .perk-t b{font-size:12.5px;font-weight:800;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
 .perk-t span{font-size:11.5px;font-weight:600;line-height:1.3;color:var(--muted)}
 .promo-line{margin:12px 6px 0;font-size:12.5px;line-height:1.4;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -765,7 +766,7 @@ const EN = {/*DICT*/
   "0-6 0-6: # · en 3 sets: +1 pt": "0-6 0-6: $1 · in 3 sets: +1 pt",
   "Si ganas un set: 1 pt": "Win a set: 1 pt",
   "# nivel · 0 pts": "$1 level · 0 pts",
-  "* tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.": "$1 has 3 days to reply and will get a WhatsApp alert. Book the court at the club. You can only play each other once this season.",
+  "* tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Hasta el día 30 solo podéis jugar una vez entre vosotros; desde entonces, una revancha.": "$1 has 3 days to reply and will get a WhatsApp alert. Book the court at the club. Until day 30 you can only play each other once; after that, one rematch.",
   "Te toca responder": "Your turn to reply",
   "Resultados por confirmar": "Results to confirm",
   "Pon el resultado": "Enter the result",
@@ -1281,7 +1282,7 @@ const EN = {/*DICT*/
   "Los 5 primeros retos que se acepten llevan pista y bolas gratis.": "The first 5 challenges accepted get free court and balls.",
   "Lo verás con la insignia en el partido. Si alguno se cancela, el premio pasa al siguiente.": "You'll see the badge on the match. If one is cancelled, the prize moves to the next.",
   "Los 5 primeros retos que se acepten llevan pista y bolas gratis, con su insignia en el partido. Si alguno se cancela, el premio pasa al siguiente.": "The first 5 challenges accepted get free court and balls, with a badge on the match. If one is cancelled, the prize moves to the next.",
-  "Los # primeros retos aceptados": "First $1 accepted challenges",
+  "# primeros retos": "First $1 challenges",
   "Quedan #": "$1 left",
   "Queda 1": "1 left",
   "¿Ya tienes cuenta?": "Already have an account?",
@@ -2254,7 +2255,7 @@ async function screenRanking() {
     let html = '';
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
     const perks = [];
-    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') perks.push([I.gift, 'Pista y bolas gratis', d.promo.left === d.promo.total ? `Los ${d.promo.total} primeros retos aceptados` : d.promo.left === 1 ? 'Queda 1' : `Quedan ${d.promo.left}`]);
+    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') perks.push([I.gift, 'Pista y bolas gratis', d.promo.left === d.promo.total ? `${d.promo.total} primeros retos` : d.promo.left === 1 ? 'Queda 1' : `Quedan ${d.promo.left}`]);
     if (sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY) perks.push([I.bolt, 'Reta a cualquiera', `Hasta el ${dm(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))}`]);
     if (perks.length) html += `<section class="perks" aria-label="Aprovecha"><span class="perks-k">Aprovecha</span><div class="perks-g${perks.length === 1 ? ' one' : ''}">${perks.map(([ic, t, sub]) => `<div class="perk"><span class="perk-i">${ic}</span><span class="perk-t"><b>${t}</b><span>${sub}</span></span></div>`).join('')}</div></section>`;
     if (rankTab === 'puntos') {
@@ -2407,7 +2408,7 @@ async function screenChallenge(id) {
     ${whenPicker('w')}
     ${v.noMessage ? '<p class="hint" style="margin-top:14px">En los retos con menores de 18 no hay mensaje: solo día y hora.</p>'
       : `<label class="field" style="margin-top:14px">Mensaje (opcional)<textarea class="input" id="msg" rows="2" maxlength="200" placeholder="¿Te va bien? Reservo yo la pista."></textarea></label>`}
-    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Solo podéis jugar una vez entre vosotros esta temporada.</p>
+    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Hasta el día 30 solo podéis jugar una vez entre vosotros; desde entonces, una revancha.</p>
     <div class="err hidden" id="e" style="margin-top:10px"></div>
     <button class="btn block" id="send" style="margin-top:16px">Enviar reto</button>
   </main>${nav('ranking')}`);
