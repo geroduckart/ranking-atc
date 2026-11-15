@@ -1027,6 +1027,33 @@ on('POST', 'feed/seen', async ({ req }) => {
   return { ok: true };
 });
 
+/** Agenda: partidos aceptados y jugados entre dos fechas (máx. 2 semanas), para el Tablón. */
+on('GET', 'agenda', async ({ req, url }) => {
+  await auth(req);
+  const from = String(url.searchParams.get('from') || madridToday());
+  const to = String(url.searchParams.get('to') || addDays(from, 6));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from || to > addDays(from, 13)) fail('Fechas no válidas.');
+  const rows = await db()`select c.id, c.play_at::text as play_at, c.status, c.promo, c.challenger, c.challenged,
+      a.full_name as n1, a.photo_v as pv1, a.level as l1, a.injured_until::text as i1,
+      b.full_name as n2, b.photo_v as pv2, b.level as l2, b.injured_until::text as i2,
+      m.status as mstatus, m.sets, m.winner, m.p1 as mp1, m.walkover
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
+    left join lateral (select * from matches mm where mm.challenge_id = c.id and mm.status <> 'annulled' order by mm.id desc limit 1) m on true
+    where c.status in ('accepted', 'done') and a.active and b.active
+      and c.play_at >= ${from}::date and c.play_at < (${to}::date + 1)
+    order by c.play_at, c.id`;
+  return {
+    from, to,
+    matches: rows.map((r) => ({
+      id: Number(r.id), play_at: r.play_at, promo: !!r.promo,
+      p1: { id: r.challenger, full_name: r.n1, photo_v: r.pv1, level: Number(r.l1) },
+      p2: { id: r.challenged, full_name: r.n2, photo_v: r.pv2, level: Number(r.l2) },
+      result: r.mstatus === 'confirmed' ? { sets: (r.sets || []).map(([x, y]) => (r.mp1 === r.challenger ? [x, y] : [y, x])), winner: r.winner, walkover: r.walkover } : null,
+      pending: r.mstatus === 'pending' || r.mstatus === 'disputed',
+    })),
+  };
+});
+
 on('GET', 'feed', async ({ req, url }) => {
   const uid = sessionUid(req).u;
   const sql = db();
