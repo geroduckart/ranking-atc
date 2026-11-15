@@ -383,6 +383,20 @@ details.adm summary::-webkit-details-marker{display:none}
 .freebadge svg{width:14px;height:14px}
 .freedot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:var(--orange-soft);color:var(--orange);vertical-align:-3px}
 .freedot svg{width:11px;height:11px}
+.avw{position:relative;flex:none;display:inline-flex}
+.injdot{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;background:#fff;color:#C2410C;display:grid;place-items:center;box-shadow:0 1px 4px rgba(15,23,32,.18)}
+.injdot svg{width:12px;height:12px;animation:injbeat 2.4s cubic-bezier(.4,0,.2,1) infinite;transform-origin:center}
+@keyframes injbeat{0%,60%,100%{transform:scale(1) rotate(0)}70%{transform:scale(1.18) rotate(-12deg)}82%{transform:scale(1) rotate(6deg)}}
+.prow.inj .who span{color:#C2410C}
+.prow.inj .who b,.prow.inj .num,.prow.inj .big{opacity:.55}
+.injpill{display:inline-flex;align-items:center;gap:6px;background:#FFF1E8;color:#C2410C}
+.injpill svg{width:14px;height:14px;animation:injbeat 2.4s cubic-bezier(.4,0,.2,1) infinite}
+.injbox{margin-top:14px;display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px;background:#FFF1E8;border:1px solid rgba(194,65,12,.18)}
+.injbox .ic{flex:none;width:36px;height:36px;border-radius:12px;background:#fff;color:#C2410C;display:grid;place-items:center}
+.injbox .ic svg{width:18px;height:18px;animation:injbeat 2.4s cubic-bezier(.4,0,.2,1) infinite}
+.injbox b{display:block;font-size:14.5px;color:var(--ink)}.injbox span{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.injbox .btns{margin:0 0 0 auto;flex:none}
+@media (prefers-reduced-motion: reduce){.injdot svg,.injpill svg,.injbox .ic svg{animation:none}}
 .perks{margin:12px 0 2px}
 .perks-k{display:block;margin:0 4px 6px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
 .perks-g{border-radius:16px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);overflow:hidden}
@@ -1255,6 +1269,27 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Lesionado hasta el *": "Injured until $1",
+  "Lesionado": "Injured",
+  "* está lesionado hasta el *.": "$1 is injured until $2.",
+  "Podrás retarle después.": "You can challenge them afterwards.",
+  "Estás marcado como lesionado.": "You're marked as injured.",
+  "Cámbialo en tu perfil para poder retar.": "Change it in your profile to challenge.",
+  "Nadie puede retarte hasta entonces.": "Nobody can challenge you until then.",
+  "Ya estoy bien": "I'm fine now",
+  "Cambiar la fecha": "Change the date",
+  "¿Estás lesionado? Pausa los retos": "Injured? Pause challenges",
+  "¡Bienvenido de vuelta! Ya pueden retarte.": "Welcome back! Others can challenge you again.",
+  "¿Hasta cuándo no puedes jugar?": "Until when can't you play?",
+  "Mientras estés lesionado nadie podrá retarte y en la clasificación saldrá que estás lesionado.": "While you're injured nobody can challenge you, and the standings will show you as injured.",
+  "1 semana": "1 week",
+  "2 semanas": "2 weeks",
+  "1 mes": "1 month",
+  "O elige el día": "Or pick the day",
+  "Los retos que aún no se han aceptado se cancelan. Si tienes un partido ya aceptado, entra en Partidos y toca «No vamos a jugar».": "Challenges not yet accepted are cancelled. If you have an accepted match, go to Matches and tap “We won't play”.",
+  "Hecho. Nadie podrá retarte hasta el *.": "Done. Nobody can challenge you until $1.",
+  "Hecho. Nadie podrá retarte hasta el *. Hemos cancelado 1 reto pendiente.": "Done. Nobody can challenge you until $1. We cancelled 1 pending challenge.",
+  "Hecho. Nadie podrá retarte hasta el *. Hemos cancelado # retos pendientes.": "Done. Nobody can challenge you until $1. We cancelled $2 pending challenges.",
   "Falta 1 partido": "1 match to go",
   "Faltan # partidos": "$1 matches to go",
   "Provisional": "Provisional",
@@ -1519,6 +1554,7 @@ const cardTier = (p) => tierOf(p.level);
 const isMe = (id) => S.me && S.me.id === id;
 
 const I = {
+  bandage:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/><path d="M10 12h.01M12 10h.01M12 14h.01M14 12h.01"/></svg>',
   gift:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
   bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
   back:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -2248,8 +2284,8 @@ async function screenRanking() {
         ? `<span class="num">${r.pj}</span><span class="big">${lvl(r.level)}</span>`
         : `<span class="num">${r.pj}</span><span class="big">${r.pts}</span>`;
       const pos = mode === 'nivel' ? i + 1 : r.pos ?? '–';
-      const sub = mode === 'puntos' && !r.pos ? `Nivel ${lvl(r.level)} · ${r.missing === 1 ? 'Falta 1 partido' : `Faltan ${r.missing} partidos`}` : `Nivel ${lvl(r.level)}${tag}`;
-      return `<a class="prow${me ? ' me' : ''}" href="#/jugador/${r.id}"><span class="pos">${pos}</span>${avatar(r, (r.pos && r.pos <= 3 && mode === 'puntos') ? 'top3' : '')}
+      const sub = r.injured ? `Lesionado hasta el ${dm(r.injured)}` : mode === 'puntos' && !r.pos ? `Nivel ${lvl(r.level)} · ${r.missing === 1 ? 'Falta 1 partido' : `Faltan ${r.missing} partidos`}` : `Nivel ${lvl(r.level)}${tag}`;
+      return `<a class="prow${me ? ' me' : ''}${r.injured ? ' inj' : ''}" href="#/jugador/${r.id}"><span class="pos">${pos}</span><span class="avw">${avatar(r, (r.pos && r.pos <= 3 && mode === 'puntos') ? 'top3' : '')}${r.injured ? `<span class="injdot" title="Lesionado">${I.bandage}</span>` : ''}</span>
         <span class="who"><b>${esc(r.full_name)}</b><span>${esc(sub)}</span></span>${right}</a>`;
     };
     let html = '';
@@ -2343,6 +2379,8 @@ function paintPlayer(d, own, o) {
   if (!own && d.vs) {
     const v = d.vs;
     if (!v.canChallenge) cta = `<p class="hint" style="text-align:center;margin-top:18px">${S.season.phase === 'regular' ? 'Este jugador no está disponible.' : 'La fase regular ha terminado.'}</p>`;
+    else if (p.injured) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(first(p.full_name))} está lesionado hasta el ${fmtWhen(p.injured)}.<br>Podrás retarle después.</p>`;
+    else if (v.meInjured) cta = `<p class="hint" style="text-align:center;margin-top:18px">Estás marcado como lesionado.<br>Cámbialo en tu perfil para poder retar.</p>`;
     else if (!(S.season.challengesOpen ?? S.season.started)) cta = `<p class="hint" style="text-align:center;margin-top:18px">Los retos se abren el ${fmtWhen(S.season.opensOn || S.season.starts_on)}.<br>¡Ve preparando la raqueta!</p>`;
     else if (v.bandBlock) cta = `<p class="hint" style="text-align:center;margin-top:18px">${esc(v.bandBlock)}</p>`;
     else if (v.openChallenge) cta = `<a class="btn block navy" style="margin-top:18px" href="#/retos">Ya tenéis un reto abierto · Verlo</a>`;
@@ -2361,8 +2399,13 @@ function paintPlayer(d, own, o) {
       <span class="pill light">Revés a ${p.backhand === 'una' ? 'una mano' : 'dos manos'}</span>
       ${p.ageTag ? `<span class="pill light">${p.ageTag === 'Junior' ? 'Junior' : `${esc(p.ageTag)} años`}</span>` : ''}
       ${own ? `<span class="pill light">@${esc(p.username)}</span>` : ''}
+      ${p.injured ? `<span class="pill injpill">${I.bandage}Lesionado</span>` : ''}
     </div>
     ${own && !S.me.card_locked ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta</a>` : ''}
+    ${own ? (p.injured ? `<div class="injbox"><span class="ic">${I.bandage}</span><div><b>Lesionado hasta el ${fmtWhen(p.injured)}</b><span>Nadie puede retarte hasta entonces.</span></div>
+        <div class="btns"><button class="btn xs ghost" id="inj-off" type="button">Ya estoy bien</button></div></div>
+        <p style="margin:8px 0 0;text-align:center"><button type="button" class="linkbtn" id="inj-on">Cambiar la fecha</button></p>`
+      : `<p style="margin:14px 0 0;text-align:center"><button type="button" class="linkbtn" id="inj-on">¿Estás lesionado? Pausa los retos</button></p>`) : ''}
     ${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
     ${cta}
     <div class="tiles" style="margin-top:12px">
@@ -2381,7 +2424,45 @@ function paintPlayer(d, own, o) {
   bindTilt($app);
   const bShare = document.getElementById('share-card');
   if (bShare) bShare.addEventListener('click', () => busy(bShare, () => shareCard(p)));
+  if (own) bindInjury(p);
   if (!o.refresh) stagger($app.querySelector('.screen'));
+}
+
+/* Lesión: el jugador elige hasta cuándo no se le puede retar */
+function bindInjury(p) {
+  const save = async (val) => {
+    const r = await api('POST', 'me', { injured_until: val });
+    S.me = { ...S.me, ...r.me }; C.delete('player:' + S.me.id); C.delete('ranking');
+    try { const sv = JSON.parse(localStorage.getItem('atc_me') || 'null'); if (sv) { sv.me = S.me; localStorage.setItem('atc_me', JSON.stringify(sv)); } } catch (e) {}
+    return r;
+  };
+  const off = document.getElementById('inj-off');
+  if (off) off.addEventListener('click', () => busy(off, async () => {
+    try { await save(null); toast('¡Bienvenido de vuelta! Ya pueden retarte.', true); screenPlayer(); } catch (e) { toast(e.message); }
+  }));
+  const on = document.getElementById('inj-on');
+  if (on) on.addEventListener('click', async () => {
+    const t = today(), max = String(S.season?.masters_end || addDays(t, 60)).slice(0, 10);
+    const quick = [['1 semana', 7], ['2 semanas', 14], ['1 mes', 30]].map(([l, n]) => [l, addDays(t, n) > max ? max : addDays(t, n)]);
+    const val = await sheet(`<h2>¿Hasta cuándo no puedes jugar?</h2>
+      <p>Mientras estés lesionado nadie podrá retarte y en la clasificación saldrá que estás lesionado.</p>
+      <div class="chips" style="margin-top:16px">${quick.map(([l, d]) => `<button type="button" class="chip" data-d="${d}" aria-pressed="false">${l}<small>${dm(d)}</small></button>`).join('')}</div>
+      <label class="field" style="margin-top:12px">O elige el día<input class="input" type="date" id="injd" min="${t}" max="${max}" value="${p.injured || ''}"></label>
+      <p class="hint" style="margin-top:10px">Los retos que aún no se han aceptado se cancelan. Si tienes un partido ya aceptado, entra en Partidos y toca «No vamos a jugar».</p>
+      <div class="btns" style="margin-top:16px"><button class="btn ghost" data-close="no">Volver</button><button class="btn" id="injsave">Guardar</button></div>`,
+      (el, close) => {
+        const inp = el.querySelector('#injd');
+        el.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => {
+          el.querySelectorAll('[data-d]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); inp.value = b.dataset.d; }));
+        el.querySelector('#injsave').addEventListener('click', () => { if (inp.value) close(inp.value); else inp.focus(); });
+      });
+    if (!val) return;
+    try {
+      const r = await save(val);
+      toast(`Hecho. Nadie podrá retarte hasta el ${fmtWhen(val)}.${r.cancelled ? ` Hemos cancelado ${r.cancelled === 1 ? '1 reto pendiente' : `${r.cancelled} retos pendientes`}.` : ''}`, true);
+      screenPlayer();
+    } catch (e) { toast(e.message); }
+  });
 }
 
 /* ── Retar ─────────────────────────────────────────────────────────── */
