@@ -397,6 +397,37 @@ details.adm summary::-webkit-details-marker{display:none}
 .injbox b{display:block;font-size:14.5px;color:var(--ink)}.injbox span{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
 .injbox .btns{margin:0 0 0 auto;flex:none}
 @media (prefers-reduced-motion: reduce){.injdot svg,.injpill svg,.injbox .ic svg{animation:none}}
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;margin-top:14px;padding:4px;border-radius:999px;background:var(--soft)}
+.seg i{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--card);box-shadow:0 1px 2px rgba(15,23,32,.06),0 4px 12px rgba(15,23,32,.06);transition:transform 240ms cubic-bezier(.23,1,.32,1)}
+.seg[data-i="1"] i{transform:translateX(100%)}
+.seg button{position:relative;z-index:1;border:0;background:none;padding:10px 0;font:inherit;font-size:14.5px;font-weight:700;color:var(--muted);border-radius:999px;transition:color 200ms ease,transform 140ms ease-out}
+.seg button[aria-selected="true"]{color:var(--ink)}
+.seg button:active{transform:scale(.97)}
+.ag-week{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 2px}
+.ag-week div{text-align:center}.ag-week b{display:block;font-size:15px;font-weight:800;color:var(--ink)}.ag-week span{font-size:12.5px;font-weight:600;color:var(--muted)}
+.ag-week .icon-btn{width:38px;height:38px;transition:transform 140ms ease-out,opacity 200ms ease}
+.ag-week .icon-btn:active{transform:scale(.94)}.ag-week .icon-btn[style*="scaleX"]:active{transform:scaleX(-1) scale(.94)}
+.ag-week .icon-btn:disabled{opacity:.3}
+.sec .label.today{color:var(--orange)}
+.box.ag{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;margin-top:8px}
+.box.ag.mine{box-shadow:inset 0 0 0 1.5px rgba(227,91,42,.45)}
+.ag-t{flex:none;width:46px;padding-top:6px}.ag-t b{display:block;font-size:15px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.ag-done{display:block;margin-top:2px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ok)}
+.ag-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.ag-p{display:flex;align-items:center;gap:9px;color:var(--ink);min-width:0}
+.ag-p .av{width:28px;height:28px;font-size:11px}
+.ag-p b{flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-p b small{font-weight:600;color:var(--orange)}
+.ag-l{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.ag-g{display:flex;gap:4px;flex:none}
+.ag-g i{width:22px;height:24px;border-radius:7px;background:var(--soft);display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.ag-g i.w{background:var(--navy);color:#fff}
+.ag-p.won b{font-weight:800}.ag-p.lost b{color:var(--muted)}
+.ag-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ag-foot .freebadge{margin-top:2px}
+.ag-note{font-size:12px;font-weight:600;color:var(--muted)}
+.ag-score{flex:none;align-self:center;font-size:14px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;background:var(--soft);border-radius:10px;padding:6px 9px}
+@media (prefers-reduced-motion: reduce){.seg i{transition:none}}
 .perks{margin:12px 0 2px}
 .perks-k{display:block;margin:0 4px 6px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
 .perks-g{border-radius:16px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);overflow:hidden}
@@ -1269,6 +1300,20 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Actividad": "Activity",
+  "Esta semana": "This week",
+  "Semana que viene": "Next week",
+  "Semana pasada": "Last week",
+  "Dentro de 2 semanas": "In 2 weeks",
+  "Semana anterior": "Previous week",
+  "Semana siguiente": "Next week",
+  "Hoy · *": "Today · $1",
+  "Mañana · *": "Tomorrow · $1",
+  "Resultado por confirmar": "Result to confirm",
+  "Pendiente de resultado": "Result pending",
+  "No hay partidos esta semana.": "No matches this week.",
+  "Reta a alguien y aparecerá aquí.": "Challenge someone and it'll show up here.",
+  "· Tú": "· You",
   "Lesionado hasta el *": "Injured until $1",
   "Lesionado": "Injured",
   "* está lesionado hasta el *.": "$1 is injured until $2.",
@@ -2702,8 +2747,73 @@ async function screenFeed(append) {
     } catch (e) { return toast(e.message); }
     return paintFeed();
   }
-  render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px;font-size:28px">Tablón</h1></div></div><div id="body"></div></main>${nav('tablon')}`);
-  load('feed', 'feed', feedData, { skeleton: () => { document.getElementById('body').innerHTML = spinner(); } });
+  render(`<main class="screen"><div class="pagehead"><div><div class="label" style="color:var(--orange)">${esc(S.season?.name || 'Temporada 1')}</div><h1 class="h" style="margin-top:4px;font-size:28px">Tablón</h1></div></div>
+    <div class="seg" role="tablist" data-i="${feedTab === 'agenda' ? 1 : 0}"><i aria-hidden="true"></i><button type="button" role="tab" data-tab="actividad" aria-selected="${feedTab !== 'agenda'}">Actividad</button><button type="button" role="tab" data-tab="agenda" aria-selected="${feedTab === 'agenda'}">Agenda</button></div>
+    <div id="body"></div></main>${nav('tablon')}`);
+  document.querySelector('.seg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]'); if (!b || b.dataset.tab === feedTab) return;
+    feedTab = b.dataset.tab;
+    const seg = e.currentTarget; seg.dataset.i = feedTab === 'agenda' ? 1 : 0;
+    seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    showFeedTab(true);
+  });
+  showFeedTab(false);
+}
+let feedTab = 'actividad', agendaWeek = 0;
+function showFeedTab(switching) {
+  const body = document.getElementById('body'); if (!body) return;
+  body.onclick = null;
+  if (feedTab === 'agenda') return loadAgenda(switching ? 0 : null);
+  load('feed', 'feed', (d, o) => { if (feedTab !== 'actividad') return; feedData(d, o); if (switching) slideIn(body, -1); }, { skeleton: () => { body.innerHTML = spinner(); } });
+}
+/* La semana va de lunes a domingo */
+function weekRange(w) {
+  const t = today(), dt = new Date(t + 'T12:00:00Z');
+  const mon = addDays(t, -((dt.getUTCDay() + 6) % 7) + 7 * w);
+  return [mon, addDays(mon, 6)];
+}
+const WEEK_LABEL = { '-1': 'Semana pasada', 0: 'Esta semana', 1: 'Semana que viene', 2: 'Dentro de 2 semanas' };
+function slideIn(el, dir) {
+  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  el.animate([{ opacity: 0, transform: `translateX(${dir * 14}px)` }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.23,1,.32,1)' });
+}
+function loadAgenda(dir) {
+  const body = document.getElementById('body'); if (!body) return;
+  const [from, to] = weekRange(agendaWeek);
+  load('agenda:' + from, `agenda?from=${from}&to=${to}`, (d) => { if (feedTab !== 'agenda') return; paintAgenda(d); if (dir !== null && dir !== undefined) slideIn(document.getElementById('agenda'), dir || 1); },
+    { skeleton: () => { body.innerHTML = spinner(); } });
+}
+function paintAgenda(d) {
+  const body = document.getElementById('body'); if (!body) return;
+  const t = today(), [from, to] = [d.from, d.to];
+  const fmtRange = () => { const a = new Date(from + 'T12:00:00Z'), b = new Date(to + 'T12:00:00Z');
+    return a.getUTCMonth() === b.getUTCMonth() ? `${a.getUTCDate()} – ${b.getUTCDate()} ${MONTHS[b.getUTCMonth()].slice(0, 3)}` : `${a.getUTCDate()} ${MONTHS[a.getUTCMonth()].slice(0, 3)} – ${b.getUTCDate()} ${MONTHS[b.getUTCMonth()].slice(0, 3)}`; };
+  const byDay = {};
+  for (const m of d.matches) (byDay[m.play_at.slice(0, 10)] ||= []).push(m);
+  const dayLabel = (day) => day === t ? `Hoy · ${fmtWhen(day, false)}` : day === addDays(t, 1) ? `Mañana · ${fmtWhen(day, false)}` : cap(fmtWhen(day, false));
+  const who = (p, m, k) => {
+    const won = m.result && m.result.winner === p.id, lost = m.result && m.result.winner && !won;
+    const games = m.result ? `<span class="ag-g">${m.result.sets.map((st) => `<i class="${st[k] > st[1 - k] ? 'w' : ''}">${st[k]}</i>`).join('')}</span>` : `<span class="ag-l">${lvl(p.level)}</span>`;
+    return `<a class="ag-p${won ? ' won' : ''}${lost ? ' lost' : ''}" href="#/jugador/${p.id}">${avatar(p, 'sm')}<b>${esc(p.full_name)}${isMe(p.id) ? ' <small>· Tú</small>' : ''}</b>${games}</a>`;
+  };
+  const card = (m) => {
+    const day = m.play_at.slice(0, 10), past = day < t;
+    const mine = isMe(m.p1.id) || isMe(m.p2.id);
+    const right = '';
+    const note = m.result ? '' : m.pending ? '<span class="ag-note">Resultado por confirmar</span>' : past ? '<span class="ag-note">Pendiente de resultado</span>' : '';
+    return `<div class="box ag${mine ? ' mine' : ''}"><div class="ag-t"><b>${m.play_at.slice(11, 16)}</b>${m.result ? '<span class="ag-done">Jugado</span>' : ''}</div>
+      <div class="ag-m">${who(m.p1, m, 0)}${who(m.p2, m, 1)}${note || m.promo ? `<div class="ag-foot">${m.promo ? freeBadge() : ''}${note}</div>` : ''}</div>${right}</div>`;
+  };
+  const days = Object.keys(byDay).sort();
+  body.innerHTML = `<div class="ag-week"><button type="button" class="icon-btn sm" data-w="-1" aria-label="Semana anterior" ${agendaWeek <= -1 ? 'disabled' : ''}>${I.back}</button>
+      <div><b>${WEEK_LABEL[agendaWeek]}</b><span>${fmtRange()}</span></div>
+      <button type="button" class="icon-btn sm" data-w="1" aria-label="Semana siguiente" ${agendaWeek >= 2 ? 'disabled' : ''} style="transform:scaleX(-1)">${I.back}</button></div>
+    <div id="agenda">${days.length ? days.map((day) => `<div class="sec"><span class="label${day === t ? ' today' : ''}">${dayLabel(day)}</span>${byDay[day].map(card).join('')}</div>`).join('')
+      : `<div class="empty">No hay partidos esta semana.<br>Reta a alguien y aparecerá aquí.<div style="margin-top:16px"><a class="btn sm" href="#/">Ver la clasificación</a></div></div>`}</div>`;
+  body.onclick = (e) => {
+    const b = e.target.closest('button[data-w]'); if (!b || b.disabled) return;
+    const dir = Number(b.dataset.w); agendaWeek = Math.max(-1, Math.min(2, agendaWeek + dir)); loadAgenda(dir);
+  };
 }
 function feedData(d, o) {
   if (o.refresh && feedPosts.length > d.posts.length) return;   // ya se han cargado más: no se pisa
