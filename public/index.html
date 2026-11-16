@@ -435,24 +435,19 @@ details.adm summary::-webkit-details-marker{display:none}
 .hfails div{font-size:13px;color:var(--ink);line-height:1.35}
 .hfails span{display:block;font-size:12px;color:var(--bad)}
 .sugg{margin:14px 0 2px}
-.sugg-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.sugg-c{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px 10px;border-radius:18px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);color:var(--ink);text-align:center;transition:transform 160ms ease-out}
+.sugg-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 4px 6px}
+.sugg-h .perks-k{margin:0}
+.sugg-n{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.sugg-n svg{width:11px;height:11px;color:var(--orange)}
+.sugg-n.solo{display:flex;justify-content:center;margin:12px 0 0}
+.sugg-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.sugg-c{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:14px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);color:var(--ink);min-width:0;transition:transform 140ms ease-out}
 .sugg-c:active{transform:scale(.97)}
-.sugg-c .av{width:40px;height:40px;font-size:14px;margin-bottom:3px}
-.sugg-c b{font-size:14px;font-weight:800;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sugg-c span{font-size:12px;font-weight:600;color:var(--muted)}
-.sugg-c em{margin-top:6px;font-style:normal;font-size:12px;font-weight:800;color:#fff;background:var(--orange);border-radius:999px;padding:5px 12px}
-.perks{margin:12px 0 2px}
+.sugg-c .av{width:28px;height:28px;font-size:10.5px;flex:none}
+.sugg-t{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.sugg-t b{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sugg-t span{font-size:11px;font-weight:700;color:var(--muted)}
 .perks-k{display:block;margin:0 4px 6px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
-.perks-g{border-radius:16px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);overflow:hidden}
-.perk{display:flex;align-items:center;gap:10px;padding:8px 12px}
-.perk+.perk{border-top:1px solid var(--line)}
-.perk-i{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--orange-soft);color:var(--orange)}
-.perk-i svg{width:13px;height:13px}
-.perk-t{min-width:0;flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:10px;white-space:nowrap}
-.perk-t span{overflow:hidden;text-overflow:ellipsis}
-.perk-t b{font-size:12.5px;font-weight:800;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
-.perk-t span{font-size:11.5px;font-weight:600;line-height:1.3;color:var(--muted)}
 .promo-line{margin:12px 6px 0;font-size:12.5px;line-height:1.4;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .promo-line::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:7px;vertical-align:middle}
 .promo{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:18px;background:var(--orange-soft);border:1px solid rgba(227,91,42,.35);font-size:14px;line-height:1.35}
@@ -1314,6 +1309,7 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Reta a cualquiera hasta el *": "Challenge anyone until $1",
   "Notificaciones en este móvil": "Notifications on this phone",
   "Comprobando…": "Checking…",
   "En iPhone, primero añade la app a la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y ábrela desde el icono. Después podrás activarlas aquí.": "On iPhone, first add the app to your Home Screen (Share → Add to Home Screen) and open it from the icon. Then you can turn them on here.",
@@ -2373,11 +2369,9 @@ async function screenRanking() {
     };
     let html = '';
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
-    const perks = [];
-    if (d.promo && d.promo.left > 0 && sv.phase === 'regular') perks.push([I.gift, 'Pista y bolas gratis', d.promo.left === d.promo.total ? `${d.promo.total} primeros retos` : d.promo.left === 1 ? 'Queda 1' : `Quedan ${d.promo.left}`]);
-    if (sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY) perks.push([I.bolt, 'Reta a cualquiera', `Hasta el ${dm(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))}`]);
-    if (!q && d.suggest && d.suggest.length) html += `<section class="sugg" aria-label="Rivales para ti"><span class="perks-k">Rivales para ti</span><div class="sugg-g">${d.suggest.map((r) => `<a class="sugg-c" href="#/retar/${r.id}">${avatar(r, 'lg')}<b>${esc(first(r.full_name))}</b><span>Nivel ${lvl(r.level)}</span><em>Retar</em></a>`).join('')}</div></section>`;
-    if (perks.length) html += `<section class="perks" aria-label="Aprovecha"><span class="perks-k">Aprovecha</span><div class="perks-g${perks.length === 1 ? ' one' : ''}">${perks.map(([ic, t, sub]) => `<div class="perk"><span class="perk-i">${ic}</span><span class="perk-t"><b>${t}</b><span>${sub}</span></span></div>`).join('')}</div></section>`;
+    const anyone = sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY ? `Reta a cualquiera hasta el ${dm(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))}` : '';
+    if (!q && d.suggest && d.suggest.length) html += `<section class="sugg" aria-label="Rivales para ti"><div class="sugg-h"><span class="perks-k">Rivales para ti</span>${anyone ? `<span class="sugg-n">${I.bolt}${anyone}</span>` : ''}</div><div class="sugg-g">${d.suggest.map((r) => `<a class="sugg-c" href="#/retar/${r.id}">${avatar(r, 'sm')}<span class="sugg-t"><b>${esc(first(r.full_name))}</b><span>Nivel ${lvl(r.level)}</span></span></a>`).join('')}</div></section>`;
+    else if (anyone) html += `<p class="sugg-n solo">${I.bolt}${anyone}</p>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
       let lastZone = null;
