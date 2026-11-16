@@ -469,6 +469,8 @@ const EN = {/*DICT*/
   "Desde el día 30, solo puedes retar a tu grupo de 8 de la clasificación (1.º–8.º, 9.º–16.º, 17.º–24.º, 25.º en adelante) y a los grupos de justo encima y justo debajo.": "From day 30, you can only challenge your own group of 8 in the standings (1st–8th, 9th–16th, 17th–24th, 25th and up) and the groups just above and just below.",
   "Para entrar en los Másters hay que jugar al menos 5 partidos. Los Másters se juegan por grupos de 8 según la clasificación (Oro, Plata, Bronce y Challenger).": "To enter the Masters you must play at least 5 matches. The Masters are played in groups of 8 by standings (Gold, Silver, Bronze and Challenger).",
   "Las pistas se reservan en el club, como siempre.": "Courts are booked at the club, as usual.",
+  "Las pistas se reservan en horas en punto. Elige una hora sin medias.": "Courts are booked on the hour. Pick a time without half hours.",
+  "A esa hora el club está cerrado. Elige una hora dentro del horario.": "The club is closed at that time. Pick a time within opening hours.",
   "Responsable:": "Data controller:",
   "Almuñécar Tennis Club. Contacto: info@almunecartennisclub.com.": "Almuñécar Tennis Club. Contact: info@almunecartennisclub.com.",
   "Qué datos guardamos:": "What data we keep:",
