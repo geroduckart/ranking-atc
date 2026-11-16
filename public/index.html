@@ -477,6 +477,9 @@ details.adm summary::-webkit-details-marker{display:none}
 /* Esqueletos de carga (aparecen solo si la carga tarda) */
 .skel{animation:fadeIn 220ms 120ms ease-out both}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.late-in{animation:lateIn 320ms cubic-bezier(.23,1,.32,1) both}
+@keyframes lateIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.late-in{animation:fadeIn 200ms ease-out both}}
 .sk{position:relative;overflow:hidden;background:rgba(18,41,74,.07);border-radius:18px}
 .sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);animation:shimmer 1.15s ease-in-out infinite}
 @keyframes shimmer{to{transform:translateX(100%)}}
@@ -1524,6 +1527,12 @@ function warm(key, path) {
   if (!S.token || (h && Date.now() - h.at < 15000)) return;
   fetchKey(key, path).catch(() => {});
 }
+/* Al tocar un jugador, la ficha empieza a cargarse ya (antes de soltar el dedo) */
+document.addEventListener('pointerdown', (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="#/jugador/"]');
+  const id = a && a.getAttribute('href').split('/')[2];
+  if (id) warm('player:' + id, 'player/' + id);
+}, { passive: true, capture: true });
 let warmedAt = 0;
 function warmTabs() {
   if (!S.me || Date.now() - warmedAt < 30000) return;
@@ -2457,8 +2466,11 @@ function stakesHTML(p, st) {
     </div>
     <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
 }
+let previewOf = null;   // ficha pintada como vista previa (lo que falte entra con un fundido suave)
 function paintPlayer(d, own, o) {
   const p = d.player;
+  const late = !d.preview && previewOf === p.id;
+  previewOf = d.preview ? p.id : null;
   S.season = d.season;
   const pill = p.pos ? `${p.pos}.º · ${p.pts} pts · ${ZONES[p.zone][0]}` : `${p.pts} pts · ${p.missing === 1 ? 'Falta 1 partido' : `Faltan ${p.missing} partidos`}`;
   // nivel tras cada uno de los últimos partidos (del más antiguo al actual)
@@ -2495,19 +2507,20 @@ function paintPlayer(d, own, o) {
         <div class="btns"><button class="btn xs ghost" id="inj-off" type="button">Ya estoy bien</button></div></div>
         <p style="margin:8px 0 0;text-align:center"><button type="button" class="linkbtn" id="inj-on">Cambiar la fecha</button></p>`
       : `<p style="margin:14px 0 0;text-align:center"><button type="button" class="linkbtn" id="inj-on">¿Estás lesionado? Pausa los retos</button></p>`) : ''}
-    ${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
-    ${cta}
+    ${!own && d.preview ? '<div class="skel" aria-hidden="true" style="margin-top:22px"><div class="sk" style="width:120px;height:12px;border-radius:6px;margin:0 0 12px 6px"></div><div class="sk" style="height:178px;border-radius:22px"></div><div class="sk" style="height:54px;border-radius:999px;margin-top:22px"></div></div>' : ''}
+    <div class="${late ? 'late-in' : ''}">${!own && d.vs && d.vs.stakes ? stakesHTML(p, d.vs.stakes) : ''}
+    ${cta}</div>
     <div class="tiles" style="margin-top:12px">
       <div class="tile"><b>${p.matches_total}</b><span>Jugados</span></div>
       <div class="tile"><b style="color:var(--ok)">${p.won}</b><span>Ganados</span></div>
       <div class="tile"><b>${signed(p.level - p.start_level)}</b><span>Nivel desde el inicio</span></div>
     </div>
-    ${d.preview ? '' : d.recent.length ? `<div class="sec"><span class="label">Últimos partidos</span>
+    ${d.preview ? '' : `<div class="${late ? 'late-in' : ''}">` + (d.recent.length ? `<div class="sec"><span class="label">Últimos partidos</span>
       ${levels.length > 2 ? `<div class="box" style="padding:10px 12px;margin-bottom:8px">${spark(levels)}</div>` : ''}
       <div class="list">${d.recent.map((m) => `<a class="mrow" href="#/jugador/${m.rival_id}"><span class="wl${m.won ? '' : ' l'}">${m.won ? 'G' : 'P'}</span>
         <span class="r">vs ${esc(m.rival)}${m.master ? ' · Máster' : ''}${m.walkover ? ' · No jugado' : ''}</span>
         <span class="s">${esc(m.score)}</span><span class="badge ${m.delta >= 0 ? 'ok' : 'bad'}">${signed(m.delta)}</span></a>`).join('')}</div></div>`
-      : `<p class="hint" style="text-align:center;margin-top:22px">${own ? 'Todavía no has jugado. Ve a la clasificación y reta a alguien.' : 'Todavía no ha jugado ningún partido.'}</p>`}
+      : `<p class="hint" style="text-align:center;margin-top:22px">${own ? 'Todavía no has jugado. Ve a la clasificación y reta a alguien.' : 'Todavía no ha jugado ningún partido.'}</p>`) + '</div>'}
     ${own && S.me.is_admin ? `<a class="btn block ghost" style="margin-top:22px" href="#/admin">Panel del club</a>` : ''}
   </main>${nav(own ? 'perfil' : 'ranking')}`);
   bindTilt($app);
