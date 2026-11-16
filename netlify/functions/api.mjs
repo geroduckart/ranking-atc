@@ -1495,8 +1495,10 @@ export async function runCron() {
       }
     }
   }
-  // 2b. El día antes del partido: recordatorio por WhatsApp (a quien lo haya aceptado)
-  const soon = await sql`update challenges set day_reminded = true
+  // 2b. El día antes del partido: recordatorio por WhatsApp (a quien lo haya aceptado).
+  //     Se manda a partir de las 10:00 (hora de Madrid), nunca de madrugada.
+  const hourMadrid = Number(madridNow().slice(11, 13));
+  const soon = hourMadrid < 10 || hourMadrid >= 22 ? [] : await sql`update challenges set day_reminded = true
     where status = 'accepted' and not day_reminded
       and play_at::date = ((now() at time zone 'Europe/Madrid')::date + 1)
     returning *, play_at::text as play_at`;
