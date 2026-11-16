@@ -181,7 +181,7 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .share-pop svg{width:14px;height:14px;flex:none}
 /* Carta */
 .fut-wrap{display:flex;flex-direction:column;align-items:center}
-.fut{position:relative;width:min(272px,78vw);aspect-ratio:3/3.85;padding:20px 24px 16px;color:var(--navy);overflow:hidden;
+.fut{position:relative;width:min(272px,78vw);aspect-ratio:3/3.85;padding:15px 24px 16px;color:var(--navy);overflow:hidden;
   clip-path:polygon(50% 0,100% 6%,100% 88%,50% 100%,0 88%,0 6%);
   background:linear-gradient(155deg,#F4E2A1 0%,#D8B65A 45%,#B8913A 100%);filter:drop-shadow(0 18px 30px rgba(15,23,32,.18));animation:cardIn 360ms var(--ease) backwards;
   transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform 520ms cubic-bezier(.22,1.2,.36,1)}
@@ -195,7 +195,7 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fut.diamond::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(118deg,transparent 34%,rgba(255,255,255,.72) 46%,transparent 56%),
              linear-gradient(62deg,transparent 60%,rgba(255,255,255,.45) 70%,transparent 78%)}
-.fut-top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:8px}
+.fut-top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px}
 .fut-lvl{display:flex;flex-direction:column;align-items:center;line-height:1}
 .fut-lvl b{font-size:50px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .fut.special .fut-lvl b,.fut.special .fs b{color:var(--orange)}
@@ -218,11 +218,11 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fut.special .fut-lvl i{background:rgba(255,255,255,.14)}
 .fut-photo{width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.6);margin-top:2px}
 .fut-logo{width:96px;height:auto;margin-top:8px;opacity:.9}
-.fut-name{font-size:19px;font-weight:700;letter-spacing:.06em;text-align:center;margin-top:10px;padding-top:8px;border-top:1px solid rgba(18,41,74,.2);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fut-name{font-size:19px;font-weight:700;letter-spacing:.06em;text-align:center;margin-top:8px;padding-top:7px;border-top:1px solid rgba(18,41,74,.2);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fut.special .fut-name{border-color:rgba(255,255,255,.2)}
 .fut-tier{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-align:center;opacity:.65;margin-top:2px}
 .fut-age{opacity:1;font-weight:800}
-.fut-stats{display:flex;flex-direction:column;gap:2px;margin:8px 6px 0}
+.fut-stats{display:flex;flex-direction:column;gap:1px;margin:6px 6px 0}
 .fs{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(18,41,74,.1);padding-bottom:1px}
 .fut.special .fs{border-color:rgba(255,255,255,.08)}
 .fs span{font-size:13.5px;font-weight:600;opacity:.9}
@@ -2094,8 +2094,19 @@ async function shareCard(p) {
     g.fillStyle = ink; g.font = F(700, 20 * k); g.textAlign = 'center';
     g.fillText('PROVISIONAL', bx + bw / 2, by + 29 * k);
   }
-  const crest = await load(tier === 'special' ? LOGO_W : LOGO_N);
-  if (crest) { const iw = 230 * k; g.drawImage(crest, rightX - iw, cy + 104 * k, iw, iw * crest.height / crest.width); }
+  // A la derecha, la foto del jugador (el escudo ya va arriba); sin foto, el escudo
+  const ph = p.photo_v > 0 ? await load(`/api/photo/${p.id}?v=${p.photo_v}`) : null;
+  if (ph) {
+    const d = 224 * k, px = rightX - d, py = cy + 70 * k, r = d / 2;
+    const s0 = Math.min(ph.width, ph.height);
+    g.save(); g.beginPath(); g.arc(px + r, py + r, r, 0, Math.PI * 2); g.clip();
+    g.drawImage(ph, (ph.width - s0) / 2, (ph.height - s0) / 2, s0, s0, px, py, d, d); g.restore();
+    g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 8 * k;
+    g.beginPath(); g.arc(px + r, py + r, r - 4 * k, 0, Math.PI * 2); g.stroke();
+  } else {
+    const crest = await load(tier === 'special' ? LOGO_W : LOGO_N);
+    if (crest) { const iw = 230 * k; g.drawImage(crest, rightX - iw, cy + 104 * k, iw, iw * crest.height / crest.width); }
+  }
 
   const short = cardName(p).toUpperCase();
   g.textAlign = 'center';
@@ -2109,7 +2120,7 @@ async function shareCard(p) {
   g.fillText(`${(S.season && S.season.name) || 'Temporada 1'} · ATC${p.ageTag ? ' · ' + p.ageTag : ''}`.toUpperCase(), cx + cw / 2, cy + 464 * k);
 
   ATTRS.forEach(([key, label], i) => {
-    const y = cy + (540 + i * 62) * k;
+    const y = cy + (522 + i * 58) * k;   // la última línea queda por encima de la punta
     g.textAlign = 'left'; g.font = F(600, 30 * k); g.fillStyle = ink; g.fillText(label, padX, y);
     g.textAlign = 'right'; g.font = F(700, 34 * k); g.fillStyle = big; g.fillText(String(p.attrs[key]), rightX, y);
     g.strokeStyle = tier === 'special' ? 'rgba(255,255,255,.14)' : 'rgba(18,41,74,.13)';
