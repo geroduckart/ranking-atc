@@ -200,6 +200,20 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fut-lvl b{font-size:50px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .fut.special .fut-lvl b,.fut.special .fs b{color:var(--orange)}
 .fut-lvl span{font-size:11px;font-weight:700;letter-spacing:.16em;margin-top:3px}
+.fut-meta{display:flex;align-items:center;gap:6px;margin-top:6px;white-space:nowrap}
+.fut-meta i{margin-top:0!important}
+.fut-flag{width:26px;height:19.5px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(18,41,74,.16),0 1px 2px rgba(18,41,74,.18)}
+.fut.special .fut-flag{box-shadow:0 0 0 1px rgba(255,255,255,.28),0 1px 2px rgba(0,0,0,.3)}
+.nat-l{margin:10px -6px 0;max-height:min(46vh,380px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.nat-i{display:flex;align-items:center;gap:12px;width:100%;padding:10px 10px;border:0;background:none;border-radius:12px;font:inherit;font-size:15.5px;font-weight:600;color:var(--ink);text-align:left;cursor:pointer;transition:background-color 120ms ease,transform 120ms ease-out}
+.nat-i:active{transform:scale(.98);background:rgba(18,41,74,.06)}
+.nat-i[aria-pressed="true"]{background:rgba(227,91,42,.1)}
+.nat-i[hidden]{display:none}
+.flag{width:24px;height:18px;flex:none;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(18,41,74,.14)}
+.nat-sep{height:1px;background:var(--line);margin:6px 10px}
+.nat-sep[hidden]{display:none}
+.nat-btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);font:inherit;font-size:14.5px;font-weight:700;color:var(--ink);cursor:pointer;transition:transform 140ms ease-out}
+.nat-btn:active{transform:scale(.97)}
 .fut-lvl i{font-style:normal;font-size:10px;font-weight:700;margin-top:6px;padding:3px 8px;border-radius:999px;background:rgba(18,41,74,.12)}
 .fut.special .fut-lvl i{background:rgba(255,255,255,.14)}
 .fut-photo{width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.6);margin-top:2px}
@@ -1313,6 +1327,15 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Tu nacionalidad": "Your nationality",
+  "Buscar país": "Search country",
+  "Prefiero no decirlo": "I'd rather not say",
+  "Ahora la tarjeta lleva la bandera de tu país. Elige la tuya; puedes cambiarla cuando quieras en Ajustes.": "Cards now show your country's flag. Pick yours; you can change it any time in Settings.",
+  "Hecho. Tu tarjeta irá sin bandera.": "Done. Your card will have no flag.",
+  "Bandera añadida a tu tarjeta.": "Flag added to your card.",
+  "Nacionalidad": "Nationality",
+  "Elegir": "Choose",
+  "Sin bandera": "No flag",
   "Elige primero el día.": "Pick the day first.",
   "Ya no quedan horas ese día.": "No times left that day.",
   "Reta a cualquiera hasta el *": "Challenge anyone until $1",
@@ -1944,6 +1967,46 @@ async function busy(btn, fn) {
   try { return await fn(); } finally { if (document.body.contains(btn)) { btn.disabled = false; btn.innerHTML = label; btn.style.minWidth = ''; } }
 }
 
+/* Nacionalidad: bandera en la tarjeta. Las más habituales en el club, arriba. */
+const NATIONS = [["es", "España", "Spain"], ["gb", "Reino Unido", "United Kingdom"], ["gb-eng", "Inglaterra", "England"], ["gb-sct", "Escocia", "Scotland"], ["gb-wls", "Gales", "Wales"], ["gb-nir", "Irlanda del Norte", "Northern Ireland"], ["ie", "Irlanda", "Ireland"], ["fr", "Francia", "France"], ["de", "Alemania", "Germany"], ["it", "Italia", "Italy"], ["pt", "Portugal", "Portugal"], ["nl", "Países Bajos", "Netherlands"], ["be", "Bélgica", "Belgium"], ["lu", "Luxemburgo", "Luxembourg"], ["ch", "Suiza", "Switzerland"], ["at", "Austria", "Austria"], ["dk", "Dinamarca", "Denmark"], ["se", "Suecia", "Sweden"], ["no", "Noruega", "Norway"], ["fi", "Finlandia", "Finland"], ["is", "Islandia", "Iceland"], ["pl", "Polonia", "Poland"], ["cz", "Chequia", "Czechia"], ["sk", "Eslovaquia", "Slovakia"], ["hu", "Hungría", "Hungary"], ["si", "Eslovenia", "Slovenia"], ["hr", "Croacia", "Croatia"], ["ba", "Bosnia y Herzegovina", "Bosnia and Herzegovina"], ["rs", "Serbia", "Serbia"], ["me", "Montenegro", "Montenegro"], ["xk", "Kosovo", "Kosovo"], ["mk", "Macedonia del Norte", "North Macedonia"], ["al", "Albania", "Albania"], ["gr", "Grecia", "Greece"], ["bg", "Bulgaria", "Bulgaria"], ["ro", "Rumanía", "Romania"], ["md", "Moldavia", "Moldova"], ["ua", "Ucrania", "Ukraine"], ["by", "Bielorrusia", "Belarus"], ["ru", "Rusia", "Russia"], ["lt", "Lituania", "Lithuania"], ["lv", "Letonia", "Latvia"], ["ee", "Estonia", "Estonia"], ["mt", "Malta", "Malta"], ["cy", "Chipre", "Cyprus"], ["tr", "Turquía", "Turkey"], ["ge", "Georgia", "Georgia"], ["am", "Armenia", "Armenia"], ["az", "Azerbaiyán", "Azerbaijan"], ["ad", "Andorra", "Andorra"], ["mc", "Mónaco", "Monaco"], ["sm", "San Marino", "San Marino"], ["li", "Liechtenstein", "Liechtenstein"], ["va", "Ciudad del Vaticano", "Vatican City"], ["ar", "Argentina", "Argentina"], ["bo", "Bolivia", "Bolivia"], ["br", "Brasil", "Brazil"], ["cl", "Chile", "Chile"], ["co", "Colombia", "Colombia"], ["ec", "Ecuador", "Ecuador"], ["gy", "Guyana", "Guyana"], ["py", "Paraguay", "Paraguay"], ["pe", "Perú", "Peru"], ["sr", "Surinam", "Suriname"], ["uy", "Uruguay", "Uruguay"], ["ve", "Venezuela", "Venezuela"], ["us", "Estados Unidos", "United States"], ["mx", "México", "Mexico"], ["ca", "Canadá", "Canada"], ["au", "Australia", "Australia"]];
+const NAT_TOP = ['es', 'gb', 'gb-eng', 'gb-sct', 'ie', 'de', 'nl', 'fr', 'it', 'be', 'se', 'no', 'dk', 'ar', 'us'];
+const natName = (c) => { const n = NATIONS.find((x) => x[0] === c); return n ? (EN_ON ? n[2] : n[1]) : ''; };
+const flagImg = (c, cls = 'flag') => c && c !== '-' ? `<img class="${cls}" src="/flags/${c}.png" alt="${esc(natName(c))}" width="24" height="18">` : '';
+const fold = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+/** Hoja para elegir nacionalidad. Devuelve el código, '-' (prefiere no decirlo) o null (cerrada). */
+function pickNation(cur, { intro = '', later = false } = {}) {
+  const item = (c) => `<button type="button" class="nat-i" data-c="${c}" aria-pressed="${cur === c}">${flagImg(c)}<span>${esc(natName(c))}</span></button>`;
+  const rest = NATIONS.map((n) => n[0]).filter((c) => !NAT_TOP.includes(c)).sort((a, b) => natName(a).localeCompare(natName(b), EN_ON ? 'en' : 'es'));
+  return sheet(`<h2>Tu nacionalidad</h2>${intro ? `<p>${intro}</p>` : ''}
+    <input class="input" type="search" id="nat-q" placeholder="Buscar país" autocomplete="off" style="margin-top:12px" aria-label="Buscar país">
+    <div class="nat-l" id="nat-l">${NAT_TOP.map(item).join('')}<div class="nat-sep" aria-hidden="true"></div>${rest.map(item).join('')}</div>
+    <div class="btns" style="margin-top:14px">${later ? '<button class="btn ghost" data-close="no">Ahora no</button>' : ''}<button class="btn ghost" id="nat-none" type="button">Prefiero no decirlo</button></div>`,
+    (el, close) => {
+      const q = el.querySelector('#nat-q'), list = el.querySelector('#nat-l');
+      q.addEventListener('input', () => {
+        const t = fold(q.value.trim());
+        list.querySelector('.nat-sep').hidden = !!t;
+        list.querySelectorAll('.nat-i').forEach((b) => { b.hidden = !!t && !fold(b.textContent).includes(t); });
+      });
+      list.addEventListener('click', (e) => { const b = e.target.closest('.nat-i'); if (b) close(b.dataset.c); });
+      el.querySelector('#nat-none').addEventListener('click', () => close('-'));
+    });
+}
+/** A quien ya tenía cuenta: una vez, se le pide la bandera para su tarjeta («Ahora no» lo aplaza 4 días). */
+let natAsked = false;
+async function askNation() {
+  if (natAsked || !S.me || S.me.nationality !== null || document.querySelector('.sheet-bg')) return;   // undefined: datos antiguos, aún sin comprobar
+  const k = 'atc_nat_later_' + S.me.id;
+  try { if (Date.now() - Number(localStorage.getItem(k) || 0) < 4 * 864e5) return; } catch (e) {}
+  natAsked = true;
+  const c = await pickNation(null, { intro: 'Ahora la tarjeta lleva la bandera de tu país. Elige la tuya; puedes cambiarla cuando quieras en Ajustes.', later: true });
+  if (!c) { try { localStorage.setItem(k, String(Date.now())); } catch (e) {} return; }
+  try {
+    S.me = (await api('POST', 'me', { nationality: c })).me; C.delete('player:' + S.me.id); C.delete('ranking');
+    toast(c === '-' ? 'Hecho. Tu tarjeta irá sin bandera.' : 'Bandera añadida a tu tarjeta.', true);
+  } catch (e) { toast(e.message); }
+}
+
 /* La carta del jugador (como la del Journal) */
 function cardHTML(p) {
   const t = cardTier(p);
@@ -1951,7 +2014,7 @@ function cardHTML(p) {
   const short = cardName(p);
   return `<div class="fut-wrap"><div class="fut ${t}">
     <div class="fut-top">
-      <div class="fut-lvl"><b>${lvl(p.level)}</b><span>NIVEL</span>${p.provisional ? '<i>PROVISIONAL</i>' : ''}</div>
+      <div class="fut-lvl"><b>${lvl(p.level)}</b><span>NIVEL</span>${p.nat || p.provisional ? `<span class="fut-meta">${p.nat ? flagImg(p.nat, 'fut-flag') : ''}${p.provisional ? '<i>PROVISIONAL</i>' : ''}</span>` : ''}</div>
       ${p.photo_v > 0 ? `<img class="fut-photo" src="/api/photo/${p.id}?v=${p.photo_v}" alt="">` : `<img class="fut-logo" src="${logo}" alt="ATC">`}
     </div>
     <div class="fut-name">${esc(short)}</div>
@@ -2013,12 +2076,23 @@ async function shareCard(p) {
   g.fillText(lvl(p.level), padX, cy + 190 * k);
   g.fillStyle = ink; g.font = F(600, 30 * k);
   g.fillText('NIVEL', padX + 6 * k, cy + 236 * k);
+  let flagH = 0;
+  if (p.nat) {
+    const fl = await load(`/flags/${p.nat}.png`);
+    if (fl) {
+      const fw = 58 * k, fh = 44 * k, fx = padX, fy0 = cy + 262 * k;
+      g.save(); g.beginPath(); g.roundRect(fx, fy0, fw, fh, 7 * k); g.clip(); g.drawImage(fl, fx, fy0, fw, fh); g.restore();
+      g.strokeStyle = tier === 'special' ? 'rgba(255,255,255,.3)' : 'rgba(18,41,74,.18)'; g.lineWidth = 1.5 * k;
+      g.beginPath(); g.roundRect(fx, fy0, fw, fh, 7 * k); g.stroke();
+      flagH = 72 * k;
+    }
+  }
   if (p.provisional) {
-    const bw = 190 * k, by = cy + 262 * k;
+    const bw = 190 * k, by = cy + 262 * k, bx = padX + flagH;
     g.fillStyle = tier === 'special' ? 'rgba(255,255,255,.16)' : 'rgba(18,41,74,.14)';
-    g.beginPath(); g.roundRect(padX, by, bw, 44 * k, 22 * k); g.fill();
+    g.beginPath(); g.roundRect(bx, by, bw, 44 * k, 22 * k); g.fill();
     g.fillStyle = ink; g.font = F(700, 20 * k); g.textAlign = 'center';
-    g.fillText('PROVISIONAL', padX + bw / 2, by + 29 * k);
+    g.fillText('PROVISIONAL', bx + bw / 2, by + 29 * k);
   }
   const crest = await load(tier === 'special' ? LOGO_W : LOGO_N);
   if (crest) { const iw = 230 * k; g.drawImage(crest, rightX - iw, cy + 104 * k, iw, iw * crest.height / crest.width); }
@@ -2266,6 +2340,7 @@ function screenSignup2() {
     <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
       <div class="row-between"><b style="font-size:15px">Juegas con</b><div class="seg" style="width:220px" data-k="hand"><button type="button" data-v="diestro">Diestro</button><button type="button" data-v="zurdo">Zurdo</button></div></div>
       <div class="row-between"><b style="font-size:15px">Revés</b><div class="seg" style="width:220px" data-k="backhand"><button type="button" data-v="una">A una mano</button><button type="button" data-v="dos">A dos manos</button></div></div>
+      <div class="row-between"><b style="font-size:15px">Nacionalidad</b><button type="button" class="nat-btn" id="nat">Elegir</button></div>
     </div>
     <div style="margin-top:16px">
       ${ATTRS.map(([k, l]) => `<label style="display:block;margin-top:6px"><div class="row-between"><b style="font-size:15px">${l}</b><b id="v-${k}" style="font-size:20px;font-variant-numeric:tabular-nums">${v.attrs[k]}</b></div>
@@ -2283,6 +2358,10 @@ function screenSignup2() {
   document.querySelectorAll('.slider').forEach((s) => s.addEventListener('input', () => { v.attrs[s.dataset.k] = Number(s.value); document.getElementById('v-' + s.dataset.k).textContent = s.value; paint(); }));
   document.querySelectorAll('.seg').forEach((g) => g.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { v[g.dataset.k] = b.dataset.v; paint(); } }));
   paint();
+  const natB = document.getElementById('nat');
+  const natPaint = () => { natB.innerHTML = v.nationality && v.nationality !== '-' ? `${flagImg(v.nationality)}${esc(natName(v.nationality))}` : v.nationality === '-' ? 'Sin bandera' : 'Elegir'; };
+  natPaint();
+  natB.addEventListener('click', async () => { const c = await pickNation(v.nationality || null); if (c) { v.nationality = c; natPaint(); } });
   const btn = document.getElementById('save');
   btn.addEventListener('click', () => busy(btn, async () => {
     try {
@@ -3029,6 +3108,7 @@ async function screenSettings() {
     <div class="sec"><span class="label">Tu juego</span><div class="box" style="display:flex;flex-direction:column;gap:10px">
       <div class="row-between"><b style="font-size:15px">Juegas con</b><div class="seg" style="width:220px" data-k="hand"><button data-v="diestro">Diestro</button><button data-v="zurdo">Zurdo</button></div></div>
       <div class="row-between"><b style="font-size:15px">Revés</b><div class="seg" style="width:220px" data-k="backhand"><button data-v="una">A una mano</button><button data-v="dos">A dos manos</button></div></div>
+      <div class="row-between"><b style="font-size:15px">Nacionalidad</b><button type="button" class="nat-btn" id="nat">${me.nat ? `${flagImg(me.nat)}${esc(natName(me.nat))}` : me.nationality === '-' ? 'Sin bandera' : 'Elegir'}</button></div>
     </div>${!me.card_locked ? `<a class="btn block ghost sm" style="margin-top:10px" href="#/carta">Editar mis barritas</a><p class="hint" style="margin:8px 4px 0">Puedes cambiarlas hasta que juegues tu primer partido. Después las mueven tus partidos.</p>`
       : '<p class="hint" style="margin:8px 4px 0">Tus barritas no se pueden tocar: las mueven tus partidos. Si hay un error grande, habla con el club.</p>'}</div>
     <div class="sec"><span class="label">Idioma</span><div class="box row-between"><b style="font-size:15px">App y avisos</b>
@@ -3062,6 +3142,10 @@ async function screenSettings() {
     const file = e.target.files[0]; if (!file) return;
     try { const data = await shrink(file); S.me = (await api('POST', 'me', { photo: data })).me; toast('Foto guardada.', true); screenSettings(); }
     catch (err) { toast(err.message || 'No se ha podido usar esa foto.'); }
+  });
+  document.getElementById('nat')?.addEventListener('click', async () => {
+    const c = await pickNation(me.nationality); if (!c || c === me.nationality) return;
+    try { S.me = (await api('POST', 'me', { nationality: c })).me; C.delete('player:' + S.me.id); toast('Guardado.', true); screenSettings(); } catch (err) { toast(err.message); }
   });
   document.getElementById('nophoto')?.addEventListener('click', async () => { try { S.me = (await api('POST', 'me', { photo: null })).me; screenSettings(); } catch (err) { toast(err.message); } });
   {
@@ -3451,7 +3535,7 @@ async function route() {
   }
   if (S.token && ['login', 'registro', 'registro/carta', 'olvide'].includes(path)) return go('');
   switch (parts[0]) {
-    case '': case 'ranking': return screenRanking();
+    case '': case 'ranking': setTimeout(askNation, 1600); return screenRanking();
     case 'login': return screenLogin();
     case 'registro': return parts[1] === 'carta' ? screenSignup2() : screenSignup1();
     case 'olvide': return screenForgot();
