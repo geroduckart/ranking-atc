@@ -21,6 +21,8 @@ import {
 import { mail, layout, setLangResolver } from '../lib/mail.mjs';
 import { trHtml } from '../lib/i18n.mjs';
 import { waChallenge, waCounter, waConfirmed, waReminder, waDraw, waNudge } from '../lib/wa.mjs';
+import { okNation } from '../lib/countries.mjs';
+
 
 const NUDGE_DAYS = 10;           // empujón por WhatsApp a quien lleva estos días sin jugar
 const PROMO_MATCHES = 5;         // promoción de estreno: los primeros retos aceptados llevan pista y bolas gratis (insignia en el partido)
@@ -144,13 +146,16 @@ async function season(sql = db()) {
   return s;
 }
 
+/** Bandera para la tarjeta (null si no la ha puesto o prefiere no decirlo). */
+const natOf = (p) => (p.nationality && p.nationality !== '-' ? p.nationality : null);
+
 function selfView(p) {
   return {
     id: p.id, username: p.username, full_name: p.full_name, card_name: p.card_name, phone: p.phone, birth_date: p.birth_date,
     hand: p.hand, backhand: p.backhand, level: Number(p.level), start_level: Number(p.start_level),
     attrs: R.shownAttrs(p.attrs, p.start_level, p.level), photo_v: p.photo_v, is_admin: p.is_admin,
     notify: { challenges: wants(p, 'challenges'), results: wants(p, 'results'), drop: wants(p, 'drop'), reminders: wants(p, 'reminders') },
-    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)), lang: okLang(p.lang), wa: p.wa_consent === true, injured: injuredUntil(p),
+    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)), lang: okLang(p.lang), nationality: p.nationality ?? null, nat: natOf(p), wa: p.wa_consent === true, injured: injuredUntil(p),
   };
 }
 
@@ -185,7 +190,7 @@ const injuredUntil = (p) => { if (!p || !p.injured_until) return null; const d =
 async function standings(sql = db()) {
   const [S, players, ms] = await Promise.all([
     season(sql),
-    sql`select id, full_name, username, level, photo_v, attrs, start_level, hand, backhand, birth_date, injured_until::text as injured_until from players where active`,
+    sql`select id, full_name, username, level, photo_v, attrs, start_level, hand, backhand, birth_date, nationality, injured_until::text as injured_until from players where active`,
     sql`select id, p1, p2, winner, master_id, p1_pts, p2_pts from matches where status = 'confirmed'`,
   ]);
   const count = {};
@@ -287,6 +292,7 @@ on('POST', 'signup', async ({ body }) => {
   if (!wa) fail('Revisa tu móvil de WhatsApp: elige el prefijo del país y escribe el número sin espacios.');
   const hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   const backhand = body.backhand === 'una' ? 'una' : 'dos';
+  const nationality = body.nationality == null || body.nationality === '' ? null : okNation(body.nationality) ? body.nationality : fail('Elige tu nacionalidad de la lista.');
   const attrs = R.checkAttrs(body.attrs);
   if (!attrs) fail('Valora cada golpe entre 50 y 99.');
   const lvl = R.levelFromAttrs(attrs);
@@ -296,8 +302,8 @@ on('POST', 'signup', async ({ body }) => {
   if (dupP) fail(dupP.active ? 'Ya hay una cuenta con ese móvil. Si es tuya, pide en el club que te cambien el PIN.'
     : 'Ese móvil ya se usó en una cuenta dada de baja. Pide en el club que la reactiven.');
   const isAdmin = (process.env.ADMIN_USERNAME || '').toLowerCase().split(',').map((s) => s.trim()).includes(username);
-  const [p] = await sql`insert into players (username, full_name, pin_hash, birth_date, hand, backhand, attrs, start_level, level, is_admin, phone, wa_consent, wa_consent_at, wa_consent_src)
-    values (${username}, ${full_name}, ${hashPin(body.pin)}, ${birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin}, ${wa}, true, ${new Date()}, 'app')
+  const [p] = await sql`insert into players (username, full_name, pin_hash, birth_date, hand, backhand, attrs, start_level, level, is_admin, phone, wa_consent, wa_consent_at, wa_consent_src, nationality)
+    values (${username}, ${full_name}, ${hashPin(body.pin)}, ${birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin}, ${wa}, true, ${new Date()}, 'app', ${nationality})
     returning *`;
   await sql`insert into feed (kind, actor, data) values ('new_player', ${p.id}, ${sql.json({ level: lvl })})`;
   if (body.lang === 'en') { try { await sql`update players set lang = 'en' where id = ${p.id}`; p.lang = 'en'; } catch (e) {} }
@@ -391,6 +397,10 @@ on('POST', 'me', async ({ req, body }) => {
       upd.phone = wa; upd.wa_consent = true; upd.wa_consent_at = new Date(); upd.wa_consent_src = 'app';
     }
   }
+  if ('nationality' in body) {
+    if (!okNation(body.nationality)) fail('Elige tu nacionalidad de la lista.');
+    upd.nationality = body.nationality;
+  }
   if (body.hand) upd.hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
   if (body.backhand) upd.backhand = body.backhand === 'una' ? 'una' : 'dos';
   if (body.notify && typeof body.notify === 'object') {
@@ -471,7 +481,7 @@ const rowView = (r) => ({ id: r.id, full_name: r.full_name, username: r.username
   // lo justo para pintar la carta al instante al abrir la ficha (la edad, solo la franja)
   attrs: R.shownAttrs(r.attrs, r.start_level, r.level), start_level: Number(r.start_level), hand: r.hand, backhand: r.backhand,
   ageTag: R.ageTag(R.ageOn(r.birth_date, new Date(madridToday() + 'T12:00:00Z'))),
-  pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional, injured: injuredUntil(r) });
+  pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional, injured: injuredUntil(r), nat: natOf(r) });
 
 on('GET', 'ranking', async ({ req }) => {
   const [me, st, used] = await Promise.all([auth(req), standings(), promoUsed(db())]);
@@ -524,7 +534,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
       level: Number(p.level), start_level: Number(p.start_level), attrs: R.shownAttrs(p.attrs, p.start_level, p.level),
       photo_v: p.photo_v, ageTag: R.ageTag(ageOf(p)), since: String(p.created_at.toISOString?.() || p.created_at).slice(0, 10),
       pos: row.pos, zone: row.zone, pts: row.pts, pj: row.pj, won: row.won, missing: row.missing ?? 0,
-      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0, injured: injuredUntil(p),
+      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0, injured: injuredUntil(p), nat: natOf(p),
     },
     recent: recent.map((m) => {
       const mine = m.p1 === id;
