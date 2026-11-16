@@ -220,9 +220,18 @@ function bandBlock(st, S, aId, bId) {
   return `Desde el día ${R.BAND_FROM_DAY} solo se puede retar al propio grupo y a los de al lado. Tú estás en el grupo ${R.bandName(ga)} y este jugador en el ${R.bandName(gb)}.`;
 }
 
+/* Horario del club (horas de inicio). L-V 9-14 y 16-22 · S 9-14 y 17-21 · D 9-14 */
+function clubHours(d) {
+  const wd = new Date(d + 'T12:00:00Z').getUTCDay();
+  const r = (a, b) => Array.from({ length: b - a }, (_, i) => `${String(a + i).padStart(2, '0')}:00`);
+  return wd === 0 ? r(9, 14) : wd === 6 ? [...r(9, 14), ...r(17, 21)] : [...r(9, 14), ...r(16, 22)];
+}
+
 function checkWhen(date, time, S, { allowToday = true } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) fail('Elige el día.');
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time || ''))) fail('Elige la hora.');
+  if (!String(time).endsWith(':00')) fail('Las pistas se reservan en horas en punto. Elige una hora sin medias.');
+  if (!clubHours(date).includes(time)) fail('A esa hora el club está cerrado. Elige una hora dentro del horario.');
   const now = madridNow();
   const at = `${date} ${time}`;
   if (at <= now) fail('Esa fecha ya ha pasado.');
