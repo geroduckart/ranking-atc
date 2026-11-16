@@ -10,7 +10,7 @@
  *   WHATSAPP_PHONE_ID   Phone Number ID del número emisor
  *   WHATSAPP_API        opcional, por defecto v21.0
  */
-import { fmtWhen, fmtDay, madridToday, firstName } from './core.mjs';
+import { fmtWhen, fmtDay, madridToday, firstName, db } from './core.mjs';
 import { tr } from './i18n.mjs';
 
 const ready = () => !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
@@ -72,13 +72,30 @@ export async function sendTemplate(to, name, lang, vars = []) {
       // 132001: la plantilla no existe en ese idioma. Se reintenta en español.
       if (lang !== 'es' && /132001|does not exist/i.test(txt)) return sendTemplate(to, name, 'es', vars);
       console.error('WhatsApp error', r.status, txt);
+      await logSend(to, name, lang, false, waError(txt, r.status));
       return { ok: false };
     }
+    await logSend(to, name, lang, true, null);
     return { ok: true };
   } catch (e) {
     console.error('WhatsApp error', e);
+    await logSend(to, name, lang, false, 'Sin conexión con WhatsApp');
     return { ok: false };
   }
+}
+
+/** El motivo del fallo, en corto y en español cuando se conoce. */
+function waError(txt, status) {
+  let code = '', msg = '';
+  try { const j = JSON.parse(txt).error || {}; code = String(j.code || ''); msg = j.error_data?.details || j.message || ''; } catch (e) { msg = String(txt).slice(0, 160); }
+  const known = { 132001: 'La plantilla no existe o no está aprobada', 131026: 'El número no tiene WhatsApp o no puede recibir el mensaje',
+    131047: 'Han pasado más de 24 h y hace falta plantilla', 131049: 'Meta no lo ha entregado para no saturar al usuario',
+    190: 'El token de WhatsApp ha caducado', 131056: 'Demasiados mensajes seguidos al mismo número', 131050: 'El usuario ha dejado de recibir mensajes de empresa' };
+  return (known[code] || msg || `Error ${status}`).slice(0, 200) + (code ? ` (${code})` : '');
+}
+/** Registro de envíos para el panel del club. Si la tabla aún no existe, no pasa nada. */
+async function logSend(to, template, lang, ok, error) {
+  try { await db()`insert into wa_log (to_phone, template, lang, ok, error) values (${to}, ${template}, ${lang}, ${ok}, ${error})`; } catch (e) {}
 }
 
 /* ── Fechas y nombres en el idioma del jugador ───────────────────────── */
@@ -124,9 +141,15 @@ export const waReminder = (to, rival, playAt) => {
   return sendTemplate(waTo(to), 'recordatorio_partido', l, [firstName(to.full_name), rival.full_name, time]);
 };
 
+/** Lleva días sin jugar: un empujón para que rete a alguien. */
+export const waNudge = (to, days) => {
+  const l = lang(to);
+  return sendTemplate(waTo(to), 'animo_jugar', l, [firstName(to.full_name), String(days)]);
+};
+
 /** Se ha publicado el cuadro de los Másters. */
 export const waDraw = (to, tierName, rival) => {
   const l = lang(to);
-  return sendTemplate(waTo(to), 'cuadro_publicado', l,
-    [firstName(to.full_name), l === 'en' ? tr(tierName, 'en') : tierName, rival ? rival.full_name : (l === 'en' ? 'to be decided' : 'por decidir')]);
+  const tier = l === 'en' ? tr(tierName, 'en') : tierName, rv = rival ? rival.full_name : (l === 'en' ? 'to be decided' : 'por decidir');
+  return sendTemplate(waTo(to), 'cuadro_publicado', l, [firstName(to.full_name), tier, rv]);
 };
