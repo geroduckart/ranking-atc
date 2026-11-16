@@ -20,8 +20,9 @@ import {
 } from '../lib/core.mjs';
 import { mail, layout, setLangResolver } from '../lib/mail.mjs';
 import { trHtml } from '../lib/i18n.mjs';
-import { waChallenge, waCounter, waConfirmed, waReminder, waDraw } from '../lib/wa.mjs';
+import { waChallenge, waCounter, waConfirmed, waReminder, waDraw, waNudge } from '../lib/wa.mjs';
 
+const NUDGE_DAYS = 10;           // empujón por WhatsApp a quien lleva estos días sin jugar
 const PROMO_MATCHES = 5;         // promoción de estreno: los primeros retos aceptados llevan pista y bolas gratis (insignia en el partido)
 const promoUsed = (sql) => sql`select count(*)::int as n from challenges where promo and status in ('accepted','done')`.then(([r]) => r.n);
 const okLang = (l) => (l === 'en' ? 'en' : 'es');
@@ -464,10 +465,29 @@ const rowView = (r) => ({ id: r.id, full_name: r.full_name, username: r.username
   pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional, injured: injuredUntil(r) });
 
 on('GET', 'ranking', async ({ req }) => {
-  const [, st, used] = await Promise.all([auth(req), standings(), promoUsed(db())]);
+  const [me, st, used] = await Promise.all([auth(req), standings(), promoUsed(db())]);
   return { season: seasonView(st.S), qualified: st.qualified.map(rowView), others: st.others.map(rowView),
-    promo: { total: PROMO_MATCHES, left: Math.max(0, PROMO_MATCHES - used) } };
+    promo: { total: PROMO_MATCHES, left: Math.max(0, PROMO_MATCHES - used) }, suggest: await suggestRivals(db(), me, st) };
 });
+
+/** «Rivales para ti»: hasta 3 jugadores cerca de tu nivel a los que puedes retar ahora mismo. */
+async function suggestRivals(sql, me, st) {
+  const S = st.S, today = madridToday();
+  if (S.phase !== 'regular' || today < addDays(String(S.starts_on), -OPEN_DAYS_BEFORE) || today > String(S.ends_on) || injuredUntil(me)) return [];
+  const [played, open] = await Promise.all([
+    sql`select case when p1 = ${me.id} then p2 else p1 end as rv, count(*)::int as n from matches
+      where master_id is null and status in ('pending','confirmed','disputed') and (p1 = ${me.id} or p2 = ${me.id}) group by 1`,
+    sql`select case when challenger = ${me.id} then challenged else challenger end as rv from challenges
+      where status in ('pending','accepted') and (challenger = ${me.id} or challenged = ${me.id})`]);
+  const pn = Object.fromEntries(played.map((r) => [r.rv, r.n])), busy = new Set(open.map((r) => r.rv));
+  const cap = R.pairCap(today, S.starts_on);
+  const myLevel = Number(me.level);
+  return [...st.qualified, ...st.others]
+    .filter((r) => r.id !== me.id && !busy.has(r.id) && (pn[r.id] || 0) < cap && !injuredUntil(r) && !bandBlock(st, S, me.id, r.id))
+    .sort((a, b) => Math.abs(Number(a.level) - myLevel) - Math.abs(Number(b.level) - myLevel) || a.pj - b.pj)
+    .slice(0, 3)
+    .map((r) => ({ id: r.id, full_name: r.full_name, photo_v: r.photo_v, level: Number(r.level), pos: r.pos }));
+}
 
 on('GET', 'player/:id', async ({ req, params }) => {
   const uid = sessionUid(req).u;
@@ -1230,7 +1250,17 @@ on('GET', 'admin', async ({ req }) => {
   const promo = await sql`select c.id, c.play_at::text as played_on, c.status, a.full_name as n1, b.full_name as n2 from challenges c
     join players a on a.id = c.challenger join players b on b.id = c.challenged
     where c.promo and c.status in ('accepted','done') order by c.updated_at, c.id limit ${PROMO_MATCHES}`;
+  // Avisos de WhatsApp de las últimas 24 h y fallos de la última semana; fecha de la última copia
+  let wa = { ok: 0, fail: 0, fails: [] }, backupAt = null;
+  try {
+    const [[c]] = await Promise.all([sql`select count(*) filter (where ok)::int as ok, count(*) filter (where not ok)::int as fail from wa_log where at > now() - interval '24 hours'`]);
+    const f = await sql`select w.at, w.template, w.error, p.full_name from wa_log w left join players p on replace(p.phone, '+', '') = w.to_phone
+      where not w.ok and w.at > now() - interval '7 days' order by w.at desc limit 15`;
+    wa = { ok: c.ok, fail: c.fail, fails: f.map((x) => ({ at: x.at, template: x.template, error: x.error, name: x.full_name })) };
+    const [b] = await sql`select last_backup_at from season where id = 1`; backupAt = b && b.last_backup_at;
+  } catch (e) {}
   return {
+    wa, backupAt,
     promo: { total: PROMO_MATCHES, matches: promo.map((m) => ({ id: Number(m.id), n1: m.n1, n2: m.n2, played_on: m.played_on })) },
     agenda: agenda.map((c) => ({ id: Number(c.id), status: c.status, promo: !!c.promo, play_at: c.play_at, n1: c.n1, n2: c.n2, e1: c.e1, e2: c.e2,
       l1: Number(c.l1), l2: Number(c.l2), waitingFor: c.status === 'pending' ? (c.proposed_by === c.challenger ? c.n2 : c.n1) : null, match_status: c.match_status })),
@@ -1432,6 +1462,21 @@ on('POST', 'admin/masters/reset', async ({ req, body }) => {
   return { ok: true };
 });
 
+/** Copia completa de la base de datos en JSON (sin PIN cifrados ni códigos de recuperación). */
+on('GET', 'admin/backup', async ({ req }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const tables = ['season', 'players', 'challenges', 'matches', 'masters', 'feed', 'comments', 'likes'];
+  const data = {};
+  for (const t of tables) {
+    try { data[t] = await sql`select * from ${sql(t)}`; } catch (e) { data[t] = []; }
+  }
+  for (const p of data.players) { delete p.pin_hash; delete p.reset_hash; delete p.photo; }
+  await sql`update season set last_backup_at = now() where id = 1`.catch(() => {});
+  return new Response(JSON.stringify({ app: 'ranking-atc', at: new Date().toISOString(), data }, null, 1), {
+    headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="ranking-atc-copia-${madridToday()}.json"` } });
+});
+
 on('GET', 'admin/export', async ({ req, url }) => {
   await auth(req, { admin: true });
   const sql = db();
@@ -1510,6 +1555,23 @@ export async function runCron() {
         const p = P[a], rival = P[b];
         if (p && p.active && rival && wants(p, 'reminders')) out.push(() => waReminder(p, rival, c.play_at));
       }
+    }
+  }
+  // 2c. Empujón por WhatsApp a quien lleva 10 días sin jugar (una vez cada 10 días, a las 18:00)
+  log.nudged = 0;
+  const S = await season(sql);
+  const today = madridToday();
+  if (hourMadrid === 18 && S.phase === 'regular' && today >= addDays(String(S.starts_on), NUDGE_DAYS) && today <= String(S.ends_on)) {
+    const idle = await sql`select p.*, greatest(p.created_at::date,
+        coalesce((select max(m.played_on) from matches m where m.status <> 'annulled' and (m.p1 = p.id or m.p2 = p.id)), '1970-01-01'),
+        coalesce((select max(c.updated_at)::date from challenges c where c.challenger = p.id or c.challenged = p.id), '1970-01-01')) as last_act
+      from players p where p.active and (p.injured_until is null or p.injured_until < ${today}::date)
+        and (p.last_nudge is null or p.last_nudge <= ${addDays(today, -NUDGE_DAYS)}::date)`;
+    for (const p of idle) {
+      const last = String(p.last_act).slice(0, 10), days = Math.round((Date.parse(today) - Date.parse(last)) / 864e5);
+      if (days < NUDGE_DAYS || !wants(p, 'reminders')) continue;
+      await sql`update players set last_nudge = ${today}::date where id = ${p.id}`;
+      out.push(() => waNudge(p, days)); log.nudged++;
     }
   }
   // 3. Resultados sin confirmar en 48 h → se dan por buenos
