@@ -428,6 +428,20 @@ details.adm summary::-webkit-details-marker{display:none}
 .ag-note{font-size:12px;font-weight:600;color:var(--muted)}
 .ag-score{flex:none;align-self:center;font-size:14px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;background:var(--soft);border-radius:10px;padding:6px 9px}
 @media (prefers-reduced-motion: reduce){.seg i{transition:none}}
+.box.health{margin-top:10px;padding:14px 16px}
+.box.health.warn{box-shadow:inset 0 0 0 1.5px rgba(184,67,26,.35)}
+.box.health b{font-size:14.5px}
+.hfails{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.hfails div{font-size:13px;color:var(--ink);line-height:1.35}
+.hfails span{display:block;font-size:12px;color:var(--bad)}
+.sugg{margin:14px 0 2px}
+.sugg-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sugg-c{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px 10px;border-radius:18px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);color:var(--ink);text-align:center;transition:transform 160ms ease-out}
+.sugg-c:active{transform:scale(.97)}
+.sugg-c .av{width:40px;height:40px;font-size:14px;margin-bottom:3px}
+.sugg-c b{font-size:14px;font-weight:800;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sugg-c span{font-size:12px;font-weight:600;color:var(--muted)}
+.sugg-c em{margin-top:6px;font-style:normal;font-size:12px;font-weight:800;color:#fff;background:var(--orange);border-radius:999px;padding:5px 12px}
 .perks{margin:12px 0 2px}
 .perks-k{display:block;margin:0 4px 6px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
 .perks-g{border-radius:16px;background:var(--card);border:1px solid var(--card-line,var(--line));box-shadow:var(--card-shadow,none);overflow:hidden}
@@ -1300,6 +1314,28 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Notificaciones en este móvil": "Notifications on this phone",
+  "Comprobando…": "Checking…",
+  "En iPhone, primero añade la app a la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y ábrela desde el icono. Después podrás activarlas aquí.": "On iPhone, first add the app to your Home Screen (Share → Add to Home Screen) and open it from the icon. Then you can turn them on here.",
+  "Este navegador no admite notificaciones. Te seguiremos avisando por WhatsApp.": "This browser doesn't support notifications. We'll keep notifying you on WhatsApp.",
+  "Las has bloqueado para esta app. Para activarlas, ve a los ajustes del móvil → Notificaciones.": "You've blocked them for this app. To turn them on, go to your phone settings → Notifications.",
+  "Te avisamos al momento de retos, partidos y recordatorios, gratis y sin depender de WhatsApp.": "Get instant alerts for challenges, matches and reminders, free and without relying on WhatsApp.",
+  "Activar notificaciones": "Turn on notifications",
+  "Activadas.": "On.",
+  "Te llegarán los avisos de tus retos y partidos.": "You'll get alerts for your challenges and matches.",
+  "Probar": "Test",
+  "Desactivar": "Turn off",
+  "Notificaciones activadas.": "Notifications on.",
+  "Notificaciones desactivadas.": "Notifications off.",
+  "Enviada. Debería llegarte en unos segundos.": "Sent. It should arrive in a few seconds.",
+  "Las notificaciones aún no están activadas en el club. Prueba más tarde.": "Notifications aren't set up yet. Try again later.",
+  "Sin permiso no podemos avisarte. Puedes cambiarlo en los ajustes del móvil.": "Without permission we can't notify you. You can change it in your phone settings.",
+  "Rivales para ti": "Opponents for you",
+  "Retar": "Challenge",
+  "Activa las notificaciones": "Turn on notifications",
+  "Entérate al momento cuando te reten.": "Know instantly when someone challenges you.",
+  "Activar": "Turn on",
+  "Ahora no": "Not now",
   "Recordatorios: el día antes del partido y retos sin responder": "Reminders: the day before a match and unanswered challenges",
   "Actividad": "Activity",
   "Esta semana": "This week",
@@ -1600,6 +1636,7 @@ const cardTier = (p) => tierOf(p.level);
 const isMe = (id) => S.me && S.me.id === id;
 
 const I = {
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
   bandage:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/><path d="M10 12h.01M12 10h.01M12 14h.01M14 12h.01"/></svg>',
   gift:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
   bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
@@ -2339,6 +2376,7 @@ async function screenRanking() {
     const perks = [];
     if (d.promo && d.promo.left > 0 && sv.phase === 'regular') perks.push([I.gift, 'Pista y bolas gratis', d.promo.left === d.promo.total ? `${d.promo.total} primeros retos` : d.promo.left === 1 ? 'Queda 1' : `Quedan ${d.promo.left}`]);
     if (sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY) perks.push([I.bolt, 'Reta a cualquiera', `Hasta el ${dm(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))}`]);
+    if (!q && d.suggest && d.suggest.length) html += `<section class="sugg" aria-label="Rivales para ti"><span class="perks-k">Rivales para ti</span><div class="sugg-g">${d.suggest.map((r) => `<a class="sugg-c" href="#/retar/${r.id}">${avatar(r, 'lg')}<b>${esc(first(r.full_name))}</b><span>Nivel ${lvl(r.level)}</span><em>Retar</em></a>`).join('')}</div></section>`;
     if (perks.length) html += `<section class="perks" aria-label="Aprovecha"><span class="perks-k">Aprovecha</span><div class="perks-g${perks.length === 1 ? ' one' : ''}">${perks.map(([ic, t, sub]) => `<div class="perk"><span class="perk-i">${ic}</span><span class="perk-t"><b>${t}</b><span>${sub}</span></span></div>`).join('')}</div></section>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
@@ -3213,7 +3251,17 @@ function paintAdmin() {
     const mrow = (c, sub) => `<div class="box" style="padding:12px 14px"><div class="row-between"><div style="min-width:0"><b style="font-size:15px">${esc(c.n1)} <span style="color:var(--muted);font-weight:500">vs</span> ${esc(c.n2)}</b>
       <div class="when">${sub}</div></div><span class="badge" style="flex:none">${c.play_at.slice(11, 16)}</span></div>
       <div style="display:flex;gap:14px;margin-top:8px">${c.e1 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e1).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n1))}</a>` : ''}${c.e2 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e2).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n2))}</a>` : ''}</div></div>`;
-    body = `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tile(active.length, 'Jugadores activos')}${tile(sched.filter((c) => c.play_at.slice(0, 10) <= week).length, 'Partidos en 7 días')}
+    const W = d.wa || { ok: 0, fail: 0, fails: [] };
+    const bDays = d.backupAt ? Math.floor((Date.now() - Date.parse(d.backupAt)) / 864e5) : null;
+    const tplName = { reto_recibido: 'Reto recibido', nueva_hora: 'Nueva hora', partido_confirmado: 'Partido confirmado', recordatorio_partido: 'Recordatorio', cuadro_publicado: 'Cuadro publicado', animo_jugar: 'Empujón' };
+    const health = `<div class="box health${W.fail ? ' warn' : ''}"><div class="row-between"><b>WhatsApp · últimas 24 h</b><span class="badge ${W.fail ? 'bad' : 'ok'}">${W.ok} enviados${W.fail ? ` · ${W.fail} fallidos` : ''}</span></div>
+        ${W.fails.length ? `<div class="hfails">${W.fails.map((f) => `<div><b>${esc(f.name || 'Número desconocido')}</b> · ${esc(tplName[f.template] || f.template)} · ${fmtWhen(String(f.at).slice(0, 10), false)} ${String(new Date(f.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' }))}<span>${esc(f.error || '')}</span></div>`).join('')}</div>`
+          : '<p class="hint" style="margin:6px 0 0;text-align:left">Ningún aviso fallido esta semana.</p>'}
+</div>
+      <div class="box health${bDays === null || bDays >= 7 ? ' warn' : ''}"><div class="row-between"><b>Copia de seguridad</b><span class="badge ${bDays === null || bDays >= 7 ? 'bad' : 'ok'}">${bDays === null ? 'Nunca' : bDays === 0 ? 'Hoy' : bDays === 1 ? 'Ayer' : `Hace ${bDays} días`}</span></div>
+        <p class="hint" style="margin:6px 0 10px;text-align:left">Descárgala una vez por semana y guárdala en tu ordenador o en Drive. Lleva todo: jugadores, retos, partidos y tablón.</p>
+        <button class="btn sm navy" id="backup">Descargar copia completa</button></div>`;
+    body = health + `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tile(active.length, 'Jugadores activos')}${tile(sched.filter((c) => c.play_at.slice(0, 10) <= week).length, 'Partidos en 7 días')}
         ${tile(pend.length, 'Retos sin responder')}${tile(toConfirm + disputed, disputed ? `Por confirmar · ${disputed} en disputa` : 'Resultados por confirmar', disputed)}</div>
       <div class="sec"><span class="label">Próximos partidos</span>${Object.keys(byDay).length ? Object.entries(byDay).map(([day, list]) =>
         `<div class="when" style="margin:10px 4px 6px;font-weight:700;color:var(--ink)">${day === t ? 'Hoy · ' : day < t ? 'Sin resultado · ' : ''}${cap(fmtWhen(day, true))}</div>${list.map((c) => mrow(c, `Nivel ${lvl(c.l1)} vs ${lvl(c.l2)}${c.promo ? ' · pista y bolas gratis' : ''}${day < t ? ' · falta poner el resultado' : ''}`)).join('')}`).join('')
@@ -3316,6 +3364,16 @@ function paintAdmin() {
       if (b.id === 'close') {
         if (!(await confirmBox('¿Cerrar la temporada?', 'Ya no se podrá jugar nada más en esta temporada.', 'Cerrar', true))) return;
         await api('POST', 'admin/season', { phase: 'closed' }); toast('Temporada cerrada.'); return screenAdmin();
+      }
+      if (b.id === 'backup') {
+        await busy(b, async () => {
+          const r = await fetch('/api/admin/backup', { headers: { Authorization: 'Bearer ' + S.token } });
+          if (!r.ok) throw new Error('No se ha podido descargar la copia.');
+          const blob = await r.blob(); const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob); a.download = `ranking-atc-copia-${today()}.json`; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        });
+        toast('Copia descargada. Guárdala en un sitio seguro.', true); return screenAdmin();
       }
       if (b.dataset.exp) {
         const r = await fetch('/api/admin/export?what=' + b.dataset.exp, { headers: { Authorization: 'Bearer ' + S.token } });
