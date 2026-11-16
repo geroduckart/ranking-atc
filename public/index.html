@@ -1508,6 +1508,8 @@ const LANG = (() => {
   return String(navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
 })();
 const EN_ON = LANG === 'en';
+/** Traduce al vuelo lo que no pasa por la pantalla (la imagen de la tarjeta, textos montados a mano). */
+const T = (x) => (EN_ON ? tr(x, 'en') : x);
 document.documentElement.lang = LANG;
 function setLang(l) { try { localStorage.setItem('atc_lang', l); } catch (e) {} location.reload(); }
 try { S.token = localStorage.getItem('atc_token'); } catch (e) {}
@@ -2018,7 +2020,7 @@ function cardHTML(p) {
       ${p.photo_v > 0 ? `<img class="fut-photo" src="/api/photo/${p.id}?v=${p.photo_v}" alt="">` : `<img class="fut-logo" src="${logo}" alt="ATC">`}
     </div>
     <div class="fut-name">${esc(short)}</div>
-    <div class="fut-tier">${esc(S.season?.name || 'Temporada 1')} · ATC${p.ageTag ? ` · <b class="fut-age">${esc(p.ageTag)}</b>` : ''}</div>
+    <div class="fut-tier">${esc(T(S.season?.name || 'Temporada 1'))} · ATC${p.ageTag ? ` · <b class="fut-age">${esc(p.ageTag)}</b>` : ''}</div>
     <div class="fut-stats">${ATTRS.map(([k, l]) => `<div class="fs"><span>${l}</span><b>${p.attrs[k]}</b></div>`).join('')}</div>
   </div></div>`;
 }
@@ -2075,7 +2077,7 @@ async function shareCard(p) {
   g.fillStyle = big; g.textAlign = 'left'; g.font = F(700, 132 * k);
   g.fillText(lvl(p.level), padX, cy + 190 * k);
   g.fillStyle = ink; g.font = F(600, 30 * k);
-  g.fillText('NIVEL', padX + 6 * k, cy + 236 * k);
+  g.fillText(T('NIVEL'), padX + 6 * k, cy + 236 * k);
   let flagH = 0;
   if (p.nat) {
     const fl = await load(`/flags/${p.nat}.png`);
@@ -2092,7 +2094,7 @@ async function shareCard(p) {
     g.fillStyle = tier === 'special' ? 'rgba(255,255,255,.16)' : 'rgba(18,41,74,.14)';
     g.beginPath(); g.roundRect(bx, by, bw, 44 * k, 22 * k); g.fill();
     g.fillStyle = ink; g.font = F(700, 20 * k); g.textAlign = 'center';
-    g.fillText('PROVISIONAL', bx + bw / 2, by + 29 * k);
+    g.fillText(T('PROVISIONAL'), bx + bw / 2, by + 29 * k);
   }
   // A la derecha, la foto del jugador (el escudo ya va arriba); sin foto, el escudo
   const ph = p.photo_v > 0 ? await load(`/api/photo/${p.id}?v=${p.photo_v}`) : null;
@@ -2117,11 +2119,11 @@ async function shareCard(p) {
   while (g.measureText(short).width > cw - 150 * k && size > 30) { size -= 2; g.font = F(700, size); }
   g.fillText(short, cx + cw / 2, cy + 424 * k);
   g.font = F(600, 24 * k);
-  g.fillText(`${(S.season && S.season.name) || 'Temporada 1'} · ATC${p.ageTag ? ' · ' + p.ageTag : ''}`.toUpperCase(), cx + cw / 2, cy + 464 * k);
+  g.fillText(`${T((S.season && S.season.name) || 'Temporada 1')} · ATC${p.ageTag ? ' · ' + p.ageTag : ''}`.toUpperCase(), cx + cw / 2, cy + 464 * k);
 
   ATTRS.forEach(([key, label], i) => {
     const y = cy + (522 + i * 58) * k;   // la última línea queda por encima de la punta
-    g.textAlign = 'left'; g.font = F(600, 30 * k); g.fillStyle = ink; g.fillText(label, padX, y);
+    g.textAlign = 'left'; g.font = F(600, 30 * k); g.fillStyle = ink; g.fillText(T(label), padX, y);
     g.textAlign = 'right'; g.font = F(700, 34 * k); g.fillStyle = big; g.fillText(String(p.attrs[key]), rightX, y);
     g.strokeStyle = tier === 'special' ? 'rgba(255,255,255,.14)' : 'rgba(18,41,74,.13)';
     g.lineWidth = 1.5 * k; g.beginPath(); g.moveTo(padX, y + 18 * k); g.lineTo(rightX, y + 18 * k); g.stroke();
