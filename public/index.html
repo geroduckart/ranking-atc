@@ -98,6 +98,7 @@ textarea.input{height:auto;padding:12px 14px;resize:none;font-size:15px;line-hei
 .dark .seg button[aria-pressed="true"]{background:#fff;color:var(--navy)}
 .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.when-note{display:block;padding:12px 2px;font-size:14px;color:var(--muted)}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-width:64px;height:48px;padding:0 14px;border-radius:16px;border:1px solid var(--card-line);background:var(--card);box-shadow:var(--card-shadow);color:var(--ink);font-weight:700;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
 .chip small{font-size:11px;font-weight:600;color:var(--muted)}
@@ -1309,6 +1310,8 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Elige primero el día.": "Pick the day first.",
+  "Ya no quedan horas ese día.": "No times left that day.",
   "Reta a cualquiera hasta el *": "Challenge anyone until $1",
   "Notificaciones en este móvil": "Notifications on this phone",
   "Comprobando…": "Checking…",
@@ -2076,6 +2079,17 @@ function spark(levels) {
   return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" role="img" aria-label="Evolución del nivel en los últimos partidos"><polyline points="${pts}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
+/* Horario del club: horas de inicio posibles (las pistas van de hora en hora) */
+function clubHours(d) {
+  const wd = new Date(d + 'T12:00:00Z').getUTCDay();
+  const r = (a, b) => Array.from({ length: b - a }, (_, i) => `${String(a + i).padStart(2, '0')}:00`);
+  return wd === 0 ? r(9, 14) : wd === 6 ? [...r(9, 14), ...r(17, 21)] : [...r(9, 14), ...r(16, 22)];
+}
+const hourChips = (d) => {
+  const now = madridNow();
+  const hs = clubHours(d).filter((h) => `${d} ${h}` > now);
+  return hs.length ? hs.map((h) => `<button type="button" class="chip" data-v="${h}" aria-pressed="false">${h}</button>`).join('') : '<span class="when-note">Ya no quedan horas ese día.</span>';
+};
 /* Selector de día y hora (retos y contrapropuestas) */
 function whenPicker(id) {
   const now = madridNow();
@@ -2087,31 +2101,28 @@ function whenPicker(id) {
     const dt = new Date(d + 'T12:00:00Z');
     days.push({ d, top: d === today() ? 'Hoy' : d === addDays(today(), 1) ? 'Mañana' : DAYS_S[dt.getUTCDay()], bottom: `${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()].slice(0, 3)}` });
   }
-  const hours = ['09:00','10:30','12:00','17:00','18:30','20:00'];
   return `<div id="${id}">
     <div class="label" style="margin:18px 0 8px 2px">Día</div>
     <div class="chips" data-k="date">${days.map((x) => `<button type="button" class="chip" data-v="${x.d}" aria-pressed="false">${x.top}<small>${x.bottom}</small></button>`).join('')}</div>
     <div class="label" style="margin:14px 0 8px 2px">Hora</div>
-    <div class="chips" data-k="time">${hours.map((h) => `<button type="button" class="chip" data-v="${h}" aria-pressed="false">${h}</button>`).join('')}
-      <button type="button" class="chip" data-v="other" aria-pressed="false">Otra</button></div>
-    <input class="input hidden" type="time" step="900" data-other style="margin-top:8px" aria-label="Otra hora">
+    <div class="chips" data-k="time"><span class="when-note">Elige primero el día.</span></div>
   </div>`;
 }
 function bindWhen(root) {
   const val = { date: null, time: null };
+  const timeG = root.querySelector('[data-k="time"]');
   root.querySelectorAll('.chips').forEach((group) => {
     group.addEventListener('click', (e) => {
       const b = e.target.closest('.chip'); if (!b) return;
       group.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-      const k = group.dataset.k;
-      if (k === 'time') {
-        const other = root.querySelector('[data-other]');
-        other.classList.toggle('hidden', b.dataset.v !== 'other');
-        if (b.dataset.v === 'other') { other.focus(); val.time = other.value || null; } else val.time = b.dataset.v;
-      } else val.date = b.dataset.v;
+      if (group.dataset.k === 'time') { val.time = b.dataset.v; return; }
+      val.date = b.dataset.v;
+      timeG.innerHTML = hourChips(val.date);
+      const keep = val.time && timeG.querySelector(`[data-v="${val.time}"]`);
+      if (keep) keep.setAttribute('aria-pressed', 'true'); else val.time = null;
+      timeG.scrollLeft = 0;
     });
   });
-  root.querySelector('[data-other]').addEventListener('input', (e) => { val.time = e.target.value || null; });
   return () => {
     if (!val.date) throw new Error('Elige el día.');
     if (!val.time) throw new Error('Elige la hora.');
