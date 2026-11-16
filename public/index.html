@@ -1300,6 +1300,7 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Recordatorios: el día antes del partido y retos sin responder": "Reminders: the day before a match and unanswered challenges",
   "Actividad": "Activity",
   "Esta semana": "This week",
   "Semana que viene": "Next week",
@@ -2940,7 +2941,7 @@ async function screenSettings() {
   render(`<main class="screen">${spinner()}</main>${nav('perfil')}`);
   try { await refreshMe(); } catch (e) { return errorScreen(e, 'perfil'); }
   const me = S.me;
-  const toggles = [['challenges', 'Retos: me retan, aceptan o cambian la hora'], ['results', 'Resultados que confirmar y confirmados'], ['drop', 'Cuando bajo de puesto (máx. 1 al día)'], ['reminders', 'Recordatorios de retos sin responder']];
+  const toggles = [['challenges', 'Retos: me retan, aceptan o cambian la hora'], ['results', 'Resultados que confirmar y confirmados'], ['drop', 'Cuando bajo de puesto (máx. 1 al día)'], ['reminders', 'Recordatorios: el día antes del partido y retos sin responder']];
   render(`<main class="screen">
     <div class="top">${backBtn('perfil')}<div class="title">Ajustes</div><div style="width:44px"></div></div>
     <div class="sec" style="display:flex;align-items:center;gap:14px">${avatar(me, 'xl')}<div>
