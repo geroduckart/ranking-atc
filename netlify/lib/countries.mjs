@@ -1,0 +1,3 @@
+/* Nacionalidades que se pueden elegir (la bandera sale en la tarjeta). '-' = prefiere no decirlo. */
+export const NATIONS = new Set(["es", "gb", "gb-eng", "gb-sct", "gb-wls", "gb-nir", "ie", "fr", "de", "it", "pt", "nl", "be", "lu", "ch", "at", "dk", "se", "no", "fi", "is", "pl", "cz", "sk", "hu", "si", "hr", "ba", "rs", "me", "xk", "mk", "al", "gr", "bg", "ro", "md", "ua", "by", "ru", "lt", "lv", "ee", "mt", "cy", "tr", "ge", "am", "az", "ad", "mc", "sm", "li", "va", "ar", "bo", "br", "cl", "co", "ec", "gy", "py", "pe", "sr", "uy", "ve", "us", "mx", "ca", "au"]);
+export const okNation = (v) => v === '-' || NATIONS.has(v);
