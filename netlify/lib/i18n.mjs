@@ -471,6 +471,8 @@ const EN = {/*DICT*/
   "Las pistas se reservan en el club, como siempre.": "Courts are booked at the club, as usual.",
   "Elige si llevas tú las bolas o reservas tú la pista.": "Choose whether you bring the balls or book the court.",
   "Tu rival ya lo ha elegido. Míralo en el reto.": "Your opponent has already chosen. Check the challenge.",
+  "Quedan menos de 2 horas: si cancelas ahora, pierdes 6-0 6-0.": "Less than 2 hours to go: if you cancel now, you lose 6-0 6-0.",
+  "Este partido ya no está abierto.": "This match is no longer open.",
   "Este chat ya está cerrado.": "This chat is closed.",
   "Escribe algo.": "Write something.",
   "Máximo 500 caracteres.": "500 characters max.",
