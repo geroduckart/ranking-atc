@@ -148,6 +148,22 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .av.lg{width:56px;height:56px;font-size:18px}
 .av.xl{width:84px;height:84px;font-size:26px}
 .search{position:relative;margin-top:12px}
+.rank-head{position:relative}
+.zone .zr{display:inline-flex;align-items:center;gap:10px}
+.rs-open{width:26px;height:26px;margin:-6px 0;border-radius:50%;border:0;background:var(--soft);color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:transform 140ms ease-out}
+.rs-open:active{transform:scale(.92)}
+.rs-open svg{width:13px;height:13px}
+.rsearch.hidden{display:none}
+.rsearch.in{animation:lateIn 220ms cubic-bezier(.23,1,.32,1) both}
+.rsearch{position:relative;display:flex;align-items:center;margin:12px 0 0;height:36px;border-radius:999px;background:var(--card);border:1px solid var(--card-line,var(--line))}
+.rsearch svg{position:absolute;left:13px;width:16px;height:16px;color:var(--muted);pointer-events:none}
+.rsearch input{flex:1;min-width:0;height:100%;border:0;background:none;outline:none;padding:0 36px 0 36px;font:inherit;font-size:16px;font-weight:500;color:var(--ink);-webkit-appearance:none;appearance:none}
+.rsearch input::-webkit-search-cancel-button{display:none}
+.rsearch input::placeholder{color:var(--muted);font-weight:500}
+.rsearch:focus-within{border-color:rgba(18,41,74,.35);box-shadow:0 0 0 3px rgba(18,41,74,.08)}
+.rs-x{position:absolute;right:6px;width:28px;height:28px;border:0;border-radius:50%;background:var(--soft);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.rs-x svg{position:static;width:12px;height:12px}
+.rs-x.hidden{display:none}
 .search input{padding-left:42px;height:46px;font-size:15px;border-radius:999px;background:var(--glass-strong);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:0 4px 14px rgba(15,23,32,.06)}
 .search svg{position:absolute;left:14px;top:14px;color:var(--muted);z-index:2;pointer-events:none}
 .empty{text-align:center;color:var(--muted);padding:32px 12px;font-size:15px;line-height:1.5}
@@ -2620,15 +2636,31 @@ async function screenRanking() {
     <img src="${LOGO_W}" alt="Almuñécar Tennis Club"><h1>Clasificación</h1><div class="pill" id="pill">${sv0 && sv0.total ? esc(seasonPill(sv0)) : '&nbsp;'}</div><div id="seasonsub" class="season-sub">${sv0 && sv0.total ? seasonSub(sv0) : '&nbsp;'}</div>
     <div><a class="how-link" href="#/como-funciona">¿Cómo funciona?</a></div>
     <div class="tabs slide" role="tablist" style="--t:${rankTab === 'nivel' ? 1 : 0}"><button role="tab" data-t="puntos" aria-selected="${rankTab === 'puntos'}">Puntos</button><button role="tab" data-t="nivel" aria-selected="${rankTab === 'nivel'}">Nivel</button></div>
-  </header><div id="body"></div></main>${nav('ranking')}`);
-  const body = document.getElementById('body');
+  </header><div id="top"></div>
+  <label class="rsearch${rankQuery ? '' : ' hidden'}" id="rs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Buscar jugador" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Buscar jugador" value="${esc(rankQuery)}">
+    <button type="button" class="rs-x${rankQuery ? '' : ' hidden'}" id="qx" aria-label="Borrar">${I.close}</button></label>
+  <div id="body"></div></main>${nav('ranking')}`);
+  const body = document.getElementById('body'), top = document.getElementById('top');
   let D = null;
+  const qi = document.getElementById('q'), qx = document.getElementById('qx');
+  qi.addEventListener('input', () => { rankQuery = qi.value; if (D) paint(false); });
+  const rs = document.getElementById('rs');
+  body.addEventListener('click', (e) => {
+    if (!e.target.closest('#qo')) return;
+    e.preventDefault();
+    rs.classList.remove('hidden'); rs.classList.remove('in'); void rs.offsetWidth; rs.classList.add('in'); qi.focus();
+    body.querySelector('#qo')?.remove();
+  });
+  // la ✕ borra y cierra el buscador
+  qx.classList.remove('hidden');
+  qx.addEventListener('click', () => { rankQuery = ''; qi.value = ''; rs.classList.add('hidden'); if (D) paint(false); qi.blur(); });
   const paint = (enter) => {
     const d = D, sv = d.season;
     const tabs = document.querySelector('.tabs'); if (tabs) tabs.style.setProperty('--t', rankTab === 'nivel' ? 1 : 0);
     document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.t === rankTab ? 'true' : 'false'));
-    const q = rankQuery.trim().toLowerCase();
-    const match = (r) => !q || r.full_name.toLowerCase().includes(q) || r.username.toLowerCase().includes(q);
+    const q = fold(rankQuery.trim());
+    const match = (r) => !q || fold(r.full_name).includes(q) || fold(r.username).includes(q);
     const row = (r, i, mode) => {
       const me = isMe(r.id);
       const tag = me ? ' · Tú' : r.provisional ? ' · Provisional' : '';
@@ -2640,21 +2672,22 @@ async function screenRanking() {
       return `<a class="prow${me ? ' me' : ''}${r.injured ? ' inj' : ''}" href="#/jugador/${r.id}"><span class="pos">${pos}</span><span class="avw">${avatar(r, (r.pos && r.pos <= 3 && mode === 'puntos') ? 'top3' : '')}${r.injured ? `<span class="injdot" title="Lesionado">${I.bandage}</span>` : ''}</span>
         <span class="who"><b>${esc(r.full_name)}</b><span>${esc(sub)}</span></span>${right}</a>`;
     };
-    let html = '';
+    let html = '', tops = '';
+    const lupa = rankQuery || !document.getElementById('rs')?.classList.contains('hidden') ? '' : `<button type="button" class="rs-open" id="qo" aria-label="Buscar jugador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>`;
     if (sv.phase === 'masters') html += `<a class="box navy row-between" href="#/masters" style="margin-top:14px;color:#fff"><span><b>Másters en juego</b><br><span style="font-size:13px;opacity:.8">Mira los cuadros y tu próximo partido</span></span>${I.trophy}</a>`;
     const anyone = sv.phase === 'regular' && (sv.day || 0) < BAND_FROM_DAY ? `Reta a cualquiera hasta el ${dm(addDays(String(sv.starts_on), BAND_FROM_DAY - 2))}` : '';
-    if (!q && d.suggest && d.suggest.length) html += `<section class="sugg" aria-label="Rivales para ti"><div class="sugg-h"><span class="perks-k">Rivales para ti</span>${anyone ? `<span class="sugg-n">${I.bolt}${anyone}</span>` : ''}</div><div class="sugg-g">${d.suggest.map((r) => `<a class="sugg-c" href="#/retar/${r.id}">${avatar(r, 'sm')}<span class="sugg-t"><b>${esc(first(r.full_name))}</b><span>Nivel ${lvl(r.level)}</span></span></a>`).join('')}</div></section>`;
-    else if (anyone) html += `<p class="sugg-n solo">${I.bolt}${anyone}</p>`;
+    if (!q && d.suggest && d.suggest.length) tops += `<section class="sugg" aria-label="Rivales para ti"><div class="sugg-h"><span class="perks-k">Rivales para ti</span>${anyone ? `<span class="sugg-n">${I.bolt}${anyone}</span>` : ''}</div><div class="sugg-g">${d.suggest.map((r) => `<a class="sugg-c" href="#/retar/${r.id}">${avatar(r, 'sm')}<span class="sugg-t"><b>${esc(first(r.full_name))}</b><span>Nivel ${lvl(r.level)}</span></span></a>`).join('')}</div></section>`;
+    else if (anyone && !q) tops += `<p class="sugg-n solo">${I.bolt}${anyone}</p>`;
     if (rankTab === 'puntos') {
       const qual = d.qualified.filter(match), oth = d.others.filter(match);
       let lastZone = null;
       html += '<div class="list">';
       for (const r of qual) {
-        if (r.zone !== lastZone) { lastZone = r.zone; html += `<div class="zone ${r.zone}"><span>${ZONES[r.zone][0]} · ${ZONES[r.zone][1]}</span><span>PJ · Pts</span></div>`; }
+        if (r.zone !== lastZone) { const firstZ = lastZone === null; lastZone = r.zone; html += `<div class="zone ${r.zone}"><span>${ZONES[r.zone][0]} · ${ZONES[r.zone][1]}</span><span class="zr">${firstZ ? lupa : ''}PJ · Pts</span></div>`; }
         html += row(r, 0, 'puntos');
       }
       if (oth.length) {
-        html += `<div class="zone"><span>Aún sin clasificar · Mínimo ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span style="white-space:nowrap;flex:none">PJ · Pts</span></div>`;
+        html += `<div class="zone"><span>Aún sin clasificar · Mínimo ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span class="zr" style="white-space:nowrap;flex:none">${qual.length ? '' : lupa}PJ · Pts</span></div>`;
         html += oth.map((r) => row(r, 0, 'puntos')).join('');
       }
       if (!qual.length && !oth.length) html += `<div class="empty">${q ? 'No hay nadie con ese nombre.' : 'Todavía no hay jugadores.'}</div>`;
@@ -2662,10 +2695,11 @@ async function screenRanking() {
       if (!q && !qual.length && oth.length) html += `<p class="hint" style="margin:14px 6px">Los puestos de Máster aparecen cuando alguien juega ${sv.min_matches} partidos.</p>`;
     } else {
       const all = [...d.qualified, ...d.others].sort((a, b) => b.level - a.level).filter(match);
-      html += `<div class="zone"><span>Por nivel</span><span>PJ · Nivel</span></div><div class="list">${all.map((r, i) => row(r, i, 'nivel')).join('') || '<div class="empty">No hay nadie con ese nombre.</div>'}</div>`;
+      html += `<div class="zone"><span>Por nivel</span><span class="zr">${lupa}PJ · Nivel</span></div><div class="list">${all.map((r, i) => row(r, i, 'nivel')).join('') || '<div class="empty">No hay nadie con ese nombre.</div>'}</div>`;
     }
+    top.innerHTML = tops;
     body.innerHTML = html;
-    if (enter) stagger(body);
+    if (enter) { stagger(top); stagger(body); }
 
   };
   document.querySelector('.tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && D && b.dataset.t !== rankTab) { rankTab = b.dataset.t; paint(true); } });
@@ -3711,7 +3745,7 @@ function paintAdmin() {
       <div style="display:flex;gap:14px;margin-top:8px">${c.e1 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e1).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n1))}</a>` : ''}${c.e2 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e2).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n2))}</a>` : ''}${!c.match_status ? `<button type="button" class="link" style="margin-left:auto;color:var(--bad)" data-adcancel="${c.id}" data-n="${esc(c.n1)} vs ${esc(c.n2)}">Cancelar</button>` : ''}</div></div>`;
     const W = d.wa || { ok: 0, fail: 0, fails: [] };
     const bDays = d.backupAt ? Math.floor((Date.now() - Date.parse(d.backupAt)) / 864e5) : null;
-    const tplName = { reto_recibido: 'Reto recibido', nueva_hora: 'Nueva hora', partido_confirmado: 'Partido confirmado', recordatorio_partido: 'Recordatorio', cuadro_publicado: 'Cuadro publicado', animo_jugar: 'Empujón' };
+    const tplName = { reto_recibido: 'Reto recibido', nueva_hora: 'Nueva hora', partido_confirmado: 'Partido confirmado', recordatorio_partido: 'Recordatorio', cuadro_publicado: 'Cuadro publicado', animo_jugar: 'Empujón', partido_cancelado: 'Partido cancelado' };
     const health = `<div class="box health${W.fail ? ' warn' : ''}"><div class="row-between"><b>WhatsApp · últimas 24 h</b><span class="badge ${W.fail ? 'bad' : 'ok'}">${W.ok} enviados${W.fail ? ` · ${W.fail} fallidos` : ''}</span></div>
         ${W.fails.length ? `<div class="hfails">${W.fails.map((f) => `<div><b>${esc(f.name || 'Número desconocido')}</b> · ${esc(tplName[f.template] || f.template)} · ${fmtWhen(String(f.at).slice(0, 10), false)} ${String(new Date(f.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' }))}<span>${esc(f.error || '')}</span></div>`).join('')}</div>`
           : '<p class="hint" style="margin:6px 0 0;text-align:left">Ningún aviso fallido esta semana.</p>'}
