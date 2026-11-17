@@ -345,11 +345,14 @@ on('GET', 'me', async ({ req }) => {
       (select count(*) from matches where status = 'pending' and reported_by <> ${uid} and (p1 = ${uid} or p2 = ${uid}))::int as confirm,
       (select count(*) from challenges c where c.status = 'accepted' and (c.challenger = ${uid} or c.challenged = ${uid})
          and c.play_at::date <= ${madridToday()}::date
-         and not exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')))::int as report`,
+         and not exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')))::int as report,
+      (select count(*) from challenges c where (c.challenger = ${uid} or c.challenged = ${uid}) and exists (select 1 from chat h
+         where h.challenge_id = c.id and h.sender is distinct from ${uid}
+           and h.created_at > coalesce(case when c.challenger = ${uid} then c.seen_a else c.seen_b end, 'epoch')))::int as chat`,
     boardNews(sql, uid),
   ]);
   const locked = await cardLocked(sql, uid);
-  return { me: { ...selfView(p), card_locked: locked }, season: seasonView(S), todo: todo.respond + todo.confirm + todo.report, board: board.n };
+  return { me: { ...selfView(p), card_locked: locked }, season: seasonView(S), todo: todo.respond + todo.confirm + todo.report + todo.chat, chat: todo.chat, board: board.n };
 });
 function seasonView(S) {
   const today = madridToday();
@@ -550,7 +553,6 @@ on('GET', 'player/:id', async ({ req, params }) => {
       rematchFrom: pair.played >= R.PAIR_CAP && pair.played < R.PAIR_CAP_LATE && R.pairCap(madridToday(), st.S.starts_on) <= pair.played ? revengeDay(st.S) : null,
       openChallenge: pair.open_id ? Number(pair.open_id) : null,
       stakes: stakes(me, st.count[me.id] || 0, p, st.count[id] || 0),
-      noMessage: isMinor(me) || isMinor(p),
       canChallenge: p.active && st.S.phase === 'regular',
       meInjured: injuredUntil(me),
       bandBlock: bandBlock(st, st.S, me.id, id),
@@ -610,8 +612,8 @@ on('POST', 'challenge', async ({ req, body, out }) => {
   if (!rv) fail('Ese jugador no está disponible.');
   if (injuredUntil(me)) fail(`Estás marcado como lesionado hasta el ${fmtDay(injuredUntil(me))}. Si ya estás bien, cámbialo en tu perfil.`);
   if (injuredUntil(rv)) fail(`${firstName(rv.full_name)} está lesionado hasta el ${fmtDay(injuredUntil(rv))}. Podrás retarle después.`);
-  let message = String(body.message || '').trim().slice(0, 200) || null;
-  if (isMinor(me) || isMinor(rv)) message = null;
+  const message = String(body.message || '').trim().slice(0, 500) || null;   // va como primer mensaje del chat
+  const duty = ['balls', 'court'].includes(body.duty) ? body.duty : fail('Elige si llevas tú las bolas o reservas tú la pista.');
   const blocked = bandBlock(await standings(sql), S, me.id, to);
   if (blocked) fail(blocked);
   const ch = await sql.begin(async (tx) => {
@@ -626,8 +628,10 @@ on('POST', 'challenge', async ({ req, body, out }) => {
     if (chk.played >= R.PAIR_CAP_LATE) fail('Ya habéis jugado la ida y la revancha. Esta temporada no se puede repetir más.');
     if (chk.played >= R.pairCap(body.date, S.starts_on)) fail(`Ya habéis jugado. La revancha se puede jugar desde el ${fmtDay(revengeDay(S))}.`);
     if (chk.mine >= OPEN_LIMIT) fail(`Tienes ${OPEN_LIMIT} retos esperando respuesta. Espera a que te contesten.`);
-    const [c] = await tx`insert into challenges (challenger, challenged, play_at, proposed_by, message, token)
-      values (${me.id}, ${to}, ${at}, ${me.id}, ${message}, ${randomToken()}) returning *, play_at::text as play_at`;
+    const [c] = await tx`insert into challenges (challenger, challenged, play_at, proposed_by, token, duty, seen_a)
+      values (${me.id}, ${to}, ${at}, ${me.id}, ${randomToken()}, ${duty}, now()) returning *, play_at::text as play_at`;
+    if (message) await tx`insert into chat (challenge_id, sender, body) values (${c.id}, ${me.id}, ${message})`;
+    c.message = message;
     await tx`insert into feed (kind, actor, target, data) values ('challenge', ${me.id}, ${to}, ${tx.json({ challenge: c.id })})`;
     return c;
   });
@@ -660,7 +664,11 @@ on('GET', 'retos', async ({ req }) => {
   const uid = sessionUid(req).u;
   const sql = db();
   const [me, S, chs, nodes, rounds] = await Promise.all([auth(req), season(sql), sql`select c.id, c.challenger, c.challenged, c.play_at::text as play_at, c.proposed_by, c.counters, c.message, c.status,
-      c.walkover, c.promo, c.updated_at, a.full_name as challenger_name, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
+      c.walkover, c.promo, c.updated_at, c.duty, a.full_name as challenger_name,
+      (select count(*) from chat h where h.challenge_id = c.id and h.sender is distinct from ${uid}
+         and h.created_at > coalesce(case when c.challenger = ${uid} then c.seen_a else c.seen_b end, 'epoch'))::int as unread,
+      (select count(*) from chat h where h.challenge_id = c.id)::int as msgs,
+      (select h.body from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_msg, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
       m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner,
       m.p1 as match_p1, m.p1_before as match_p1b, m.p1_after as match_p1a, m.p2_before as match_p2b, m.p2_after as match_p2a
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
@@ -680,6 +688,7 @@ on('GET', 'retos', async ({ req }) => {
     const iAmChallenger = c.challenger === me.id;
     return {
       id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, walkover: c.walkover, promo: !!c.promo,
+      myDuty: dutyOf(c, me.id), unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, chatOpen: chatOpen(c),
       rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name, photo_v: iAmChallenger ? c.challenged_pv : c.challenger_pv },
       iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
       canReport: c.status === 'accepted' && c.play_at.slice(0, 10) <= today && !c.match_id && S.phase === 'regular',
@@ -698,6 +707,63 @@ on('GET', 'retos', async ({ req }) => {
   return { challenges, masters, season: seasonView(S) };
 });
 
+/** Lo que le toca a este jugador: 'balls' (lleva bolas) o 'court' (reserva pista). null en retos antiguos. */
+const dutyOf = (c, uid) => (!c.duty ? null : c.challenger === uid ? c.duty : c.duty === 'balls' ? 'court' : 'balls');
+/** El chat se puede usar mientras el reto está vivo y hasta 7 días después de cerrarse. */
+const chatOpen = (c) => ['pending', 'accepted'].includes(c.status) || new Date(c.updated_at) > new Date(Date.now() - 7 * 864e5);
+
+/* Chat del partido (los dos jugadores; también con menores) */
+async function chatChallenge(sql, req, idRaw) {
+  const me = await auth(req);
+  const [c] = await sql`select c.id, c.challenger, c.challenged, c.status, c.updated_at, c.duty, c.play_at::text as play_at, c.promo,
+      a.full_name as challenger_name, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged where c.id = ${checkNum(idRaw)}`;
+  if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+  return { me, c };
+}
+on('GET', 'challenge/:id/chat', async ({ req, params }) => {
+  const sql = db();
+  const { me, c } = await chatChallenge(sql, req, params[0]);
+  const mine = c.challenger === me.id;
+  const [msgs] = await Promise.all([
+    sql`select id, sender, body, created_at from chat where challenge_id = ${c.id} order by id limit 300`,
+    mine ? sql`update challenges set seen_a = now() where id = ${c.id}` : sql`update challenges set seen_b = now() where id = ${c.id}`,
+  ]);
+  return {
+    challenge: { id: Number(c.id), status: c.status, play_at: c.play_at, promo: !!c.promo, myDuty: dutyOf(c, me.id), open: chatOpen(c),
+      rival: { id: mine ? c.challenged : c.challenger, name: mine ? c.challenged_name : c.challenger_name, photo_v: mine ? c.challenged_pv : c.challenger_pv } },
+    messages: msgs.map((m) => ({ id: Number(m.id), mine: m.sender === me.id, body: m.body, at: m.created_at })),
+  };
+});
+on('POST', 'challenge/:id/chat', async ({ req, params, body }) => {
+  const sql = db();
+  const { me, c } = await chatChallenge(sql, req, params[0]);
+  if (!chatOpen(c)) fail('Este chat ya está cerrado.');
+  const text = String(body.body || '').trim().replace(/\n{3,}/g, '\n\n');
+  if (!text) fail('Escribe algo.');
+  if (text.length > 500) fail('Máximo 500 caracteres.');
+  const [{ n }] = await sql`select count(*)::int as n from chat where challenge_id = ${c.id} and sender = ${me.id} and created_at > now() - interval '1 hour'`;
+  if (n >= 40) fail('Demasiados mensajes seguidos. Espera un poco.');
+  const [m] = await sql`insert into chat (challenge_id, sender, body) values (${c.id}, ${me.id}, ${text}) returning id, created_at`;
+  if (c.challenger === me.id) await sql`update challenges set seen_a = now() where id = ${c.id}`;
+  else await sql`update challenges set seen_b = now() where id = ${c.id}`;
+  return { message: { id: Number(m.id), mine: true, body: text, at: m.created_at } };
+});
+
+/* Retos creados antes de existir esta opción: cualquiera de los dos puede decir qué pone (una vez) */
+on('POST', 'challenge/:id/duty', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const mine = ['balls', 'court'].includes(body.mine) ? body.mine : fail('Elige si llevas tú las bolas o reservas tú la pista.');
+  const [c] = await sql`select id, challenger, challenged, status, duty from challenges where id = ${checkNum(params[0])}`;
+  if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+  if (!['pending', 'accepted'].includes(c.status)) fail('Este reto ya no está abierto.');
+  const duty = c.challenger === me.id ? mine : mine === 'balls' ? 'court' : 'balls';
+  const [u] = await sql`update challenges set duty = ${duty} where id = ${c.id} and duty is null returning id`;
+  if (!u) fail('Tu rival ya lo ha elegido. Míralo en el reto.');
+  return { myDuty: mine };
+});
+
 on('GET', 'challenge/:id', async ({ req, params }) => {
   const me = await auth(req);
   const sql = db();
@@ -707,7 +773,7 @@ on('GET', 'challenge/:id', async ({ req, params }) => {
   const iAmChallenger = c.challenger === me.id;
   return {
     challenge: {
-      id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters,
+      id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, myDuty: dutyOf(c, me.id),
       rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name },
       iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
       countersLeft: COUNTER_LIMIT - c.counters,
