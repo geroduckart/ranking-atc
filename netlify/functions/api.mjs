@@ -688,7 +688,7 @@ on('GET', 'retos', async ({ req }) => {
     const iAmChallenger = c.challenger === me.id;
     return {
       id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, walkover: c.walkover, promo: !!c.promo,
-      myDuty: dutyOf(c, me.id), unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, chatOpen: chatOpen(c),
+      myDuty: dutyOf(c, me.id), lateCancel: lateCancel(c) && S.phase === 'regular', unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, chatOpen: chatOpen(c),
       rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name, photo_v: iAmChallenger ? c.challenged_pv : c.challenger_pv },
       iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
       canReport: c.status === 'accepted' && c.play_at.slice(0, 10) <= today && !c.match_id && S.phase === 'regular',
@@ -716,7 +716,8 @@ const chatOpen = (c) => ['pending', 'accepted'].includes(c.status) || new Date(c
 async function chatChallenge(sql, req, idRaw) {
   const me = await auth(req);
   const [c] = await sql`select c.id, c.challenger, c.challenged, c.status, c.updated_at, c.duty, c.play_at::text as play_at, c.promo,
-      a.full_name as challenger_name, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv
+      a.full_name as challenger_name, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
+      exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')) as has_match
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged where c.id = ${checkNum(idRaw)}`;
   if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
   return { me, c };
@@ -731,8 +732,9 @@ on('GET', 'challenge/:id/chat', async ({ req, params }) => {
   ]);
   return {
     challenge: { id: Number(c.id), status: c.status, play_at: c.play_at, promo: !!c.promo, myDuty: dutyOf(c, me.id), open: chatOpen(c),
+      iAmChallenger: mine, canCancel: ['pending', 'accepted'].includes(c.status) && !c.has_match, lateCancel: lateCancel(c),
       rival: { id: mine ? c.challenged : c.challenger, name: mine ? c.challenged_name : c.challenger_name, photo_v: mine ? c.challenged_pv : c.challenger_pv } },
-    messages: msgs.map((m) => ({ id: Number(m.id), mine: m.sender === me.id, body: m.body, at: m.created_at })),
+    messages: msgs.map((m) => ({ id: Number(m.id), mine: m.sender === me.id, sys: m.sender === null, body: m.body, at: m.created_at })),
   };
 });
 on('POST', 'challenge/:id/chat', async ({ req, params, body }) => {
@@ -850,22 +852,54 @@ async function respond(sql, id, me, action, body, out) {
   return result;
 }
 
-on('POST', 'challenge/:id/cancel', async ({ req, params, out }) => {
+/* ── Cancelar un partido ─────────────────────────────────────────────
+   Cualquiera de los dos puede cancelar. Un partido aceptado que se cancela con menos de
+   LATE_CANCEL_H horas (o ya pasada la hora) cuenta como derrota 6-0 6-0 para quien cancela.
+   El club puede cancelar cualquier partido sin penalización. */
+const LATE_CANCEL_H = 2;
+const minsTo = (playAt) => (Date.parse(String(playAt).slice(0, 16).replace(' ', 'T') + ':00Z') - Date.parse(madridNow().replace(' ', 'T') + ':00Z')) / 60000;
+const lateCancel = (c) => c.status === 'accepted' && minsTo(c.play_at) < LATE_CANCEL_H * 60;
+const sysChat = (tx, chId, text) => tx`insert into chat (challenge_id, sender, body) values (${chId}, null, ${text})`;
+
+async function cancelChallenge(sql, id, me, { admin = false, acceptLoss = false } = {}, out) {
+  const S = await season(sql);
+  let res;
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
+    if (!c || (!admin && c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (!['pending', 'accepted'].includes(c.status)) fail('Este partido ya no está abierto.');
+    const [hasMatch] = await tx`select 1 from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
+    if (hasMatch) fail('Este partido ya tiene un resultado.');
+    const name = admin ? 'El club' : firstName(me.full_name);
+    const late = !admin && lateCancel(c) && S.phase === 'regular';
+    if (late && !acceptLoss) fail(`Quedan menos de ${LATE_CANCEL_H} horas: si cancelas ahora, pierdes 6-0 6-0.`, 409);
+    if (late) {
+      // derrota 6-0 6-0 para quien cancela (marcador desde p1 = quien retó)
+      const iAmP1 = c.challenger === me.id;
+      const winner = iAmP1 ? c.challenged : c.challenger;
+      const sets = iAmP1 ? [[0, 6], [0, 6]] : [[6, 0], [6, 0]];
+      const [m] = await tx`insert into matches (challenge_id, p1, p2, sets, winner, walkover, reported_by, played_on)
+        values (${id}, ${c.challenger}, ${c.challenged}, ${tx.json(sets)}, ${winner}, true, ${me.id}, ${c.play_at.slice(0, 10)}) returning *`;
+      await tx`update challenges set walkover = true, responded_by = ${me.id} where id = ${id}`;
+      await sysChat(tx, id, `${name} ha cancelado con menos de ${LATE_CANCEL_H} horas: el partido cuenta como 6-0 6-0 para su rival.`);
+      await confirmMatch(tx, m, out);
+      res = { status: 'done', walkover: true };
+    } else {
+      const st = admin || c.challenger === me.id || c.status === 'accepted' ? 'cancelled' : 'rejected';
+      await tx`update challenges set status = ${st}, responded_by = ${admin ? null : me.id}, updated_at = now() where id = ${id}`;
+      await sysChat(tx, id, c.status === 'accepted' ? `${name} ha cancelado el partido.` : `${name} ha cancelado el reto.`);
+      res = { status: st };
+    }
+  });
+  return res;
+}
+on('POST', 'challenge/:id/cancel', async ({ req, params, body, out }) => {
   const me = await auth(req);
-  const sql = db();
-  const id = checkNum(params[0]);
-  const [c] = await sql`select *, play_at::text as play_at from challenges where id = ${id}`;
-  if (!c || c.challenger !== me.id) fail('Solo quien ha retado puede cancelar el reto.');
-  if (!['pending', 'accepted'].includes(c.status)) fail('Este reto ya no está abierto.');
-  const [hasMatch] = await sql`select 1 from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
-  if (hasMatch) fail('Este partido ya tiene un resultado.');
-  await sql`update challenges set status = 'cancelled', responded_by = ${me.id}, updated_at = now() where id = ${id}`;
-  const [o] = await sql`select * from players where id = ${c.challenged}`;
-  if (o && wants(o, 'challenges')) out.push(() => mail(o.email, `${firstName(me.full_name)} ha cancelado el reto`, {
-    lines: [`<b>${esc(me.full_name)}</b> ha cancelado el partido del ${esc(fmtWhen(c.play_at))}.`],
-    buttons: [{ label: 'Abrir el ranking', url: appUrl('') }],
-  }));
-  return { ok: true };
+  return cancelChallenge(db(), checkNum(params[0]), me, { acceptLoss: body && body.acceptLoss === true }, out);
+});
+on('POST', 'admin/challenge/:id/cancel', async ({ req, params, out }) => {
+  const me = await auth(req, { admin: true });
+  return cancelChallenge(db(), checkNum(params[0]), me, { admin: true }, out);
 });
 
 /* ── Resultados ──────────────────────────────────────────────────────── */
@@ -940,7 +974,7 @@ async function confirmMatch(tx, m, out) {
   if (m.challenge_id) await tx`update challenges set status = 'done', updated_at = now() where id = ${m.challenge_id}`;
   if (m.master_id) await advance(tx, m.master_id, m.winner);
   await recompute(tx);
-  await afterConfirm(tx, m.id, before, out, {});
+  await afterConfirm(tx, m.id, before, out, { walkover: !!m.walkover });
 }
 async function afterConfirm(tx, matchId, before, out, { walkover }) {
   const [m] = await tx`select * from matches where id = ${matchId}`;
@@ -966,8 +1000,8 @@ async function afterConfirm(tx, matchId, before, out, { walkover }) {
       : `${won ? 'Victoria' : 'Derrota'} contra ${firstName(rival.full_name)}: resultado confirmado`;
     out.push(() => mail(p.email, subj, {
       lines: walkover
-        ? [won ? `<b>${esc(rival.full_name)}</b> ha rechazado su tercer reto del mes, así que el partido cuenta como victoria tuya 6-0 6-0.`
-               : 'Es tu tercer rechazo de este mes, así que el partido cuenta como derrota 6-0 6-0. Los dos primeros rechazos de cada mes son libres.']
+        ? [won ? `<b>${esc(rival.full_name)}</b> ha cancelado con menos de ${LATE_CANCEL_H} horas, así que el partido cuenta como victoria tuya 6-0 6-0.`
+               : `Has cancelado con menos de ${LATE_CANCEL_H} horas, así que el partido cuenta como derrota 6-0 6-0.`]
         : [`${won ? 'Has ganado' : 'Has perdido'} <b>${esc(R.fmtSets(m.sets, p.id !== m.p1))}</b> contra <b>${esc(rival.full_name)}</b>.`],
       highlight: { big: `Nivel ${Math.round(Number(P[p.id].level))} (${signed(d)})${m.master_id ? '' : ` · +${pts || 0} pts`}`,
         small: pos ? `Vas ${ord(pos)} en la clasificación.` : (m.master_id ? 'Partido de los Másters.' : `Te faltan ${Math.max(0, st.S.min_matches - ([...st.others].find((r) => r.id === p.id)?.pj ?? 0))} partidos para clasificarte.`) },
