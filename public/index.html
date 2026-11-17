@@ -394,6 +394,49 @@ details.adm summary::-webkit-details-marker{display:none}
 .langsw.dark{background:rgba(255,255,255,.1)}
 .langsw.dark button{color:rgba(255,255,255,.7)}
 .langsw.dark button[aria-pressed="true"]{background:#fff;color:var(--navy)}
+.duty{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:0;padding:4px;border-radius:18px;background:var(--soft);margin-top:8px}
+.duty i{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:14px;background:var(--navy);box-shadow:0 4px 12px rgba(18,41,74,.22);opacity:0;transform:translateX(0) scale(.96);transition:transform 280ms cubic-bezier(.23,1,.32,1),opacity 180ms ease-out}
+.duty[data-v] i{opacity:1;transform:translateX(0) scale(1)}
+.duty[data-v="court"] i{transform:translateX(100%) scale(1)}
+.duty button{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:0;background:none;border-radius:14px;font:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer;transition:color 200ms ease,transform 140ms ease-out}
+.duty button svg{width:22px;height:22px;opacity:.8}
+.duty button[aria-pressed="true"]{color:#fff}
+.duty button:active{transform:scale(.97)}
+.duty-res{display:flex;align-items:center;justify-content:center;gap:6px;min-height:22px;margin-top:8px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.duty-res b{color:var(--ink)}
+.duty-res svg{width:15px;height:15px}
+.duty-res.in{animation:lateIn 260ms cubic-bezier(.23,1,.32,1) both}
+.dutyask{margin-top:10px;padding:10px 12px;border-radius:14px;background:var(--orange-soft)}
+.dutyask>span{font-size:13px;font-weight:800;color:var(--orange)}
+.dutyask .btn svg{width:15px;height:15px;margin-right:5px}
+.dutyask .btns{margin-top:6px}
+.dutyline{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.dutyline span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px 5px 8px;border-radius:999px;background:var(--soft);font-size:12.5px;font-weight:700;color:var(--ink)}
+.dutyline span.me{background:var(--navy);color:#fff}
+.dutyline svg{width:14px;height:14px}
+.chatbtn{display:inline-flex;align-items:center;gap:6px}
+.chatbtn svg{width:16px;height:16px}
+.chatbtn .n{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.lastmsg{margin:10px 0 0;font-size:14px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lastmsg.new{font-weight:700}
+.chatscr{display:flex;flex-direction:column;min-height:100dvh;box-sizing:border-box}
+.chat-top{position:sticky;top:0;z-index:3;margin:0 -18px;padding:calc(10px + var(--sat)) 18px 10px;background:linear-gradient(var(--bg) 75%,transparent)}
+.chatscr{padding-top:0}
+.chat-who{display:flex;align-items:center;gap:10px;min-width:0;color:var(--ink)}
+.chat-who b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-who .when{font-size:12.5px}
+.chat-list{flex:1;display:flex;flex-direction:column;gap:6px;padding:14px 0 12px}
+.chat-day{align-self:center;margin:10px 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--muted)}
+.msg{position:relative;max-width:80%;align-self:flex-start;padding:9px 12px 7px;border-radius:18px 18px 18px 6px;background:var(--card);border:1px solid var(--line);font-size:15px;line-height:1.38;color:var(--ink);word-wrap:break-word;animation:msgIn 220ms cubic-bezier(.23,1,.32,1) both}
+.msg.me{align-self:flex-end;background:var(--navy);border-color:var(--navy);color:#fff;border-radius:18px 18px 6px 18px}
+.msg time{display:block;margin-top:2px;font-size:10.5px;font-weight:600;opacity:.55;text-align:right}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px) scale(.98)}}
+.chat-empty{margin:auto 10px;text-align:center;font-size:14px;color:var(--muted);line-height:1.45}
+.chat-in{position:sticky;bottom:calc(10px + var(--sab));display:flex;align-items:flex-end;gap:8px;padding:8px;margin:0 -8px;border-radius:26px;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:0 8px 24px rgba(15,23,32,.1)}
+.chat-in .input{flex:1;min-height:42px;max-height:120px;border-radius:20px;padding:10px 14px;font-size:16px;background:#fff}
+.chat-send{flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--orange);color:#fff;display:grid;place-items:center;cursor:pointer;transition:transform 140ms ease-out}
+.chat-send:active{transform:scale(.94)}
+.chat-send svg{width:20px;height:20px}
 .freebadge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 10px 5px 7px;border-radius:999px;background:var(--orange-soft);color:var(--orange);font-size:12px;font-weight:800;letter-spacing:-.005em}
 .freebadge svg{width:14px;height:14px}
 .freedot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:var(--orange-soft);color:var(--orange);vertical-align:-3px}
@@ -1060,7 +1103,9 @@ const EN = {/*DICT*/
   "Para qué:": "What for:",
   "para gestionar el ranking del club, enviarte los avisos que elijas y recuperar tu PIN. La base legal es tu consentimiento al registrarte.": "to run the club ranking, send you the notifications you choose and reset your PIN. The legal basis is your consent when you sign up.",
   "Quién lo ve:": "Who sees it:",
-  "solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más y para proteger a los menores (los retos con menores no llevan mensaje).": "only registered players see the ranking, profiles and board. Your mobile is never shown to anyone, and of your age only the band is visible (Junior, +20, +30…). Age is only used to check you are 14 or older and to protect minors (challenges involving minors carry no message).",
+  "solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más.": "only registered players see the ranking, profiles and board. Your mobile is never shown to anyone, and of your age only the band is visible (Junior, +20, +30…). Age is only used to check you are 14 or older.",
+  "Chat del partido:": "Match chat:",
+  "cada partido tiene un chat solo entre los dos jugadores, para quedar (pista, bolas, hora). Los mensajes se guardan y el club puede revisarlos si hay un problema. Respeto siempre: cualquier mal uso supone la baja del ranking.": "every match has a chat just between the two players, to sort out the court, balls and time. Messages are stored and the club can review them if there is a problem. Always be respectful: any misuse means removal from the ranking.",
   "Proveedores:": "Providers:",
   "la app funciona con Netlify (web), Supabase (base de datos, servidores en la UE) y WhatsApp de Meta (avisos), que tratan los datos solo por encargo del club.": "the app runs on Netlify (web), Supabase (database, servers in the EU) and Meta's WhatsApp (notices), which process data only on behalf of the club.",
   "Cuánto tiempo:": "For how long:",
@@ -1327,6 +1372,25 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Hecho: tú llevas las bolas y tu rival reserva la pista.": "Done: you bring the balls and your opponent books the court.",
+  "Hecho: tú reservas la pista y tu rival lleva las bolas.": "Done: you book the court and your opponent brings the balls.",
+  "¿Qué pones tú?": "What do you bring?",
+  "Llevo las bolas": "I bring the balls",
+  "Reservo la pista": "I book the court",
+  "Elige si llevas tú las bolas o reservas tú la pista.": "Choose whether you bring the balls or book the court.",
+  "* reserva la pista": "$1 books the court",
+  "* lleva las bolas": "$1 brings the balls",
+  "Tú llevas las bolas": "You bring the balls",
+  "Tú reservas la pista": "You book the court",
+  "Te toca reservar la pista en el club.": "You book the court at the club.",
+  "* reserva la pista; tú llevas las bolas.": "$1 books the court; you bring the balls.",
+  "Chat": "Chat",
+  "Escribir a *": "Message $1",
+  "Mensaje": "Message",
+  "Escribe a * para quedar: la pista, las bolas o lo que necesitéis.": "Message $1 to sort things out: the court, the balls or anything else.",
+  "Este chat ya está cerrado.": "This chat is closed.",
+  "* tiene 3 días para responder y le llegará un aviso por WhatsApp. Después podéis hablar por el chat del partido. Hasta el día 30 solo podéis jugar una vez entre vosotros; desde entonces, una revancha.": "$1 has 3 days to reply and will get a WhatsApp alert. Then you can talk in the match chat. Until day 30 you can only play each other once; after that, one rematch.",
+  "¿Te va bien?": "Does that work for you?",
   "Tu nacionalidad": "Your nationality",
   "Buscar país": "Search country",
   "Prefiero no decirlo": "I'd rather not say",
@@ -1677,6 +1741,7 @@ const I = {
   close:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   trophy:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v2a3 3 0 0 1-3 3M7 6H4v2a3 3 0 0 0 3 3"/></svg>',
   ball:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6c3 2.4 3 10.4 0 12.8M18.4 5.6c-3 2.4-3 10.4 0 12.8"/></svg>',
+  court:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 12h18M7 4v16M17 4v16M7 8h10M7 16h10"/></svg>',
   chat:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   user:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
@@ -2681,18 +2746,32 @@ async function screenChallenge(id) {
       </div>
     </div>
     ${whenPicker('w')}
-    ${v.noMessage ? '<p class="hint" style="margin-top:14px">En los retos con menores de 18 no hay mensaje: solo día y hora.</p>'
-      : `<label class="field" style="margin-top:14px">Mensaje (opcional)<textarea class="input" id="msg" rows="2" maxlength="200" placeholder="¿Te va bien? Reservo yo la pista."></textarea></label>`}
-    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 3 días para responder y le llegará un aviso por WhatsApp. La pista la reserváis en el club. Hasta el día 30 solo podéis jugar una vez entre vosotros; desde entonces, una revancha.</p>
+    <div class="label" style="margin:18px 0 0 2px">¿Qué pones tú?</div>
+    <div class="duty" id="duty" role="group" aria-label="Qué pones tú"><i aria-hidden="true"></i>
+      <button type="button" data-v="balls" aria-pressed="false">${I.ball}Llevo las bolas</button>
+      <button type="button" data-v="court" aria-pressed="false">${I.court}Reservo la pista</button></div>
+    <div class="duty-res" id="duty-res"></div>
+    <label class="field" style="margin-top:12px">Mensaje (opcional)<textarea class="input" id="msg" rows="2" maxlength="500" placeholder="¿Te va bien?"></textarea></label>
+    <p class="hint" style="margin-top:12px">${esc(first(p.full_name))} tiene 3 días para responder y le llegará un aviso por WhatsApp. Después podéis hablar por el chat del partido. Hasta el día 30 solo podéis jugar una vez entre vosotros; desde entonces, una revancha.</p>
     <div class="err hidden" id="e" style="margin-top:10px"></div>
     <button class="btn block" id="send" style="margin-top:16px">Enviar reto</button>
   </main>${nav('ranking')}`);
   const get = bindWhen(document.getElementById('w'));
+  let duty = null;
+  const dEl = document.getElementById('duty'), dRes = document.getElementById('duty-res');
+  dEl.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b || b.dataset.v === duty) return;
+    duty = b.dataset.v; dEl.dataset.v = duty;
+    dEl.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    dRes.innerHTML = duty === 'balls' ? `${I.court}<span>${esc(first(p.full_name))} <b>reserva la pista</b></span>` : `${I.ball}<span>${esc(first(p.full_name))} <b>lleva las bolas</b></span>`;
+    dRes.classList.remove('in'); void dRes.offsetWidth; dRes.classList.add('in');
+  });
   const btn = document.getElementById('send');
   btn.addEventListener('click', () => busy(btn, async () => {
     try {
       const w = get();
-      await api('POST', 'challenge', { to: p.id, date: w.date, time: w.time, message: document.getElementById('msg')?.value || '' });
+      if (!duty) throw new Error('Elige si llevas tú las bolas o reservas tú la pista.');
+      await api('POST', 'challenge', { to: p.id, date: w.date, time: w.time, duty, message: document.getElementById('msg')?.value || '' });
       toast(`Reto enviado a ${first(p.full_name)}.`, true);
       go('retos');
     } catch (err) { setErr(document.getElementById('e'), err.message); }
@@ -2706,7 +2785,10 @@ async function screenRetos() {
   body.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     try {
-      if (b.dataset.act === 'accept') {
+      if (b.dataset.duty) {
+        await busy(b, () => api('POST', `challenge/${b.dataset.id}/duty`, { mine: b.dataset.duty }));
+        toast(b.dataset.duty === 'balls' ? 'Hecho: tú llevas las bolas y tu rival reserva la pista.' : 'Hecho: tú reservas la pista y tu rival lleva las bolas.', true); reloadRetos();
+      } else if (b.dataset.act === 'accept') {
         const r = await busy(b, () => api('POST', `challenge/${b.dataset.id}/respond`, { action: 'accept' }));
         toast(r && r.promo ? '¡Premio! Pista y bolas gratis en este partido.' : 'Partido aceptado. Reservad pista en el club.', true); reloadRetos();
       } else if (b.dataset.act === 'reject') {
@@ -2748,11 +2830,10 @@ function paintRetos(d, o) {
   const past = CH.filter((c) => !['pending', 'accepted'].includes(c.status));
   const M = d.masters;
   const card = (c, inner) => `<div class="box"><div class="row-between"><a href="#/jugador/${c.rival.id}" style="display:flex;gap:10px;align-items:center;color:var(--ink);min-width:0">${avatar({ id: c.rival.id, full_name: c.rival.name, photo_v: c.rival.photo_v })}
-      <span style="min-width:0"><b style="display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a></div>${c.promo && ['accepted', 'done'].includes(c.status) ? freeBadge() : ''}${inner}</div>`;
+      <span style="min-width:0"><b style="display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a></div>${c.promo && ['accepted', 'done'].includes(c.status) ? freeBadge() : ''}${dutyHTML(c)}${chatPrev(c)}${inner}${chatHTML(c)}</div>`;
   let html = '';
   const sec = (title, items) => items ? `<div class="sec"><span class="label">${title}</span>${items}</div>` : '';
   html += sec('Te toca responder', respond.map((c) => card(c, `
-    ${c.message ? `<p style="margin:10px 0 0;font-size:15px"><span data-nt>«${esc(c.message)}»</span></p>` : ''}
     <p class="hint" style="margin-top:8px">${c.iAmChallenger ? `${esc(first(c.rival.name))} propone esta hora.` : `${esc(first(c.rival.name))} te ha retado.`}</p>
     <div class="btns"><button class="btn sm" data-act="accept" data-id="${c.id}">Acepto</button><a class="btn sm ghost" href="#/reto/${c.id}">Otra hora</a><button class="btn sm ghost" data-act="reject" data-id="${c.id}" data-ch="${c.iAmChallenger ? 1 : 0}">No puedo</button></div>`)).join(''));
   html += sec('Resultados por confirmar', [
@@ -2769,7 +2850,7 @@ function paintRetos(d, o) {
     ...M.filter((n) => n.match && (n.match.status === 'disputed' || n.match.iReported)).map((n) => masterCard(n, `<p class="hint" style="margin-top:8px">${n.match.status === 'disputed' ? 'Resultado en revisión por el club.' : `Has puesto ${esc(n.match.score)}. Falta que lo confirme tu rival.`}</p>`)),
     ...waiting.map((c) => card(c, `<p class="hint" style="margin-top:8px">Esperando respuesta de ${esc(first(c.rival.name))}.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}">Cancelar reto</button></div>` : ''}`)),
   ].join(''));
-  html += sec('Partidos programados', scheduled.map((c) => card(c, `<p class="hint" style="margin-top:8px">Reservad pista en el club. Después del partido, uno pone el resultado aquí.</p>
+  html += sec('Partidos programados', scheduled.map((c) => card(c, `<p class="hint" style="margin-top:8px">${c.myDuty === 'court' ? 'Te toca reservar la pista en el club.' : c.myDuty === 'balls' ? `${esc(first(c.rival.name))} reserva la pista; tú llevas las bolas.` : 'Reservad pista en el club.'} Después del partido, uno pone el resultado aquí.</p>
     <p class="note">La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Tocad «No vamos a jugar» solo si de verdad no vais a jugar.</p>${c.iAmChallenger ? `<p style="margin:10px 0 0;text-align:center"><button type="button" class="linkbtn" data-cancel="${c.id}">No vamos a jugar</button></p>` : ''}`)).join(''));
   html += sec('Historial', past.map((c) => {
     const m = c.match;
@@ -2784,6 +2865,24 @@ function paintRetos(d, o) {
   if (!html) html = `<div class="empty">No tienes retos abiertos.<br>Ve a la clasificación, entra en un jugador y rétale.<div style="margin-top:18px"><a class="btn sm" href="#/">Ver la clasificación</a></div></div>`;
   body.innerHTML = html;
   if (!o.refresh) stagger(body);
+}
+/* Quién lleva bolas y quién reserva pista (en retos abiertos y partidos por jugar) */
+function dutyHTML(c) {
+  if (!['pending', 'accepted'].includes(c.status)) return '';
+  if (!c.myDuty) return c.id && c.chatOpen !== undefined ? `<div class="dutyask"><span>¿Qué pones tú?</span><div class="btns" style="margin-top:6px">
+    <button class="btn xs ghost" data-duty="balls" data-id="${c.id}">${I.ball}Llevo las bolas</button><button class="btn xs ghost" data-duty="court" data-id="${c.id}">${I.court}Reservo la pista</button></div></div>` : '';
+  const mine = c.myDuty === 'balls', r = esc(first(c.rival.name));
+  return `<div class="dutyline"><span class="me">${mine ? I.ball : I.court}Tú ${mine ? 'llevas las bolas' : 'reservas la pista'}</span><span>${mine ? I.court : I.ball}${r} ${mine ? 'reserva la pista' : 'lleva las bolas'}</span></div>`;
+}
+/* Último mensaje del chat y botón para abrirlo */
+const chatOn = (c) => c.chatOpen && (['pending', 'accepted'].includes(c.status) || c.msgs);
+function chatPrev(c) {
+  const prev = chatOn(c) && (c.lastMsg || c.message);
+  return prev ? `<p class="lastmsg${c.unread ? ' new' : ''}"><span data-nt>«${esc(prev)}»</span></p>` : '';
+}
+function chatHTML(c) {
+  if (!chatOn(c)) return '';
+  return `<div class="btns" style="margin-top:8px"><a class="btn xs ghost chatbtn" href="#/chat/${c.id}">${I.chat}<span>${c.msgs ? 'Chat' : `Escribir a ${esc(first(c.rival.name))}`}</span>${c.unread ? `<span class="n">${c.unread}</span>` : ''}</a></div>`;
 }
 const freeBadge = () => `<span class="freebadge">${I.gift}<span>Pista y bolas gratis</span></span>`;
 function resultBox(m, rival) {
@@ -2801,6 +2900,68 @@ function updateDot() {
     if (!el) return;
     el.querySelector('.dot')?.remove();
     if (S.todo > 0) el.insertAdjacentHTML('beforeend', `<span class="dot">${S.todo}</span>`);
+  });
+}
+
+/* ── Chat del partido ──────────────────────────────────────────────── */
+let chatTimer = null;
+async function screenChat(id) {
+  clearInterval(chatTimer);
+  render(`<main class="screen nonav">${spinner()}</main>`);
+  let d;
+  try { d = await api('GET', `challenge/${id}/chat`); } catch (e) { return errorScreen(e, 'retos'); }
+  const my = seq, c = d.challenge;
+  const hhmm = (t) => new Date(t).toLocaleTimeString(EN_ON ? 'en-GB' : 'es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+  const dayOf = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+  let lastDay = null;
+  const bubble = (m) => {
+    const day = dayOf(m.at), sep = day !== lastDay ? `<div class="chat-day">${cap(fmtWhen(day, false))}</div>` : '';
+    lastDay = day;
+    return `${sep}<div class="msg${m.mine ? ' me' : ''}" data-id="${m.id}"><span data-nt>${esc(m.body).replace(/\n/g, '<br>')}</span><time>${hhmm(m.at)}</time></div>`;
+  };
+  render(`<main class="screen nonav chatscr">
+    <div class="top chat-top">${backBtn('retos')}
+      <a class="chat-who" href="#/jugador/${c.rival.id}">${avatar({ id: c.rival.id, full_name: c.rival.name, photo_v: c.rival.photo_v })}<span><b>${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a>
+      <div style="width:44px"></div></div>
+    ${dutyHTML({ ...c, status: c.status === 'done' ? 'x' : c.status })}
+    <div class="chat-list" id="cl">${d.messages.length ? d.messages.map(bubble).join('') : `<p class="chat-empty">Escribe a ${esc(first(c.rival.name))} para quedar: la pista, las bolas o lo que necesitéis.</p>`}</div>
+    ${c.open ? `<form class="chat-in" id="cf" autocomplete="off"><textarea class="input" id="ct" rows="1" maxlength="500" placeholder="Mensaje" aria-label="Mensaje"></textarea>
+      <button class="chat-send" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>`
+      : '<p class="hint" style="text-align:center;margin-top:16px">Este chat ya está cerrado.</p>'}
+  </main>`);
+  const cl = document.getElementById('cl');
+  let lastId = d.messages.length ? d.messages[d.messages.length - 1].id : 0;
+  const toEnd = (smooth) => $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  const add = (list, smooth) => {
+    const fresh = list.filter((m) => m.id > lastId && !cl.querySelector(`[data-id="${m.id}"]`)); if (!fresh.length) return;
+    cl.querySelector('.chat-empty')?.remove();
+    cl.insertAdjacentHTML('beforeend', fresh.map(bubble).join(''));
+    lastId = fresh[fresh.length - 1].id;
+    const nearEnd = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight < 220;
+    if (smooth === true || nearEnd) toEnd(true);
+  };
+  requestAnimationFrame(() => toEnd(false));
+  C.delete('retos');
+  refreshMe().then(updateDot).catch(() => {});
+  // Mientras está abierto, mira si hay mensajes nuevos cada pocos segundos
+  chatTimer = setInterval(async () => {
+    if (my !== seq || !document.getElementById('cl')) { clearInterval(chatTimer); return; }
+    if (document.hidden) return;
+    try { const r = await api('GET', `challenge/${id}/chat`); if (my === seq) add(r.messages); } catch (e) {}
+  }, 4000);
+  const f = document.getElementById('cf'); if (!f) return;
+  const ta = document.getElementById('ct');
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; };
+  ta.addEventListener('input', grow);
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); f.requestSubmit(); } });
+  let sending = false;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = ta.value.trim(); if (!text || sending) return;
+    sending = true;
+    try { const r = await api('POST', `challenge/${id}/chat`, { body: text }); ta.value = ''; grow(); add([r.message], true); ta.focus(); }
+    catch (err) { toast(err.message); }
+    finally { sending = false; }
   });
 }
 
@@ -3332,7 +3493,8 @@ function screenPrivacy() {
     <p><b>Responsable:</b> Almuñécar Tennis Club. Contacto: info@almunecartennisclub.com.</p>
     <p><b>Qué datos guardamos:</b> nombre y apellidos, usuario, móvil de WhatsApp, PIN (cifrado), edad, tu valoración de juego, foto si la subes, y tus retos, partidos y comentarios.</p>
     <p><b>Para qué:</b> para gestionar el ranking del club, enviarte los avisos que elijas y recuperar tu PIN. La base legal es tu consentimiento al registrarte.</p>
-    <p><b>Quién lo ve:</b> solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más y para proteger a los menores (los retos con menores no llevan mensaje).</p>
+    <p><b>Quién lo ve:</b> solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más.</p>
+    <p><b>Chat del partido:</b> cada partido tiene un chat solo entre los dos jugadores, para quedar (pista, bolas, hora). Los mensajes se guardan y el club puede revisarlos si hay un problema. Respeto siempre: cualquier mal uso supone la baja del ranking.</p>
     <p><b>Proveedores:</b> la app funciona con Netlify (web), Supabase (base de datos, servidores en la UE) y WhatsApp de Meta (avisos), que tratan los datos solo por encargo del club.</p>
     <p><b>Cuánto tiempo:</b> mientras tengas cuenta. Puedes borrarla cuando quieras desde Ajustes; tus partidos se mantienen de forma anónima para no alterar la clasificación de tus rivales.</p>
     <p><b>Tus derechos:</b> puedes pedir acceso, rectificación, supresión, oposición o portabilidad escribiendo a info@almunecartennisclub.com, y reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
@@ -3518,7 +3680,7 @@ function paintAdmin() {
    ════════════════════════════════════════════════════════════════════ */
 function go(path) { const h = '#/' + path; if (location.hash === h) route(); else location.hash = h; }
 const PUBLIC = new Set(['login', 'registro', 'registro/carta', 'olvide', 'privacidad', 'como-funciona', 'diag']);
-const DEPTH = { '': 0, ranking: 0, retos: 0, tablon: 0, perfil: 0, jugador: 1, masters: 1, ajustes: 1, carta: 2, privacidad: 1, reto: 1, resultado: 1, master: 1, retar: 2, admin: 2 };
+const DEPTH = { '': 0, ranking: 0, retos: 0, tablon: 0, perfil: 0, jugador: 1, masters: 1, ajustes: 1, carta: 2, privacidad: 1, reto: 1, chat: 1, resultado: 1, master: 1, retar: 2, admin: 2 };
 let lastDepth = null, lastTab = -1;
 async function route() {
   const raw = location.hash.replace(/^#\/?/, '');
@@ -3558,6 +3720,7 @@ async function route() {
     case 'perfil': return screenPlayer(null);
     case 'retar': return screenChallenge(parts[1]);
     case 'retos': return screenRetos();
+    case 'chat': return screenChat(parts[1]);
     case 'reto': return screenCounter(parts[1]);
     case 'resultado': return screenResult('c', parts[1]);
     case 'master': return screenResult('m', parts[1]);
