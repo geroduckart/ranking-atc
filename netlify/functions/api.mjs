@@ -638,7 +638,7 @@ on('POST', 'challenge', async ({ req, body, out }) => {
   if (wants(rv, 'challenges')) {
     const st = await standings(sql);
     out.push(() => challengeMail(ch, rv, me, st, false));
-    out.push(() => waChallenge(rv, me, new Date(new Date(ch.created_at).getTime() + CHALLENGE_DAYS * 864e5)));
+    out.push(() => waChallenge(rv, me, new Date(new Date(ch.created_at).getTime() + CHALLENGE_DAYS * 864e5), ch.play_at));
   }
   return { challenge: { id: Number(ch.id) } };
 });
@@ -813,7 +813,7 @@ async function respond(sql, id, me, action, body, out) {
       for (const p of [P[c.challenger], P[c.challenged]]) {
         if (!wants(p, 'challenges')) continue;
         const rival = p.id === c.challenger ? P[c.challenged] : P[c.challenger];
-        out.push(() => waConfirmed(p, rival, c.play_at));
+        if (p.id !== me.id) out.push(() => waConfirmed(p, rival, c.play_at));   // solo a quien no ha aceptado (el otro ya lo sabe)
         out.push(() => mail(p.email, `Partido confirmado con ${firstName(rival.full_name)}`, {
           lines: [`Jugáis <b>${esc(firstName(P[c.challenger].full_name))}</b> contra <b>${esc(firstName(P[c.challenged].full_name))}</b>:`],
           highlight: { big: esc(cap(fmtWhen(c.play_at))), small: promo ? '¡Premio! Pista y bolas gratis: sois de los 5 primeros partidos. Reservad pista en el club.' : 'Almuñécar Tennis Club. Reservad pista en el club.' },
