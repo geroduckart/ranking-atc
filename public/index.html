@@ -410,15 +410,23 @@ details.adm summary::-webkit-details-marker{display:none}
 .dutyask>span{font-size:13px;font-weight:800;color:var(--orange)}
 .dutyask .btn svg{width:15px;height:15px;margin-right:5px}
 .dutyask .btns{margin-top:6px}
-.dutyline{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.dutyline span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px 5px 8px;border-radius:999px;background:var(--soft);font-size:12.5px;font-weight:700;color:var(--ink)}
+.chat-ic{position:relative;flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--ink);transition:transform 140ms ease-out}
+.chat-ic:active{transform:scale(.94)}
+.chat-ic svg{width:19px;height:19px}
+.chat-ic .n{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--card)}
+.pill-free{background:var(--orange-soft)!important;color:var(--orange)!important}
+.wait{font-size:13px;font-weight:600}
+.dutyline{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.dutyline span{display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 7px;border-radius:999px;background:var(--soft);font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap}
 .dutyline span.me{background:var(--navy);color:#fff}
 .dutyline svg{width:14px;height:14px}
 .chatbtn{display:inline-flex;align-items:center;gap:6px}
 .chatbtn svg{width:16px;height:16px}
 .chatbtn .n{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
-.lastmsg{margin:10px 0 0;font-size:14px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lastmsg{margin:8px 0 0;font-size:14px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .lastmsg.new{font-weight:700}
+.lastmsg.sys{font-size:13px;color:var(--muted);font-style:italic}
+.lastmsg.sys.new{color:var(--ink)}
 .chatscr{display:flex;flex-direction:column;min-height:100dvh;box-sizing:border-box}
 .chat-top{position:sticky;top:0;z-index:3;margin:0 -18px;padding:calc(10px + var(--sat)) 18px 10px;background:linear-gradient(var(--bg) 75%,transparent)}
 .chatscr{padding-top:0}
@@ -427,6 +435,13 @@ details.adm summary::-webkit-details-marker{display:none}
 .chat-who .when{font-size:12.5px}
 .chat-list{flex:1;display:flex;flex-direction:column;gap:6px;padding:14px 0 12px}
 .msg.sys{align-self:center;max-width:88%;background:transparent;border:1px dashed var(--line);color:var(--muted);font-size:13px;font-weight:600;text-align:center;border-radius:14px;padding:7px 12px}
+.ctl-row{display:flex;justify-content:center;align-items:center;gap:10px;margin:8px 0 0;color:var(--muted);font-size:13.5px}
+.postbox{margin-top:10px;padding:11px 13px;border-radius:14px;background:var(--soft)}
+.postbox.in{background:var(--orange-soft)}
+.postbox .pb-k{display:block;font-size:13px;font-weight:800;color:var(--ink)}
+.postbox.in .pb-k{color:var(--orange)}
+.postbox p{margin:3px 0 0;font-size:14px;color:var(--ink)}
+.postbox .btns{margin-top:8px}
 .linkbtn.bad{color:var(--bad)}
 .chat-day{align-self:center;margin:10px 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--muted)}
 .msg{position:relative;max-width:80%;align-self:flex-start;padding:9px 12px 7px;border-radius:18px 18px 18px 6px;background:var(--card);border:1px solid var(--line);font-size:15px;line-height:1.38;color:var(--ink);word-wrap:break-word;animation:msgIn 220ms cubic-bezier(.23,1,.32,1) both}
@@ -1374,6 +1389,48 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Llevas bolas": "You: balls",
+  "Reservas pista": "You: court",
+  "*: pista": "$1: court",
+  "*: bolas": "$1: balls",
+  "Gratis": "Free",
+  "Esperando respuesta": "Awaiting reply",
+  "Chat con *": "Chat with $1",
+  "Reservad pista en el club.": "Book a court at the club.",
+  "Después del partido, uno pone el resultado aquí.": "After the match, one of you enters the result here.",
+  "La hora es orientativa: si jugáis un poco antes o después, no hace falta tocar nada.": "The time is a guide: if you play a bit earlier or later, there's nothing to change.",
+  "Para cambiar de día, usad «Posponer».": "To change the day, use «Postpone».",
+  "Posponer": "Postpone",
+  "Posponer el partido": "Postpone the match",
+  "Motivo": "Reason",
+  "Mal tiempo": "Bad weather",
+  "Acuerdo mutuo": "Mutual agreement",
+  "Proponer": "Propose",
+  "Propón otra fecha. Si * la acepta, el partido se mueve sin penalización para nadie.": "Propose another date. If $1 accepts, the match moves with no penalty for anyone.",
+  "Propuesta enviada. * la verá en Partidos y en el chat.": "Proposal sent. $1 will see it in Matches and in the chat.",
+  "Has propuesto posponer por mal tiempo": "You proposed postponing due to bad weather",
+  "Has propuesto posponer de mutuo acuerdo": "You proposed postponing by mutual agreement",
+  "* propone posponer por mal tiempo": "$1 proposes postponing due to bad weather",
+  "* propone posponer de mutuo acuerdo": "$1 proposes postponing by mutual agreement",
+  "Nueva fecha:": "New date:",
+  "Falta que * la acepte.": "Waiting for $1 to accept.",
+  "Retirar propuesta": "Withdraw proposal",
+  "Mantener la fecha": "Keep the date",
+  "Hecho. Partido pospuesto al *.": "Done. Match moved to $1.",
+  "Mantenéis la fecha.": "You're keeping the date.",
+  "Propuesta retirada.": "Proposal withdrawn.",
+  "Elige el motivo: mal tiempo o acuerdo mutuo.": "Choose the reason: bad weather or mutual agreement.",
+  "* propone posponer el partido (mal tiempo) al *.": "$1 proposes postponing the match (bad weather) to $2.",
+  "* propone posponer el partido (acuerdo mutuo) al *.": "$1 proposes postponing the match (mutual agreement) to $2.",
+  "* ha retirado la propuesta de posponer. El partido sigue el *.": "$1 withdrew the postponement proposal. The match stays on $2.",
+  "* ha aceptado. Partido pospuesto al *.": "$1 accepted. Match moved to $2.",
+  "* prefiere mantener la fecha: el partido sigue el *.": "$1 prefers to keep the date: the match stays on $2.",
+  "Posponer:": "Postponing:",
+  "por mal tiempo o de mutuo acuerdo, cualquiera de los dos puede proponer otra fecha desde Partidos. Si el otro la acepta, el partido se mueve": "due to bad weather or by mutual agreement, either player can propose another date from Matches. If the other accepts, the match moves",
+  "sin penalización": "with no penalty",
+  ", aunque falten menos de 2 horas. Si no la acepta, se mantiene la fecha.": ", even with less than 2 hours to go. If not, the date stays.",
+  "Si solo cambiáis la hora el mismo día, no hace falta tocar nada: al terminar, uno pone el resultado.": "If you just change the time on the same day, there's nothing to change: afterwards, one of you enters the result.",
+  "por mal tiempo o de mutuo acuerdo, uno propone otra fecha y, si el otro acepta, se mueve sin penalización.": "due to bad weather or by mutual agreement, one proposes another date and, if the other accepts, it moves with no penalty.",
   "Al retar eliges si llevas tú las bolas o reservas la pista;": "When you challenge, you choose whether you bring the balls or book the court;",
   "a tu rival le toca lo otro. La pista se reserva en el club, como siempre.": "your opponent does the other. Courts are booked at the club, as usual.",
   "Cada partido tiene su chat": "Every match has its own chat",
@@ -2824,7 +2881,14 @@ async function screenRetos() {
   body.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     try {
-      if (b.dataset.duty) {
+      if (b.dataset.post) {
+        const card = b.closest('.box'); const rv = card?.querySelector('[data-rival]')?.dataset.rival || '';
+        if (await postponeFlow(b.dataset.post, rv)) reloadRetos();
+      } else if (b.dataset.pans) {
+        const a = b.dataset.pans;
+        const r = await busy(b, () => api('POST', `challenge/${b.dataset.id}/postpone/answer`, { action: a }));
+        toast(a === 'accept' ? `Hecho. Partido pospuesto al ${fmtWhen(r.play_at)}.` : a === 'reject' ? 'Mantenéis la fecha.' : 'Propuesta retirada.', a === 'accept'); reloadRetos();
+      } else if (b.dataset.duty) {
         await busy(b, () => api('POST', `challenge/${b.dataset.id}/duty`, { mine: b.dataset.duty }));
         toast(b.dataset.duty === 'balls' ? 'Hecho: tú llevas las bolas y tu rival reserva la pista.' : 'Hecho: tú reservas la pista y tu rival lleva las bolas.', true); reloadRetos();
       } else if (b.dataset.act === 'accept') {
@@ -2868,11 +2932,10 @@ function paintRetos(d, o) {
   const past = CH.filter((c) => !['pending', 'accepted'].includes(c.status));
   const M = d.masters;
   const card = (c, inner) => `<div class="box"><div class="row-between"><a href="#/jugador/${c.rival.id}" style="display:flex;gap:10px;align-items:center;color:var(--ink);min-width:0">${avatar({ id: c.rival.id, full_name: c.rival.name, photo_v: c.rival.photo_v })}
-      <span style="min-width:0"><b style="display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a></div>${c.promo && ['accepted', 'done'].includes(c.status) ? freeBadge() : ''}${dutyHTML(c)}${chatPrev(c)}${inner}${chatHTML(c)}</div>`;
+      <span style="min-width:0"><b style="display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.rival.name)}</b><span class="when">${cap(fmtWhen(c.play_at))}</span></span></a>${chatHTML(c)}</div>${pillsHTML(c)}${chatPrev(c)}${inner}</div>`;
   let html = '';
   const sec = (title, items) => items ? `<div class="sec"><span class="label">${title}</span>${items}</div>` : '';
   html += sec('Te toca responder', respond.map((c) => card(c, `
-    <p class="hint" style="margin-top:8px">${c.iAmChallenger ? `${esc(first(c.rival.name))} propone esta hora.` : `${esc(first(c.rival.name))} te ha retado.`}</p>
     <div class="btns"><button class="btn sm" data-act="accept" data-id="${c.id}">Acepto</button><a class="btn sm ghost" href="#/reto/${c.id}">Otra hora</a><button class="btn sm ghost" data-act="reject" data-id="${c.id}" data-ch="${c.iAmChallenger ? 1 : 0}">No puedo</button></div>`)).join(''));
   html += sec('Resultados por confirmar', [
     ...confirm.map((c) => card(c, resultBox(c.match, c.rival.name))),
@@ -2886,10 +2949,9 @@ function paintRetos(d, o) {
     ...waitRes.map((c) => card(c, `<p class="hint" style="margin-top:8px">${c.match.status === 'disputed' ? `Resultado en revisión por el club (${esc(c.match.score)}).` : `Has puesto ${c.match.iWon ? 'victoria' : 'derrota'} ${esc(c.match.score)}. Falta que lo confirme ${esc(first(c.rival.name))}.`}</p>
       ${c.match.status === 'pending' ? `<div class="btns"><button class="btn xs ghost" data-withdraw="${c.match.id}">Me he equivocado: borrar</button></div>` : ''}`)),
     ...M.filter((n) => n.match && (n.match.status === 'disputed' || n.match.iReported)).map((n) => masterCard(n, `<p class="hint" style="margin-top:8px">${n.match.status === 'disputed' ? 'Resultado en revisión por el club.' : `Has puesto ${esc(n.match.score)}. Falta que lo confirme tu rival.`}</p>`)),
-    ...waiting.map((c) => card(c, `<p class="hint" style="margin-top:8px">Esperando respuesta de ${esc(first(c.rival.name))}.</p>${c.iAmChallenger ? `<div class="btns"><button class="btn xs ghost" data-cancel="${c.id}" data-st="pending">Cancelar reto</button></div>` : ''}`)),
+    ...waiting.map((c) => card(c, `<p class="ctl-row"><span class="wait">Esperando respuesta</span>${c.iAmChallenger ? `<span aria-hidden="true">·</span><button type="button" class="linkbtn" data-cancel="${c.id}" data-st="pending" data-rival="${esc(first(c.rival.name))}">Cancelar reto</button>` : ''}</p>`)),
   ].join(''));
-  html += sec('Partidos programados', scheduled.map((c) => card(c, `<p class="hint" style="margin-top:8px">${c.myDuty === 'court' ? 'Te toca reservar la pista en el club.' : c.myDuty === 'balls' ? `${esc(first(c.rival.name))} reserva la pista; tú llevas las bolas.` : 'Reservad pista en el club.'} Después del partido, uno pone el resultado aquí.</p>
-    <p class="note">La hora es orientativa. Si al final jugáis antes o después, o cambiáis de pista, no hace falta tocar nada: al terminar, uno pone el resultado y listo. Si no podéis jugar, cancelad con más de 2 horas de antelación: después, quien cancela pierde 6-0 6-0.</p>${cancelLink(c)}`)).join(''));
+  html += sec('Partidos programados', scheduled.map((c) => card(c, cancelLink(c))).join(''));
   html += sec('Historial', past.map((c) => {
     const m = c.match;
     if (c.status === 'done' && m) {
@@ -2905,25 +2967,71 @@ function paintRetos(d, o) {
   if (!o.refresh) stagger(body);
 }
 /* Quién lleva bolas y quién reserva pista (en retos abiertos y partidos por jugar) */
-function dutyHTML(c) {
+function pillsHTML(c) {
+  const free = c.promo && ['accepted', 'done'].includes(c.status) ? `<span class="pill-free">${I.gift}Gratis</span>` : '';
+  const d = dutyHTML(c, true);
+  return free || d ? (d.startsWith('<div class="dutyask"') ? `${free ? `<div class="dutyline">${free}</div>` : ''}${d}` : `<div class="dutyline">${d}${free}</div>`) : '';
+}
+function dutyHTML(c, bare = false) {
   if (!['pending', 'accepted'].includes(c.status)) return '';
   if (!c.myDuty) return c.id && c.chatOpen !== undefined ? `<div class="dutyask"><span>¿Qué pones tú?</span><div class="btns" style="margin-top:6px">
     <button class="btn xs ghost" data-duty="balls" data-id="${c.id}">${I.ball}Llevo las bolas</button><button class="btn xs ghost" data-duty="court" data-id="${c.id}">${I.court}Reservo la pista</button></div></div>` : '';
   const mine = c.myDuty === 'balls', r = esc(first(c.rival.name));
-  return `<div class="dutyline"><span class="me">${mine ? I.ball : I.court}Tú ${mine ? 'llevas las bolas' : 'reservas la pista'}</span><span>${mine ? I.court : I.ball}${r} ${mine ? 'reserva la pista' : 'lleva las bolas'}</span></div>`;
+  const pills = `<span class="me">${mine ? I.ball : I.court}${mine ? 'Llevas bolas' : 'Reservas pista'}</span><span>${mine ? I.court : I.ball}${r}: ${mine ? 'pista' : 'bolas'}</span>`;
+  return bare ? pills : `<div class="dutyline">${pills}</div>`;
 }
 /* Último mensaje del chat y botón para abrirlo */
 const chatOn = (c) => c.chatOpen && (['pending', 'accepted'].includes(c.status) || c.msgs);
 function chatPrev(c) {
   const prev = chatOn(c) && (c.lastMsg || c.message);
-  return prev ? `<p class="lastmsg${c.unread ? ' new' : ''}"><span data-nt>«${esc(prev)}»</span></p>` : '';
+  if (!prev) return '';
+  return c.lastSys ? `<p class="lastmsg sys${c.unread ? ' new' : ''}">${esc(prev)}</p>` : `<p class="lastmsg${c.unread ? ' new' : ''}"><span data-nt>«${esc(prev)}»</span></p>`;
 }
 function chatHTML(c) {
   if (!chatOn(c)) return '';
+  return `<a class="chat-ic" href="#/chat/${c.id}" aria-label="Chat con ${esc(first(c.rival.name))}">${I.chat}${c.unread ? `<span class="n">${c.unread}</span>` : ''}</a>`;
+}
+function chatHTML_old(c) {
   return `<div class="btns" style="margin-top:8px"><a class="btn xs ghost chatbtn" href="#/chat/${c.id}">${I.chat}<span>${c.msgs ? 'Chat' : `Escribir a ${esc(first(c.rival.name))}`}</span>${c.unread ? `<span class="n">${c.unread}</span>` : ''}</a></div>`;
 }
 /* Cancelar un partido: cualquiera de los dos. Con menos de 2 h, quien cancela pierde 6-0 6-0. */
-const cancelLink = (c) => `<p style="margin:10px 0 0;text-align:center"><button type="button" class="linkbtn${c.lateCancel ? ' bad' : ''}" data-cancel="${c.id}" data-late="${c.lateCancel ? 1 : 0}" data-rival="${esc(first(c.rival.name))}">Cancelar partido</button></p>`;
+const cancelLink = (c) => `${postBox(c)}<p class="ctl-row">${c.postpone ? '' : `<button type="button" class="linkbtn" data-post="${c.id}">Posponer</button><span aria-hidden="true">·</span>`}<button type="button" class="linkbtn${c.lateCancel ? ' bad' : ''}" data-cancel="${c.id}" data-late="${c.lateCancel ? 1 : 0}" data-rival="${esc(first(c.rival.name))}">Cancelar partido</button></p>`;
+/* Propuesta de posponer: el otro la acepta o mantiene la fecha */
+const REASON_TXT = { weather: 'por mal tiempo', mutual: 'de mutuo acuerdo' };
+function postBox(c) {
+  const pp = c.postpone; if (!pp) return '';
+  const when = `<b>${cap(fmtWhen(pp.at))}</b>`;
+  return pp.byMe
+    ? `<div class="postbox"><span class="pb-k">Has propuesto posponer ${REASON_TXT[pp.reason]}</span><p>Nueva fecha: ${when}. Falta que ${esc(first(c.rival.name))} la acepte.</p>
+        <div class="btns"><button class="btn xs ghost" data-pans="withdraw" data-id="${c.id}">Retirar propuesta</button></div></div>`
+    : `<div class="postbox in"><span class="pb-k">${esc(first(c.rival.name))} propone posponer ${REASON_TXT[pp.reason]}</span><p>Nueva fecha: ${when}.</p>
+        <div class="btns"><button class="btn xs" data-pans="accept" data-id="${c.id}">Acepto</button><button class="btn xs ghost" data-pans="reject" data-id="${c.id}">Mantener la fecha</button></div></div>`;
+}
+async function postponeFlow(id, rival) {
+  let reason = null;
+  const val = await sheet(`<h2>Posponer el partido</h2><p>Propón otra fecha. Si ${esc(rival)} la acepta, el partido se mueve sin penalización para nadie.</p>
+    <div class="label" style="margin:16px 0 8px 2px">Motivo</div>
+    <div class="chips" id="pr"><button type="button" class="chip" data-r="weather" aria-pressed="false">Mal tiempo</button><button type="button" class="chip" data-r="mutual" aria-pressed="false">Acuerdo mutuo</button></div>
+    ${whenPicker('pw')}
+    <div class="err hidden" id="pe" style="margin-top:10px"></div>
+    <div class="btns" style="margin-top:16px"><button class="btn ghost" data-close="no">Volver</button><button class="btn" id="psend">Proponer</button></div>`,
+    (el, close) => {
+      const get = bindWhen(el.querySelector('#pw'));
+      el.querySelector('#pr').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (!b) return; reason = b.dataset.r;
+        el.querySelectorAll('[data-r]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); });
+      const btn = el.querySelector('#psend');
+      btn.addEventListener('click', () => busy(btn, async () => {
+        try {
+          if (!reason) throw new Error('Elige el motivo: mal tiempo o acuerdo mutuo.');
+          const w = get();
+          await api('POST', `challenge/${id}/postpone`, { reason, date: w.date, time: w.time });
+          close(true);
+        } catch (err) { setErr(el.querySelector('#pe'), err.message); }
+      }));
+    });
+  if (val) toast(`Propuesta enviada. ${rival} la verá en Partidos y en el chat.`, true);
+  return !!val;
+}
 async function cancelFlow(id, { late = false, pending = false, rival = '' } = {}) {
   const ask = (lt) => lt
     ? confirmBox('¿Cancelar con menos de 2 horas?', `Quedan menos de 2 horas para el partido. Si cancelas ahora, <b>pierdes 6-0 6-0</b> y ${esc(rival) || 'tu rival'} se lleva la victoria.`, 'Cancelar y perder', true)
@@ -3467,6 +3575,7 @@ function screenHow() {
       <li>Si no te va la hora, propón otra en vez de rechazar. Rechazar un reto no penaliza.</li>
       <li><b>Al retar eliges si llevas tú las bolas o reservas la pista;</b> a tu rival le toca lo otro. La pista se reserva en el club, como siempre.</li>
       <li><b>Cada partido tiene su chat</b> para quedar entre los dos.</li>
+      <li><b>Posponer:</b> por mal tiempo o de mutuo acuerdo, uno propone otra fecha y, si el otro acepta, se mueve sin penalización.</li>
       <li><b>Cancelar:</b> cualquiera de los dos puede cancelar un partido aceptado. Con más de 2 horas de antelación, no pasa nada. <b>Con menos de 2 horas, quien cancela pierde 6-0 6-0.</b></li>
     </ul></div>
 
@@ -3534,7 +3643,8 @@ function screenPrivacy() {
       <li><b>Con más de 2 horas de antelación:</b> se cancela sin penalización.</li>
       <li><b>Con menos de 2 horas, o ya pasada la hora:</b> quien cancela pierde el partido 6-0 6-0. Cuenta como un partido jugado, con sus puntos y su nivel.</li>
       <li>Si no se puede jugar por causas ajenas a los dos (lluvia, pista cerrada…), avisad al club: el club puede cancelar el partido sin penalización.</li>
-      <li>Si queréis cambiar la hora de un partido ya aceptado, habladlo por el chat: si al final jugáis a otra hora, no hace falta tocar nada; al terminar, uno pone el resultado.</li>
+      <li><b>Posponer:</b> por mal tiempo o de mutuo acuerdo, cualquiera de los dos puede proponer otra fecha desde Partidos. Si el otro la acepta, el partido se mueve <b>sin penalización</b>, aunque falten menos de 2 horas. Si no la acepta, se mantiene la fecha.</li>
+      <li>Si solo cambiáis la hora el mismo día, no hace falta tocar nada: al terminar, uno pone el resultado.</li>
     </ul>
     <h3>Resultados</h3>
     <ul>
