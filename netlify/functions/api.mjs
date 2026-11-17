@@ -664,11 +664,12 @@ on('GET', 'retos', async ({ req }) => {
   const uid = sessionUid(req).u;
   const sql = db();
   const [me, S, chs, nodes, rounds] = await Promise.all([auth(req), season(sql), sql`select c.id, c.challenger, c.challenged, c.play_at::text as play_at, c.proposed_by, c.counters, c.message, c.status,
-      c.walkover, c.promo, c.updated_at, c.duty, a.full_name as challenger_name,
+      c.walkover, c.promo, c.updated_at, c.duty, c.post_at::text as post_at, c.post_by, c.post_reason, a.full_name as challenger_name,
       (select count(*) from chat h where h.challenge_id = c.id and h.sender is distinct from ${uid}
          and h.created_at > coalesce(case when c.challenger = ${uid} then c.seen_a else c.seen_b end, 'epoch'))::int as unread,
       (select count(*) from chat h where h.challenge_id = c.id)::int as msgs,
-      (select h.body from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_msg, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
+      (select h.body from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_msg,
+      (select h.sender is null from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_sys, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
       m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner,
       m.p1 as match_p1, m.p1_before as match_p1b, m.p1_after as match_p1a, m.p2_before as match_p2b, m.p2_after as match_p2a
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
@@ -688,7 +689,8 @@ on('GET', 'retos', async ({ req }) => {
     const iAmChallenger = c.challenger === me.id;
     return {
       id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, walkover: c.walkover, promo: !!c.promo,
-      myDuty: dutyOf(c, me.id), lateCancel: lateCancel(c) && S.phase === 'regular', unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, chatOpen: chatOpen(c),
+      postpone: c.post_at ? { at: c.post_at, byMe: c.post_by === me.id, reason: c.post_reason } : null,
+      myDuty: dutyOf(c, me.id), lateCancel: lateCancel(c) && S.phase === 'regular', unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, lastSys: !!c.last_sys, chatOpen: chatOpen(c),
       rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name, photo_v: iAmChallenger ? c.challenged_pv : c.challenger_pv },
       iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
       canReport: c.status === 'accepted' && c.play_at.slice(0, 10) <= today && !c.match_id && S.phase === 'regular',
@@ -859,7 +861,12 @@ async function respond(sql, id, me, action, body, out) {
 const LATE_CANCEL_H = 2;
 const minsTo = (playAt) => (Date.parse(String(playAt).slice(0, 16).replace(' ', 'T') + ':00Z') - Date.parse(madridNow().replace(' ', 'T') + ':00Z')) / 60000;
 const lateCancel = (c) => c.status === 'accepted' && minsTo(c.play_at) < LATE_CANCEL_H * 60;
-const sysChat = (tx, chId, text) => tx`insert into chat (challenge_id, sender, body) values (${chId}, null, ${text})`;
+/** Mensaje del sistema en el chat; quien lo provoca ya lo ha «leído» (no le cuenta como nuevo). */
+async function sysChat(tx, chId, text, actorId = null) {
+  await tx`insert into chat (challenge_id, sender, body) values (${chId}, null, ${text})`;
+  if (actorId) await tx`update challenges set seen_a = case when challenger = ${actorId} then now() else seen_a end,
+    seen_b = case when challenged = ${actorId} then now() else seen_b end where id = ${chId}`;
+}
 
 async function cancelChallenge(sql, id, me, { admin = false, acceptLoss = false } = {}, out) {
   const S = await season(sql);
@@ -881,13 +888,13 @@ async function cancelChallenge(sql, id, me, { admin = false, acceptLoss = false 
       const [m] = await tx`insert into matches (challenge_id, p1, p2, sets, winner, walkover, reported_by, played_on)
         values (${id}, ${c.challenger}, ${c.challenged}, ${tx.json(sets)}, ${winner}, true, ${me.id}, ${c.play_at.slice(0, 10)}) returning *`;
       await tx`update challenges set walkover = true, responded_by = ${me.id} where id = ${id}`;
-      await sysChat(tx, id, `${name} ha cancelado con menos de ${LATE_CANCEL_H} horas: el partido cuenta como 6-0 6-0 para su rival.`);
+      await sysChat(tx, id, `${name} ha cancelado con menos de ${LATE_CANCEL_H} horas: el partido cuenta como 6-0 6-0 para su rival.`, me && me.id);
       await confirmMatch(tx, m, out);
       res = { status: 'done', walkover: true };
     } else {
       const st = admin || c.challenger === me.id || c.status === 'accepted' ? 'cancelled' : 'rejected';
-      await tx`update challenges set status = ${st}, responded_by = ${admin ? null : me.id}, updated_at = now() where id = ${id}`;
-      await sysChat(tx, id, c.status === 'accepted' ? `${name} ha cancelado el partido.` : `${name} ha cancelado el reto.`);
+      await tx`update challenges set status = ${st}, responded_by = ${admin ? null : me.id}, post_at = null, post_by = null, post_reason = null, updated_at = now() where id = ${id}`;
+      await sysChat(tx, id, c.status === 'accepted' ? `${name} ha cancelado el partido.` : `${name} ha cancelado el reto.`, admin ? null : me.id);
       res = { status: st };
     }
   });
@@ -897,6 +904,61 @@ on('POST', 'challenge/:id/cancel', async ({ req, params, body, out }) => {
   const me = await auth(req);
   return cancelChallenge(db(), checkNum(params[0]), me, { acceptLoss: body && body.acceptLoss === true }, out);
 });
+/* ── Posponer (mal tiempo o acuerdo mutuo): uno propone nueva fecha y el otro la acepta. Sin penalización. */
+const REASON = { weather: 'mal tiempo', mutual: 'acuerdo mutuo' };
+on('POST', 'challenge/:id/postpone', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const S = await season(sql);
+  const id = checkNum(params[0]);
+  const reason = ['weather', 'mutual'].includes(body.reason) ? body.reason : fail('Elige el motivo: mal tiempo o acuerdo mutuo.');
+  const at = checkWhen(body.date, body.time, S);
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (c.status !== 'accepted') fail('Solo se puede posponer un partido aceptado.');
+    const [hasMatch] = await tx`select 1 from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
+    if (hasMatch) fail('Este partido ya tiene un resultado.');
+    if (c.post_at && c.post_by !== me.id) fail('Tu rival ya ha propuesto una fecha. Respóndele primero.');
+    if (`${body.date} ${body.time}` === c.play_at.slice(0, 16)) fail('Elige una fecha distinta a la actual.');
+    await tx`update challenges set post_at = ${at}, post_by = ${me.id}, post_reason = ${reason} where id = ${id}`;
+    await sysChat(tx, id, `${firstName(me.full_name)} propone posponer el partido (${REASON[reason]}) al ${fmtWhen(at)}.`, me && me.id);
+  });
+  return { ok: true };
+});
+on('POST', 'challenge/:id/postpone/answer', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const S = await season(sql);
+  const id = checkNum(params[0]);
+  let res;
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at, post_at::text as post_at from challenges where id = ${id} for update`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (!c.post_at) fail('No hay ninguna propuesta para posponer.');
+    const name = firstName(me.full_name);
+    if (body.action === 'withdraw') {
+      if (c.post_by !== me.id) fail('Solo quien la ha propuesto puede retirarla.');
+      await tx`update challenges set post_at = null, post_by = null, post_reason = null where id = ${id}`;
+      await sysChat(tx, id, `${name} ha retirado la propuesta de posponer. El partido sigue el ${fmtWhen(c.play_at)}.`, me && me.id);
+      res = { status: 'withdrawn' };
+    } else if (body.action === 'accept') {
+      if (c.post_by === me.id) fail('La tiene que aceptar tu rival.');
+      checkWhen(c.post_at.slice(0, 10), c.post_at.slice(11, 16), S);   // la fecha propuesta sigue siendo válida
+      await tx`update challenges set play_at = post_at, post_at = null, post_by = null, post_reason = null,
+        day_reminded = false, updated_at = now() where id = ${id}`;
+      await sysChat(tx, id, `${name} ha aceptado. Partido pospuesto al ${fmtWhen(c.post_at)}.`, me && me.id);
+      res = { status: 'accepted', play_at: c.post_at };
+    } else if (body.action === 'reject') {
+      if (c.post_by === me.id) fail('La tiene que responder tu rival.');
+      await tx`update challenges set post_at = null, post_by = null, post_reason = null where id = ${id}`;
+      await sysChat(tx, id, `${name} prefiere mantener la fecha: el partido sigue el ${fmtWhen(c.play_at)}.`, me && me.id);
+      res = { status: 'rejected' };
+    } else fail('Acción no válida.');
+  });
+  return res;
+});
+
 on('POST', 'admin/challenge/:id/cancel', async ({ req, params, out }) => {
   const me = await auth(req, { admin: true });
   return cancelChallenge(db(), checkNum(params[0]), me, { admin: true }, out);
