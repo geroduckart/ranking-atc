@@ -42,7 +42,7 @@ const param = (v) => {
  * @param {string} lang    'es' o 'en'
  * @param {string[]} vars  valores de {{1}}, {{2}}… en orden
  */
-export async function sendTemplate(to, name, lang, vars = []) {
+export async function sendTemplate(to, name, lang, vars = [], { quietMissing = false } = {}) {
   if (!to) return { skipped: true };
   const parameters = vars.map((v) => ({ type: 'text', text: param(v) }));
   if (globalThis.__waOutbox) globalThis.__waOutbox.push({ to, name, lang, vars: parameters.map((p) => p.text) });
@@ -70,7 +70,9 @@ export async function sendTemplate(to, name, lang, vars = []) {
     if (!r.ok) {
       const txt = await r.text();
       // 132001: la plantilla no existe en ese idioma. Se reintenta en español.
-      if (lang !== 'es' && /132001|does not exist/i.test(txt)) return sendTemplate(to, name, 'es', vars);
+      if (lang !== 'es' && /132001|does not exist/i.test(txt)) return sendTemplate(to, name, 'es', vars, { quietMissing });
+      // plantilla nueva aún sin aprobar: quien llama prueba con la antigua (no se apunta como fallo)
+      if (quietMissing && /132001|does not exist/i.test(txt)) return { ok: false, missing: true };
       console.error('WhatsApp error', r.status, txt);
       await logSend(to, name, lang, false, waError(txt, r.status));
       return { ok: false };
@@ -98,10 +100,18 @@ async function logSend(to, template, lang, ok, error) {
   try { await db()`insert into wa_log (to_phone, template, lang, ok, error) values (${to}, ${template}, ${lang}, ${ok}, ${error})`; } catch (e) {}
 }
 
+/** Prueba con la plantilla nueva (Utilidad) y, si Meta aún no la ha aprobado, usa la antigua. */
+async function sendNewOrOld(to, l, [newName, newVars], [oldName, oldVars]) {
+  const r = await sendTemplate(to, newName, l, newVars, { quietMissing: true });
+  return r && r.missing ? sendTemplate(to, oldName, l, oldVars) : r;
+}
+
 /* ── Fechas y nombres en el idioma del jugador ───────────────────────── */
 const lang = (p) => (p && p.lang === 'en' ? 'en' : 'es');
 /** 'viernes 20 de noviembre · 18:00' → en inglés si toca, y con '·' en 'a las'. */
 const cap = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+/** En español, la fecha en mitad de frase va en minúscula («el sábado 21…»). */
+const low = (s, l) => (l === 'en' ? s : String(s).charAt(0).toLowerCase() + String(s).slice(1));
 const when = (ts, l) => {
   const s = fmtWhen(ts);
   return cap((l === 'en' ? tr(s, 'en') : s).replace(' · ', l === 'en' ? ' at ' : ' a las '));
@@ -117,21 +127,25 @@ const day = (ts, l) => {
    dio, la llamada no hace nada y el email sigue saliendo igual.          */
 
 /** Alguien te ha retado. La tercera variable es la fecha límite para responder. */
-export const waChallenge = (to, from, deadline) => {
+export const waChallenge = (to, from, deadline, playAt) => {
   const l = lang(to);
-  return sendTemplate(waTo(to), 'reto_recibido', l, [firstName(to.full_name), from.full_name, day(deadline, l)]);
+  const old = ['reto_recibido', [firstName(to.full_name), from.full_name, day(deadline, l)]];
+  if (!playAt) return sendTemplate(waTo(to), old[0], l, old[1]);
+  return sendNewOrOld(waTo(to), l, ['aviso_reto', [firstName(to.full_name), from.full_name, low(when(playAt, l), l), low(day(deadline, l), l)]], old);
 };
 
 /** Tu rival propone otra hora. */
 export const waCounter = (to, from, playAt) => {
   const l = lang(to);
-  return sendTemplate(waTo(to), 'nueva_hora', l, [firstName(to.full_name), from.full_name, when(playAt, l)]);
+  return sendNewOrOld(waTo(to), l, ['aviso_nueva_hora', [firstName(to.full_name), from.full_name, low(when(playAt, l), l)]],
+    ['nueva_hora', [firstName(to.full_name), from.full_name, when(playAt, l)]]);
 };
 
-/** El reto se ha aceptado: ya hay partido. */
+/** El reto se ha aceptado: ya hay partido. Plantilla de Utilidad, sin botón (sustituye a 'partido_confirmado'). */
 export const waConfirmed = (to, rival, playAt) => {
   const l = lang(to);
-  return sendTemplate(waTo(to), 'partido_confirmado', l, [firstName(to.full_name), rival.full_name, when(playAt, l)]);
+  return sendNewOrOld(waTo(to), l, ['partido_aceptado', [firstName(to.full_name), rival.full_name, low(when(playAt, l), l)]],
+    ['partido_confirmado', [firstName(to.full_name), rival.full_name, when(playAt, l)]]);
 };
 
 /** El día antes del partido. */
@@ -150,9 +164,7 @@ export const waNudge = (to, days) => {
 /** Han cancelado vuestro partido (el rival o el club). byName: quien cancela; null = el club. */
 export const waCancelled = (to, byName, playAt) => {
   const l = lang(to);
-  const w = when(playAt, l);
-  return sendTemplate(waTo(to), 'partido_cancelado', l, [firstName(to.full_name), byName || (l === 'en' ? 'The club' : 'El club'),
-    l === 'en' ? w : w.charAt(0).toLowerCase() + w.slice(1)]);
+  return sendTemplate(waTo(to), 'partido_cancelado', l, [firstName(to.full_name), byName || (l === 'en' ? 'The club' : 'El club'), low(when(playAt, l), l)]);
 };
 
 /** Se ha publicado el cuadro de los Másters. */
