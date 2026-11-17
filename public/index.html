@@ -1577,6 +1577,8 @@ const EN = {/*DICT*/
   "Faltan # partidos": "$1 matches to go",
   "Provisional": "Provisional",
   "Aún sin clasificar · Mínimo # partidos": "Not yet qualified · Minimum $1 matches",
+  "Aún sin clasificar · Mín. # partidos": "Not yet qualified · Min. $1 matches",
+  "Aún sin clasificar · Mín. # partido": "Not yet qualified · Min. $1 match",
   "Aún sin clasificar · Mínimo # partido": "Not yet qualified · Minimum $1 match",
   "Ya tenéis un reto abierto · Verlo": "You already have an open challenge · View it",
   "No jugado": "Not played",
@@ -2687,7 +2689,7 @@ async function screenRanking() {
         html += row(r, 0, 'puntos');
       }
       if (oth.length) {
-        html += `<div class="zone"><span>Aún sin clasificar · Mínimo ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span class="zr" style="white-space:nowrap;flex:none">${qual.length ? '' : lupa}PJ · Pts</span></div>`;
+        html += `<div class="zone"><span>Aún sin clasificar · Mín. ${sv.min_matches} ${sv.min_matches === 1 ? 'partido' : 'partidos'}</span><span class="zr" style="white-space:nowrap;flex:none">${qual.length ? '' : lupa}PJ · Pts</span></div>`;
         html += oth.map((r) => row(r, 0, 'puntos')).join('');
       }
       if (!qual.length && !oth.length) html += `<div class="empty">${q ? 'No hay nadie con ese nombre.' : 'Todavía no hay jugadores.'}</div>`;
