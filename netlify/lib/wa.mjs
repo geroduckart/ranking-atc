@@ -147,6 +147,14 @@ export const waNudge = (to, days) => {
   return sendTemplate(waTo(to), 'animo_jugar', l, [firstName(to.full_name), String(days)]);
 };
 
+/** Han cancelado vuestro partido (el rival o el club). byName: quien cancela; null = el club. */
+export const waCancelled = (to, byName, playAt) => {
+  const l = lang(to);
+  const w = when(playAt, l);
+  return sendTemplate(waTo(to), 'partido_cancelado', l, [firstName(to.full_name), byName || (l === 'en' ? 'The club' : 'El club'),
+    l === 'en' ? w : w.charAt(0).toLowerCase() + w.slice(1)]);
+};
+
 /** Se ha publicado el cuadro de los Másters. */
 export const waDraw = (to, tierName, rival) => {
   const l = lang(to);
