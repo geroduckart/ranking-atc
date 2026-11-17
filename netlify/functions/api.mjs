@@ -20,7 +20,7 @@ import {
 } from '../lib/core.mjs';
 import { mail, layout, setLangResolver } from '../lib/mail.mjs';
 import { trHtml } from '../lib/i18n.mjs';
-import { waChallenge, waCounter, waConfirmed, waReminder, waDraw, waNudge } from '../lib/wa.mjs';
+import { waChallenge, waCounter, waConfirmed, waReminder, waDraw, waNudge, waCancelled } from '../lib/wa.mjs';
 import { okNation } from '../lib/countries.mjs';
 
 
@@ -879,6 +879,12 @@ async function cancelChallenge(sql, id, me, { admin = false, acceptLoss = false 
     if (hasMatch) fail('Este partido ya tiene un resultado.');
     const name = admin ? 'El club' : firstName(me.full_name);
     const late = !admin && lateCancel(c) && S.phase === 'regular';
+    // Aviso por WhatsApp: al rival (o a los dos si cancela el club)
+    const P = await playersById(tx, [c.challenger, c.challenged]);
+    for (const p of Object.values(P)) {
+      if (!p || (!admin && p.id === me.id) || !wants(p, 'challenges')) continue;
+      out.push(() => waCancelled(p, admin ? null : me.full_name, c.play_at));
+    }
     if (late && !acceptLoss) fail(`Quedan menos de ${LATE_CANCEL_H} horas: si cancelas ahora, pierdes 6-0 6-0.`, 409);
     if (late) {
       // derrota 6-0 6-0 para quien cancela (marcador desde p1 = quien retó)
