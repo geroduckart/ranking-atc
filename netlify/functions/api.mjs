@@ -530,6 +530,13 @@ on('GET', 'player/:id', async ({ req, params }) => {
            and ((challenger = ${uid} and challenged = ${id}) or (challenger = ${id} and challenged = ${uid})) limit 1) as open_id`,
   ]);
   if (!p || (!p.active && !me.is_admin)) fail('Jugador no encontrado.', 404);
+  // Insignias de sus rivales: solo cuando ya tiene 3 valoraciones (para que no se sepa quién votó qué)
+  let badges = [];
+  try {
+    const fb = await sql`select count(*)::int as n, coalesce(sum((tags @> '{fair}')::int), 0)::int as fair, coalesce(sum((tags @> '{punctual}')::int), 0)::int as punctual,
+      coalesce(sum((tags @> '{vibe}')::int), 0)::int as vibe, coalesce(sum((tags @> '{great}')::int), 0)::int as great from match_feedback where ratee = ${id}`;
+    if (fb[0] && fb[0].n >= 3) badges = FB_TAGS.map((t) => [t, fb[0][t]]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  } catch (e) {}
   const row = [...st.qualified, ...st.others].find((r) => r.id === id) || { pts: 0, pj: 0, won: 0, pos: null, zone: null, missing: st.S.min_matches };
   const out = {
     player: {
@@ -537,7 +544,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
       level: Number(p.level), start_level: Number(p.start_level), attrs: R.shownAttrs(p.attrs, p.start_level, p.level),
       photo_v: p.photo_v, ageTag: R.ageTag(ageOf(p)), since: String(p.created_at.toISOString?.() || p.created_at).slice(0, 10),
       pos: row.pos, zone: row.zone, pts: row.pts, pj: row.pj, won: row.won, missing: row.missing ?? 0,
-      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0, injured: injuredUntil(p), nat: natOf(p),
+      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0, injured: injuredUntil(p), nat: natOf(p), badges,
     },
     recent: recent.map((m) => {
       const mine = m.p1 === id;
@@ -669,7 +676,8 @@ on('GET', 'retos', async ({ req }) => {
          and h.created_at > coalesce(case when c.challenger = ${uid} then c.seen_a else c.seen_b end, 'epoch'))::int as unread,
       (select count(*) from chat h where h.challenge_id = c.id)::int as msgs,
       (select h.body from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_msg,
-      (select h.sender is null from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_sys, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
+      (select h.sender is null from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_sys,
+      exists (select 1 from match_feedback f join matches mm on mm.id = f.match_id where mm.challenge_id = c.id and f.rater = ${uid}) as fb_done, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
       m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner,
       m.p1 as match_p1, m.p1_before as match_p1b, m.p1_after as match_p1a, m.p2_before as match_p2b, m.p2_after as match_p2a
     from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
@@ -690,7 +698,7 @@ on('GET', 'retos', async ({ req }) => {
     return {
       id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, walkover: c.walkover, promo: !!c.promo,
       postpone: c.post_at ? { at: c.post_at, byMe: c.post_by === me.id, reason: c.post_reason } : null,
-      myDuty: dutyOf(c, me.id), lateCancel: lateCancel(c) && S.phase === 'regular', unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, lastSys: !!c.last_sys, chatOpen: chatOpen(c),
+      myDuty: dutyOf(c, me.id), lateCancel: lateCancel(c) && S.phase === 'regular', unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, lastSys: !!c.last_sys, fbDone: !!c.fb_done, updated_at: c.updated_at, chatOpen: chatOpen(c),
       rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name, photo_v: iAmChallenger ? c.challenged_pv : c.challenger_pv },
       iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
       canReport: c.status === 'accepted' && c.play_at.slice(0, 10) <= today && !c.match_id && S.phase === 'regular',
@@ -1020,6 +1028,65 @@ function resultToConfirmMail(m, reporter, other) {
     foot: 'Si no respondes en 48 horas, el resultado se da por bueno.',
   });
 }
+
+/* ── Valoración rápida después del partido (solo etiquetas positivas) y avisos privados al club ── */
+const FB_TAGS = ['fair', 'punctual', 'vibe', 'great'];
+async function matchOf(sql, idRaw, me) {
+  const [m] = await sql`select id, p1, p2, status, challenge_id, created_at from matches where id = ${checkNum(idRaw)}`;
+  if (!m || (m.p1 !== me.id && m.p2 !== me.id)) fail('Partido no encontrado.', 404);
+  return m;
+}
+on('POST', 'match/:id/feedback', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const m = await matchOf(sql, params[0], me);
+  if (!['pending', 'confirmed'].includes(m.status)) fail('Este partido ya no se puede valorar.');
+  if (new Date(m.created_at) < new Date(Date.now() - 14 * 864e5)) fail('Ya ha pasado demasiado tiempo para valorar este partido.');
+  const tags = [...new Set((Array.isArray(body.tags) ? body.tags : []).filter((t) => FB_TAGS.includes(t)))];
+  const level = ['higher', 'same', 'lower'].includes(body.level) ? body.level : null;
+  const ratee = m.p1 === me.id ? m.p2 : m.p1;
+  await sql`insert into match_feedback (match_id, rater, ratee, tags, level_cmp) values (${m.id}, ${me.id}, ${ratee}, ${tags}, ${level})
+    on conflict (match_id, rater) do update set tags = excluded.tags, level_cmp = excluded.level_cmp, created_at = now()`;
+  return { ok: true };
+});
+on('POST', 'report', async ({ req, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const text = String(body.body || '').trim();
+  if (!text) fail('Cuéntanos brevemente qué ha pasado.');
+  if (text.length > 1000) fail('Máximo 1000 caracteres.');
+  let matchId = null, chId = null, about = null;
+  if (body.match) { const m = await matchOf(sql, String(body.match), me); matchId = m.id; chId = m.challenge_id; about = m.p1 === me.id ? m.p2 : m.p1; }
+  else if (body.challenge) {
+    const [c] = await sql`select id, challenger, challenged from challenges where id = ${checkNum(String(body.challenge))}`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    chId = c.id; about = c.challenger === me.id ? c.challenged : c.challenger;
+  } else if (body.about) {
+    const [p] = await sql`select id from players where id = ${checkId(String(body.about))}`;
+    if (!p || p.id === me.id) fail('Jugador no encontrado.', 404);
+    about = p.id;
+  }
+  const [{ n }] = await sql`select count(*)::int as n from club_reports where reporter = ${me.id} and created_at > now() - interval '1 day'`;
+  if (n >= 5) fail('Ya has enviado varios avisos hoy. Si es urgente, escribe al club por WhatsApp.');
+  await sql`insert into club_reports (match_id, challenge_id, reporter, about, body) values (${matchId}, ${chId}, ${me.id}, ${about}, ${text})`;
+  return { ok: true };
+});
+on('POST', 'admin/report/:id/resolve', async ({ req, params }) => {
+  await auth(req, { admin: true });
+  await db()`update club_reports set resolved = true where id = ${checkNum(params[0])}`;
+  return { ok: true };
+});
+on('GET', 'admin/chat/:id', async ({ req, params }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const [c] = await sql`select c.id, c.play_at::text as play_at, a.full_name as n1, b.full_name as n2, c.challenger
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged where c.id = ${checkNum(params[0])}`;
+  if (!c) fail('Reto no encontrado.', 404);
+  const msgs = await sql`select h.id, h.body, h.created_at, p.full_name as who from chat h left join players p on p.id = h.sender
+    where h.challenge_id = ${c.id} order by h.id limit 500`;
+  return { challenge: { id: Number(c.id), play_at: c.play_at, n1: c.n1, n2: c.n2 },
+    messages: msgs.map((m) => ({ id: Number(m.id), who: m.who, body: m.body, at: m.created_at })) };
+});
 
 on('POST', 'match/:id/confirm', async ({ req, params, out }) => {
   const me = await auth(req);
@@ -1437,6 +1504,14 @@ on('GET', 'admin', async ({ req }) => {
   const promo = await sql`select c.id, c.play_at::text as played_on, c.status, a.full_name as n1, b.full_name as n2 from challenges c
     join players a on a.id = c.challenger join players b on b.id = c.challenged
     where c.promo and c.status in ('accepted','done') order by c.updated_at, c.id limit ${PROMO_MATCHES}`;
+  let reports = [], lvlFb = {};
+  try {
+    reports = (await sql`select r.id, r.body, r.created_at, r.challenge_id, a.full_name as reporter, b.full_name as about
+      from club_reports r left join players a on a.id = r.reporter left join players b on b.id = r.about where not r.resolved order by r.id desc limit 30`)
+      .map((r) => ({ id: Number(r.id), body: r.body, at: r.created_at, challenge: r.challenge_id ? Number(r.challenge_id) : null, reporter: r.reporter, about: r.about }));
+    for (const f of await sql`select ratee, level_cmp, count(*)::int as n from match_feedback where level_cmp is not null group by ratee, level_cmp`)
+      (lvlFb[f.ratee] ||= { higher: 0, same: 0, lower: 0 })[f.level_cmp] = f.n;
+  } catch (e) {}
   // Avisos de WhatsApp de las últimas 24 h y fallos de la última semana; fecha de la última copia
   let wa = { ok: 0, fail: 0, fails: [] }, backupAt = null;
   try {
@@ -1447,13 +1522,13 @@ on('GET', 'admin', async ({ req }) => {
     const [b] = await sql`select last_backup_at from season where id = 1`; backupAt = b && b.last_backup_at;
   } catch (e) {}
   return {
-    wa, backupAt,
+    wa, backupAt, reports,
     promo: { total: PROMO_MATCHES, matches: promo.map((m) => ({ id: Number(m.id), n1: m.n1, n2: m.n2, played_on: m.played_on })) },
     agenda: agenda.map((c) => ({ id: Number(c.id), status: c.status, promo: !!c.promo, play_at: c.play_at, n1: c.n1, n2: c.n2, e1: c.e1, e2: c.e2,
       l1: Number(c.l1), l2: Number(c.l2), waitingFor: c.status === 'pending' ? (c.proposed_by === c.challenger ? c.n2 : c.n1) : null, match_status: c.match_status })),
     season: seasonView(st.S),
     players: players.map((p) => ({ ...p, attrs: R.migrateAttrs(p.attrs), level: Number(p.level), start_level: Number(p.start_level), age: R.ageOn(p.birth_date),
-      pj: rowOf[p.id]?.pj ?? 0, pts: rowOf[p.id]?.pts ?? 0, pos: rowOf[p.id]?.pos ?? null, deleted: p.full_name === 'Jugador eliminado' })),
+      pj: rowOf[p.id]?.pj ?? 0, pts: rowOf[p.id]?.pts ?? 0, pos: rowOf[p.id]?.pos ?? null, deleted: p.full_name === 'Jugador eliminado', lvlFb: lvlFb[p.id] || null })),
     matches: matches.map((m) => ({ id: Number(m.id), status: m.status, n1: m.n1, n2: m.n2, p1: m.p1, p2: m.p2, sets: m.sets, score: R.fmtSets(m.sets),
       winner: m.winner, walkover: m.walkover, reporter: m.reporter, played_on: m.played_on, master: !!m.master_id,
       d1: m.p1_after != null ? Number(m.p1_after - m.p1_before) : null, d2: m.p2_after != null ? Number(m.p2_after - m.p2_before) : null })),
