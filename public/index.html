@@ -470,6 +470,20 @@ details.adm summary::-webkit-details-marker{display:none}
 .chat-send{flex:none;width:42px;height:42px;border-radius:50%;border:0;background:var(--orange);color:#fff;display:grid;place-items:center;cursor:pointer;transition:transform 140ms ease-out}
 .chat-send:active{transform:scale(.94)}
 .chat-send svg{width:20px;height:20px}
+.fbtags{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.fbtag{display:flex;align-items:center;gap:8px;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--card);font:inherit;font-size:14.5px;font-weight:700;color:var(--ink);cursor:pointer;transition:transform 140ms ease-out,background-color 160ms ease,border-color 160ms ease}
+.fbtag span{font-size:18px}
+.fbtag:active{transform:scale(.97)}
+.fbtag[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.fbadges{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px}
+.fbadges>span{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--ink)}
+.fbadges b{color:var(--muted);font-weight:700}
+.linkbtn.subtle{font-size:13px;color:var(--muted)}
+.mrow .rate{flex:none;font-size:13px;margin-right:8px;color:var(--orange)}
+.rpt{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.rpt p{margin:4px 0 0;font-size:14px;color:var(--ink);white-space:pre-wrap}
+.admchat{margin-top:12px;max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.admchat p{margin:2px 0 0;font-size:14px;white-space:pre-wrap}
 .freebadge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 10px 5px 7px;border-radius:999px;background:var(--orange-soft);color:var(--orange);font-size:12px;font-weight:800;letter-spacing:-.005em}
 .freebadge svg{width:14px;height:14px}
 .freedot{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:var(--orange-soft);color:var(--orange);vertical-align:-3px}
@@ -1405,6 +1419,27 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "¿Qué tal con *?": "How was it with $1?",
+  "Opcional. Marca lo que encaje: sale en su perfil cuando tenga varias valoraciones, sin decir quién votó.": "Optional. Tick what fits: it shows on their profile once they have several ratings, without saying who voted.",
+  "Juego limpio": "Fair play",
+  "Puntual": "On time",
+  "Buen ambiente": "Good vibe",
+  "Partidazo": "Great match",
+  "¿El nivel era parecido al suyo en la app?": "Was their level similar to what the app shows?",
+  "Juega mejor": "Plays better",
+  "Parecido": "Similar",
+  "Juega peor": "Plays worse",
+  "Esto solo lo ve el club, para ajustar niveles.": "Only the club sees this, to adjust levels.",
+  "¿Algún problema? Avisar al club": "Any problem? Tell the club",
+  "Gracias. Valoración guardada.": "Thanks. Rating saved.",
+  "Enviar al club": "Send to the club",
+  "¿Qué ha pasado?": "What happened?",
+  "Solo lo lee el club, no *. Úsalo para problemas reales: no se presentó, malas formas, mensajes fuera de lugar…": "Only the club reads this, not $1. Use it for real problems: no-show, bad manners, inappropriate messages…",
+  "Solo lo lee el club. Úsalo para problemas reales: no se presentó, malas formas, mensajes fuera de lugar…": "Only the club reads this. Use it for real problems: no-show, bad manners, inappropriate messages…",
+  "Enviado. El club lo revisará.": "Sent. The club will look into it.",
+  "Avisar al club sobre este jugador": "Tell the club about this player",
+  "Valorar": "Rate",
+  "Lo que dicen sus rivales": "What opponents say",
   "Llevas bolas": "You: balls",
   "Reservas pista": "You: court",
   "*: pista": "$1: court",
@@ -2791,6 +2826,8 @@ function paintPlayer(d, own, o) {
       ${own ? `<span class="pill light">@${esc(p.username)}</span>` : ''}
       ${p.injured ? `<span class="pill injpill">${I.bandage}Lesionado</span>` : ''}
     </div>
+    ${p.badges && p.badges.length ? `<div class="fbadges" aria-label="Lo que dicen sus rivales">${p.badges.map(([k, n]) => `<span title="${esc(FB[k][1])}"><span aria-hidden="true">${FB[k][0]}</span>${esc(FB[k][1])}<b>×${n}</b></span>`).join('')}</div>` : ''}
+    ${!own && d.vs ? `<p style="margin:10px 0 0;text-align:center"><button type="button" class="linkbtn subtle" id="rep-p">Avisar al club sobre este jugador</button></p>` : ''}
     ${own && !S.me.card_locked ? `<a class="btn block ghost" style="margin-top:14px" href="#/carta">Editar mi tarjeta</a>` : ''}
     ${own ? (p.injured ? `<div class="injbox"><span class="ic">${I.bandage}</span><div><b>Lesionado hasta el ${fmtWhen(p.injured)}</b><span>Nadie puede retarte hasta entonces.</span></div>
         <div class="btns"><button class="btn xs ghost" id="inj-off" type="button">Ya estoy bien</button></div></div>
@@ -2816,6 +2853,7 @@ function paintPlayer(d, own, o) {
   const bShare = document.getElementById('share-card');
   if (bShare) bShare.addEventListener('click', () => busy(bShare, () => shareCard(p)));
   if (own) bindInjury(p);
+  document.getElementById('rep-p')?.addEventListener('click', () => reportFlow({ about: p.id }, p.full_name));
   if (!o.refresh) stagger($app.querySelector('.screen'));
 }
 
@@ -2917,7 +2955,9 @@ async function screenRetos() {
   body.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     try {
-      if (b.dataset.post) {
+      if (b.dataset.fb) {
+        if ((await feedbackFlow(b.dataset.fb, b.dataset.rival)) === 'ok') reloadRetos();
+      } else if (b.dataset.post) {
         const card = b.closest('.box'); const rv = card?.querySelector('[data-rival]')?.dataset.rival || '';
         if (await postponeFlow(b.dataset.post, rv)) reloadRetos();
       } else if (b.dataset.pans) {
@@ -2942,6 +2982,7 @@ async function screenRetos() {
       } else if (b.dataset.confirm) {
         await busy(b, () => api('POST', `match/${b.dataset.confirm}/confirm`));
         toast('Resultado confirmado. Clasificación actualizada.', true); reloadRetos();
+        setTimeout(() => feedbackFlow(b.dataset.confirm, b.dataset.rival), 700);
       } else if (b.dataset.dispute) {
         const note = await sheet(`<h2>¿No estás de acuerdo?</h2><p>El club revisará el resultado y os dirá algo. Si quieres, explica qué pasó.</p>
           <textarea class="input" id="note" rows="3" maxlength="300" style="margin-top:14px" placeholder="Por ejemplo: el segundo set fue 7-5 para mí"></textarea>
@@ -2993,7 +3034,9 @@ function paintRetos(d, o) {
     if (c.status === 'done' && m) {
       const who = m.iWon ? `Ganas a ${esc(c.rival.name)}` : `Pierdes con ${esc(c.rival.name)}`;
       const dl = m.delta == null ? '' : `<span class="badge ${m.delta >= 0 ? 'ok' : 'bad'}">${signed(m.delta)}</span>`;
-      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · No jugado' : ''}${c.promo ? ` <span class="freedot" title="Pista y bolas gratis">${I.gift}</span>` : ''}</span>${dl}</div>`;
+      const rate = !c.walkover && !c.fbDone && Date.now() - Date.parse(c.updated_at || 0) < 7 * 864e5
+        ? `<button type="button" class="linkbtn rate" data-fb="${m.id}" data-rival="${esc(c.rival.name)}">Valorar</button>` : '';
+      return `<div class="mrow" style="margin-top:6px"><span class="r">${who} · ${esc(m.score)}${c.walkover ? ' · No jugado' : ''}${c.promo ? ` <span class="freedot" title="Pista y bolas gratis">${I.gift}</span>` : ''}</span>${rate}${dl}</div>`;
     }
     return `<div class="mrow" style="margin-top:6px"><span class="r">${esc(c.rival.name)} · ${fmtWhen(c.play_at.slice(0, 10), false)}</span><span class="badge">${
       { rejected: 'Rechazado', expired: 'Caducado', cancelled: 'Cancelado' }[c.status] || c.status}</span></div>`;
@@ -3086,11 +3129,47 @@ async function cancelFlow(id, { late = false, pending = false, rival = '' } = {}
     toast(e.message); return false;
   }
 }
+/* ── Valoración después del partido ── */
+const FB = { fair: ['🤝', 'Juego limpio'], punctual: ['⏰', 'Puntual'], vibe: ['😊', 'Buen ambiente'], great: ['🔥', 'Partidazo'] };
+async function feedbackFlow(matchId, rival) {
+  const r = esc(first(rival || '')) || 'tu rival';
+  let level = null;
+  const res = await sheet(`<h2>¿Qué tal con ${r}?</h2><p>Opcional. Marca lo que encaje: sale en su perfil cuando tenga varias valoraciones, sin decir quién votó.</p>
+    <div class="fbtags" id="fbt">${Object.entries(FB).map(([k, [e, l]]) => `<button type="button" class="fbtag" data-t="${k}" aria-pressed="false"><span aria-hidden="true">${e}</span>${l}</button>`).join('')}</div>
+    <div class="label" style="margin:18px 0 8px 2px">¿El nivel era parecido al suyo en la app?</div>
+    <div class="chips" id="fbl" style="flex-wrap:wrap"><button type="button" class="chip" data-l="higher" aria-pressed="false">Juega mejor</button><button type="button" class="chip" data-l="same" aria-pressed="false">Parecido</button><button type="button" class="chip" data-l="lower" aria-pressed="false">Juega peor</button></div>
+    <p class="hint" style="margin:8px 4px 0">Esto solo lo ve el club, para ajustar niveles.</p>
+    <div class="btns" style="margin-top:18px"><button class="btn ghost" data-close="no">Ahora no</button><button class="btn" id="fbs">Enviar</button></div>
+    <p style="margin:12px 0 0;text-align:center"><button type="button" class="linkbtn" id="fbr">¿Algún problema? Avisar al club</button></p>`,
+    (el, close) => {
+      el.querySelector('#fbt').addEventListener('click', (e) => { const b = e.target.closest('.fbtag'); if (b) b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); });
+      el.querySelector('#fbl').addEventListener('click', (e) => { const b = e.target.closest('[data-l]'); if (!b) return; level = level === b.dataset.l ? null : b.dataset.l;
+        el.querySelectorAll('[data-l]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.l === level))); });
+      el.querySelector('#fbr').addEventListener('click', () => close('report'));
+      const btn = el.querySelector('#fbs');
+      btn.addEventListener('click', () => busy(btn, async () => {
+        const tags = [...el.querySelectorAll('.fbtag[aria-pressed="true"]')].map((x) => x.dataset.t);
+        if (!tags.length && !level) return close(null);
+        try { await api('POST', `match/${matchId}/feedback`, { tags, level }); close('ok'); } catch (err) { toast(err.message); }
+      }));
+    });
+  if (res === 'ok') toast('Gracias. Valoración guardada.', true);
+  if (res === 'report') await reportFlow({ match: matchId }, rival);
+  return res;
+}
+async function reportFlow(target, rival) {
+  const txt = await sheet(`<h2>Avisar al club</h2><p>Solo lo lee el club${rival ? `, no ${esc(first(rival))}` : ''}. Úsalo para problemas reales: no se presentó, malas formas, mensajes fuera de lugar…</p>
+    <textarea class="input" id="rp" rows="4" maxlength="1000" style="margin-top:12px" placeholder="¿Qué ha pasado?"></textarea>
+    <div class="btns" style="margin-top:14px"><button class="btn ghost" data-close="no">Volver</button><button class="btn navy" id="rps">Enviar al club</button></div>`,
+    (el, close) => { el.querySelector('#rps').addEventListener('click', () => { const v = el.querySelector('#rp').value.trim(); if (v) close(v); else el.querySelector('#rp').focus(); }); });
+  if (!txt) return;
+  try { await api('POST', 'report', { ...target, body: txt }); toast('Enviado. El club lo revisará.', true); } catch (e) { toast(e.message); }
+}
 const freeBadge = () => `<span class="freebadge">${I.gift}<span>Pista y bolas gratis</span></span>`;
 function resultBox(m, rival) {
   return `<div class="box" style="margin-top:10px;background:var(--soft);border:0"><div style="font-size:13px;color:var(--muted);font-weight:600">Según ${esc(first(rival))}:</div>
     <div style="font-size:20px;font-weight:700;margin-top:2px">${m.iWon ? 'ganas' : 'pierdes'} ${esc(m.score)}</div></div>
-    <div class="btns"><button class="btn sm" data-confirm="${m.id}">Confirmar</button><button class="btn sm ghost" data-dispute="${m.id}">No estoy de acuerdo</button></div>`;
+    <div class="btns"><button class="btn sm" data-confirm="${m.id}" data-rival="${esc(rival)}">Confirmar</button><button class="btn sm ghost" data-dispute="${m.id}">No estoy de acuerdo</button></div>`;
 }
 function masterCard(n, inner) {
   return `<div class="box"><div class="kind" style="color:#A47F2A">${ZONES[n.tier][0]} · ${esc(n.round)}</div>
@@ -3131,7 +3210,9 @@ async function screenChat(id) {
     ${c.open ? `<form class="chat-in" id="cf" autocomplete="off"><textarea class="input" id="ct" rows="1" maxlength="500" placeholder="Mensaje" aria-label="Mensaje"></textarea>
       <button class="chat-send" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>`
       : '<p class="hint" style="text-align:center;margin-top:16px">Este chat ya está cerrado.</p>'}
+    <p style="margin:8px 0 0;text-align:center"><button type="button" class="linkbtn subtle" id="chat-rep">Avisar al club</button></p>
   </main>`);
+  document.getElementById('chat-rep')?.addEventListener('click', () => reportFlow({ challenge: c.id }, c.rival.name));
   const xb = document.getElementById('chat-x');
   if (xb) xb.addEventListener('click', async () => { if (await cancelFlow(c.id, { late: c.lateCancel, pending: c.status === 'pending' && c.iAmChallenger, rival: first(c.rival.name) })) screenChat(id); });
   const cl = document.getElementById('cl');
@@ -3241,8 +3322,9 @@ async function screenResult(kind, id) {
   btn.addEventListener('click', () => busy(btn, async () => {
     try {
       const path = kind === 'c' ? `challenge/${id}/result` : `masters/${id}/result`;
-      await api('POST', path, { sets: sets() });
+      const r = await api('POST', path, { sets: sets() });
       toast(`Enviado. Falta que ${first(rival.name)} lo confirme.`, true); go('retos');
+      if (r && r.match) setTimeout(() => feedbackFlow(r.match.id, rival.name), 700);
     } catch (err) { setErr(document.getElementById('e'), err.message); }
   }));
 }
@@ -3755,7 +3837,11 @@ function paintAdmin() {
       <div class="box health${bDays === null || bDays >= 7 ? ' warn' : ''}"><div class="row-between"><b>Copia de seguridad</b><span class="badge ${bDays === null || bDays >= 7 ? 'bad' : 'ok'}">${bDays === null ? 'Nunca' : bDays === 0 ? 'Hoy' : bDays === 1 ? 'Ayer' : `Hace ${bDays} días`}</span></div>
         <p class="hint" style="margin:6px 0 10px;text-align:left">Descárgala una vez por semana y guárdala en tu ordenador o en Drive. Lleva todo: jugadores, retos, partidos y tablón.</p>
         <button class="btn sm navy" id="backup">Descargar copia completa</button></div>`;
-    body = health + `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tile(active.length, 'Jugadores activos')}${tile(sched.filter((c) => c.play_at.slice(0, 10) <= week).length, 'Partidos en 7 días')}
+    const RP = d.reports || [];
+    const reportsBox = RP.length ? `<div class="box health warn"><div class="row-between"><b>Avisos de jugadores</b><span class="badge bad">${RP.length}</span></div>
+      ${RP.map((r) => `<div class="rpt"><div class="when"><b>${esc(r.reporter || '—')}</b>${r.about ? ` sobre <b>${esc(r.about)}</b>` : ''} · ${fmtWhen(String(r.at).slice(0, 10), false)}</div>
+        <p>${esc(r.body)}</p><div class="btns" style="margin-top:6px">${r.challenge ? `<button class="btn xs ghost" data-adchat="${r.challenge}">Ver chat</button>` : ''}<button class="btn xs navy" data-adres="${r.id}">Resuelto</button></div></div>`).join('')}</div>` : '';
+    body = reportsBox + health + `<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))">${tile(active.length, 'Jugadores activos')}${tile(sched.filter((c) => c.play_at.slice(0, 10) <= week).length, 'Partidos en 7 días')}
         ${tile(pend.length, 'Retos sin responder')}${tile(toConfirm + disputed, disputed ? `Por confirmar · ${disputed} en disputa` : 'Resultados por confirmar', disputed)}</div>
       <div class="sec"><span class="label">Próximos partidos</span>${Object.keys(byDay).length ? Object.entries(byDay).map(([day, list]) =>
         `<div class="when" style="margin:10px 4px 6px;font-weight:700;color:var(--ink)">${day === t ? 'Hoy · ' : day < t ? 'Sin resultado · ' : ''}${cap(fmtWhen(day, true))}</div>${list.map((c) => mrow(c, `Nivel ${lvl(c.l1)} vs ${lvl(c.l2)}${c.promo ? ' · pista y bolas gratis' : ''}${day < t ? ' · falta poner el resultado' : ''}`)).join('')}`).join('')
@@ -3778,9 +3864,10 @@ function paintAdmin() {
     </details>`).join('') : '<div class="empty">Todavía no hay partidos.</div>';
   } else if (adminTab === 'jugadores') {
     body = `<p class="hint" style="margin:0 4px 10px">${d.players.filter((p) => p.active).length} jugadores activos.</p>` + d.players.filter((p) => !p.deleted).map((p) => `<details class="adm"><summary>${avatar(p)}
-        <span style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.full_name)}</b><br><span class="when">@${esc(p.username)} · Nivel ${lvl(p.level)} · ${p.pj} PJ · ${p.age} años${p.is_admin ? ' · Admin' : ''}${!p.active ? ' · desactivado' : ''}${p.muted ? ' · sin comentarios' : ''}</span></span></summary>
+        <span style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.full_name)}</b><br><span class="when">@${esc(p.username)} · Nivel ${lvl(p.level)} · ${p.pj} PJ · ${p.age} años${p.lvlFb && (p.lvlFb.higher + p.lvlFb.lower) >= 3 && Math.max(p.lvlFb.higher, p.lvlFb.lower) > p.lvlFb.same ? ` · <b style="color:var(--orange)">${p.lvlFb.higher > p.lvlFb.lower ? 'nivel bajo?' : 'nivel alto?'}</b>` : ''}${p.is_admin ? ' · Admin' : ''}${!p.active ? ' · desactivado' : ''}${p.muted ? ' · sin comentarios' : ''}</span></span></summary>
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px" data-p="${p.id}">
         <div class="when">${esc(p.phone || 'Sin móvil')} · Alta ${fmtWhen(String(p.created_at).slice(0, 10), false)}</div>
+        ${p.lvlFb ? `<div class="when" style="color:var(--ink)">Según sus rivales: <b>juega mejor ${p.lvlFb.higher}</b> · parecido ${p.lvlFb.same} · <b>juega peor ${p.lvlFb.lower}</b></div>` : ''}
         <label class="field">Nombre<input class="input" data-f="full_name" value="${esc(p.full_name)}"></label>
         <div><div class="label" style="margin-bottom:6px">Valoración inicial (nivel inicial ${fmt(p.start_level)})</div>
           <div class="grid5">${ATTRS.map(([k, l]) => `<label style="font-size:11px;font-weight:700;color:var(--muted);text-align:center">${l.replace('servicio', 'serv.')}<input class="input" data-a="${k}" inputmode="numeric" value="${p.attrs[k]}"></label>`).join('')}</div></div>
@@ -3858,6 +3945,14 @@ function paintAdmin() {
       if (b.id === 'close') {
         if (!(await confirmBox('¿Cerrar la temporada?', 'Ya no se podrá jugar nada más en esta temporada.', 'Cerrar', true))) return;
         await api('POST', 'admin/season', { phase: 'closed' }); toast('Temporada cerrada.'); return screenAdmin();
+      }
+      if (b.dataset.adres) { await busy(b, () => api('POST', `admin/report/${b.dataset.adres}/resolve`)); toast('Marcado como resuelto.', true); return screenAdmin(); }
+      if (b.dataset.adchat) {
+        const r = await busy(b, () => api('GET', `admin/chat/${b.dataset.adchat}`));
+        await sheet(`<h2>${esc(r.challenge.n1)} vs ${esc(r.challenge.n2)}</h2><p>${cap(fmtWhen(r.challenge.play_at))}</p>
+          <div class="admchat">${r.messages.length ? r.messages.map((m) => `<div><b>${esc(m.who || 'Aviso')}</b> <span class="when">${fmtWhen(String(new Date(m.at).toLocaleString('sv-SE', { timeZone: 'Europe/Madrid' })).slice(0, 16))}</span><p>${esc(m.body)}</p></div>`).join('') : '<p class="hint">Sin mensajes.</p>'}</div>
+          <div class="btns" style="margin-top:14px"><button class="btn ghost" data-close="no">Cerrar</button></div>`);
+        return;
       }
       if (b.dataset.adcancel) {
         if (!(await confirmBox('¿Cancelar este partido?', `${esc(b.dataset.n)}. Se cancela sin penalización para nadie y lo verán en el chat del partido.`, 'Cancelar partido', true))) return;
