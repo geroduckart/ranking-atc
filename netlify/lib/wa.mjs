@@ -144,8 +144,8 @@ export const waCounter = (to, from, playAt) => {
 /** El reto se ha aceptado: ya hay partido. Plantilla de Utilidad, sin botón (sustituye a 'partido_confirmado'). */
 export const waConfirmed = (to, rival, playAt) => {
   const l = lang(to);
-  return sendNewOrOld(waTo(to), l, ['partido_aceptado', [firstName(to.full_name), rival.full_name, low(when(playAt, l), l)]],
-    ['partido_confirmado', [firstName(to.full_name), rival.full_name, when(playAt, l)]]);
+  // En Meta: español = 'reto_aceptado', inglés = 'partido_aceptado' (mismas 3 variables)
+  return sendTemplate(waTo(to), l === 'en' ? 'partido_aceptado' : 'reto_aceptado', l, [firstName(to.full_name), rival.full_name, low(when(playAt, l), l)]);
 };
 
 /** El día antes del partido. */
