@@ -486,6 +486,8 @@ const EN = {/*DICT*/
   "Cuéntanos brevemente qué ha pasado.": "Briefly tell us what happened.",
   "Máximo 1000 caracteres.": "1000 characters max.",
   "Ya has enviado varios avisos hoy. Si es urgente, escribe al club por WhatsApp.": "You've already sent several reports today. If it's urgent, message the club on WhatsApp.",
+  "A esa hora ya están las 4 pistas ocupadas con partidos del ranking. Elige otra hora.": "All 4 courts are already taken by ranking matches at that time. Pick another time.",
+  "Elige el motivo: mal tiempo, no hay pista o acuerdo mutuo.": "Choose the reason: bad weather, no court available or mutual agreement.",
   "Este chat ya está cerrado.": "This chat is closed.",
   "Escribe algo.": "Write something.",
   "Máximo 500 caracteres.": "500 characters max.",
