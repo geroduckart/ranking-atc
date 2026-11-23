@@ -232,6 +232,24 @@ function clubHours(d) {
   return wd === 0 ? r(9, 14) : wd === 6 ? [...r(9, 14), ...r(17, 21)] : [...r(9, 14), ...r(16, 22)];
 }
 
+/* ── Pistas: el club tiene COURTS pistas; a una misma hora caben como mucho COURTS partidos aceptados.
+   Se asignan por orden: el primero que acepta se queda la pista. ── */
+const COURTS = 4;
+async function slotTaken(sql, at, exceptId = 0) {
+  const [{ n }] = await sql`select count(*)::int as n from challenges where status = 'accepted' and play_at = ${at} and id <> ${exceptId}`;
+  return n;
+}
+async function checkSlot(sql, at, exceptId = 0) {
+  if ((await slotTaken(sql, at, exceptId)) >= COURTS)
+    fail(`A esa hora ya están las ${COURTS} pistas ocupadas con partidos del ranking. Elige otra hora.`, 409);
+}
+on('GET', 'slots', async ({ req }) => {
+  await auth(req);
+  const rows = await db()`select to_char(play_at, 'YYYY-MM-DD HH24:MI') as at, count(*)::int as n from challenges
+    where status = 'accepted' and play_at >= ${madridToday()}::date group by 1 having count(*) >= ${COURTS}`;
+  return { full: rows.map((r) => r.at), courts: COURTS };
+});
+
 function checkWhen(date, time, S, { allowToday = true } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) fail('Elige el día.');
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time || ''))) fail('Elige la hora.');
@@ -623,6 +641,7 @@ on('POST', 'challenge', async ({ req, body, out }) => {
   const duty = ['balls', 'court'].includes(body.duty) ? body.duty : fail('Elige si llevas tú las bolas o reservas tú la pista.');
   const blocked = bandBlock(await standings(sql), S, me.id, to);
   if (blocked) fail(blocked);
+  await checkSlot(sql, at);
   const ch = await sql.begin(async (tx) => {
     await tx`select pg_advisory_xact_lock(hashtext(${[me.id, to].sort().join('|')}))`;
     const [chk] = await tx`select
@@ -814,6 +833,8 @@ async function respond(sql, id, me, action, body, out) {
     if (action === 'accept') {
       // los primeros PROMO_MATCHES retos aceptados (y no cancelados) llevan pista y bolas gratis
       await tx`select pg_advisory_xact_lock(hashtext('promo'))`;
+      await tx`select pg_advisory_xact_lock(hashtext(${'slot ' + c.play_at.slice(0, 16)}))`;
+      await checkSlot(tx, c.play_at, c.id);
       const promo = S.phase === 'regular' && (await promoUsed(tx)) < PROMO_MATCHES;
       await tx`update challenges set status = 'accepted', promo = ${promo}, responded_by = ${me.id}, updated_at = now() where id = ${id}`;
       c.promo = promo;
@@ -833,6 +854,7 @@ async function respond(sql, id, me, action, body, out) {
     } else if (action === 'counter') {
       if (c.counters >= COUNTER_LIMIT) fail('Ya habéis cambiado la hora 3 veces. Habladlo directamente y que uno cree un reto nuevo.');
       const at = checkWhen(body.date, body.time, S);
+      await checkSlot(tx, at);
       const [u] = await tx`update challenges set play_at = ${at}, proposed_by = ${me.id}, counters = counters + 1, token = ${randomToken()},
         reminded = false, updated_at = now() where id = ${id} returning *, play_at::text as play_at`;
       if (wants(other, 'challenges')) {
@@ -919,14 +941,15 @@ on('POST', 'challenge/:id/cancel', async ({ req, params, body, out }) => {
   return cancelChallenge(db(), checkNum(params[0]), me, { acceptLoss: body && body.acceptLoss === true }, out);
 });
 /* ── Posponer (mal tiempo o acuerdo mutuo): uno propone nueva fecha y el otro la acepta. Sin penalización. */
-const REASON = { weather: 'mal tiempo', mutual: 'acuerdo mutuo' };
+const REASON = { weather: 'mal tiempo', mutual: 'acuerdo mutuo', court: 'no hay pista' };
 on('POST', 'challenge/:id/postpone', async ({ req, params, body }) => {
   const me = await auth(req);
   const sql = db();
   const S = await season(sql);
   const id = checkNum(params[0]);
-  const reason = ['weather', 'mutual'].includes(body.reason) ? body.reason : fail('Elige el motivo: mal tiempo o acuerdo mutuo.');
+  const reason = ['weather', 'mutual', 'court'].includes(body.reason) ? body.reason : fail('Elige el motivo: mal tiempo, no hay pista o acuerdo mutuo.');
   const at = checkWhen(body.date, body.time, S);
+  await checkSlot(sql, at, checkNum(params[0]));
   await sql.begin(async (tx) => {
     const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
     if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
@@ -959,6 +982,8 @@ on('POST', 'challenge/:id/postpone/answer', async ({ req, params, body }) => {
     } else if (body.action === 'accept') {
       if (c.post_by === me.id) fail('La tiene que aceptar tu rival.');
       checkWhen(c.post_at.slice(0, 10), c.post_at.slice(11, 16), S);   // la fecha propuesta sigue siendo válida
+      await tx`select pg_advisory_xact_lock(hashtext(${'slot ' + c.post_at.slice(0, 16)}))`;
+      await checkSlot(tx, c.post_at, c.id);
       await tx`update challenges set play_at = post_at, post_at = null, post_by = null, post_reason = null,
         day_reminded = false, updated_at = now() where id = ${id}`;
       await sysChat(tx, id, `${name} ha aceptado. Partido pospuesto al ${fmtWhen(c.post_at)}.`, me && me.id);
