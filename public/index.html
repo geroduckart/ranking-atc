@@ -98,6 +98,10 @@ textarea.input{height:auto;padding:12px 14px;resize:none;font-size:15px;line-hei
 .dark .seg button[aria-pressed="true"]{background:#fff;color:var(--navy)}
 .row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.chips.reasons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}
+.chips.reasons .chip{min-width:0;padding:0 6px;font-size:13px;white-space:nowrap;justify-content:center}
+.chip.full{opacity:.45;cursor:not-allowed;flex-direction:column;line-height:1.1}
+.chip.full small{font-size:10px;font-weight:700;color:var(--bad)}
 .when-note{display:block;padding:12px 2px;font-size:14px;color:var(--muted)}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-width:64px;height:48px;padding:0 14px;border-radius:16px;border:1px solid var(--card-line);background:var(--card);box-shadow:var(--card-shadow);color:var(--ink);font-weight:700;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
@@ -1419,6 +1423,16 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Completo": "Full",
+  "Las 4 pistas están ocupadas": "All 4 courts are taken",
+  "No hay pista": "No court available",
+  "Has propuesto posponer porque no hay pista": "You proposed postponing because no court is available",
+  "* propone posponer porque no hay pista": "$1 proposes postponing because no court is available",
+  "* propone posponer el partido (no hay pista) al *.": "$1 proposes postponing the match (no court available) to $2.",
+  "Elige el motivo: mal tiempo, no hay pista o acuerdo mutuo.": "Choose the reason: bad weather, no court available or mutual agreement.",
+  "Como mucho 4 partidos del ranking a la misma hora": "At most 4 ranking matches at the same time",
+  "(el club tiene 4 pistas). Las pistas se asignan por orden: el primer reto que se acepta se queda la pista. Si una hora está completa, sale como «Completo» y hay que elegir otra.": "(the club has 4 courts). Courts go in order: the first challenge accepted gets the court. If a time is full, it shows as «Full» and you need to pick another.",
+  "por mal tiempo, porque no hay pista o de mutuo acuerdo, cualquiera de los dos puede proponer otra fecha desde Partidos. Si el otro la acepta, el partido se mueve": "due to bad weather, no court available or by mutual agreement, either player can propose another date from Matches. If the other accepts, the match moves",
   "¿Qué tal con *?": "How was it with $1?",
   "Opcional. Marca lo que encaje: sale en su perfil cuando tenga varias valoraciones, sin decir quién votó.": "Optional. Tick what fits: it shows on their profile once they have several ratings, without saying who voted.",
   "Juego limpio": "Fair play",
@@ -2395,10 +2409,13 @@ function clubHours(d) {
   const r = (a, b) => Array.from({ length: b - a }, (_, i) => `${String(a + i).padStart(2, '0')}:00`);
   return wd === 0 ? r(9, 14) : wd === 6 ? [...r(9, 14), ...r(17, 21)] : [...r(9, 14), ...r(16, 22)];
 }
+let FULL = new Set();   // horas con las 4 pistas ocupadas por partidos aceptados
 const hourChips = (d) => {
   const now = madridNow();
   const hs = clubHours(d).filter((h) => `${d} ${h}` > now);
-  return hs.length ? hs.map((h) => `<button type="button" class="chip" data-v="${h}" aria-pressed="false">${h}</button>`).join('') : '<span class="when-note">Ya no quedan horas ese día.</span>';
+  return hs.length ? hs.map((h) => FULL.has(`${d} ${h}`)
+    ? `<button type="button" class="chip full" disabled aria-disabled="true" title="Las 4 pistas están ocupadas">${h}<small>Completo</small></button>`
+    : `<button type="button" class="chip" data-v="${h}" aria-pressed="false">${h}</button>`).join('') : '<span class="when-note">Ya no quedan horas ese día.</span>';
 };
 /* Selector de día y hora (retos y contrapropuestas) */
 function whenPicker(id) {
@@ -2421,9 +2438,18 @@ function whenPicker(id) {
 function bindWhen(root) {
   const val = { date: null, time: null };
   const timeG = root.querySelector('[data-k="time"]');
+  // horas completas (4 pistas ocupadas): se marcan en cuanto llegan
+  api('GET', 'slots').then((r) => {
+    FULL = new Set(r.full || []);
+    if (val.date && document.body.contains(timeG)) {
+      timeG.innerHTML = hourChips(val.date);
+      const keep = val.time && timeG.querySelector(`[data-v="${val.time}"]`);
+      if (keep) keep.setAttribute('aria-pressed', 'true'); else val.time = null;
+    }
+  }).catch(() => {});
   root.querySelectorAll('.chips').forEach((group) => {
     group.addEventListener('click', (e) => {
-      const b = e.target.closest('.chip'); if (!b) return;
+      const b = e.target.closest('.chip'); if (!b || b.disabled) return;
       group.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
       if (group.dataset.k === 'time') { val.time = b.dataset.v; return; }
       val.date = b.dataset.v;
@@ -3076,7 +3102,7 @@ function chatHTML_old(c) {
 /* Cancelar un partido: cualquiera de los dos. Con menos de 2 h, quien cancela pierde 6-0 6-0. */
 const cancelLink = (c) => `${postBox(c)}<p class="ctl-row">${c.postpone ? '' : `<button type="button" class="linkbtn" data-post="${c.id}">Posponer</button><span aria-hidden="true">·</span>`}<button type="button" class="linkbtn${c.lateCancel ? ' bad' : ''}" data-cancel="${c.id}" data-late="${c.lateCancel ? 1 : 0}" data-rival="${esc(first(c.rival.name))}">Cancelar partido</button></p>`;
 /* Propuesta de posponer: el otro la acepta o mantiene la fecha */
-const REASON_TXT = { weather: 'por mal tiempo', mutual: 'de mutuo acuerdo' };
+const REASON_TXT = { weather: 'por mal tiempo', mutual: 'de mutuo acuerdo', court: 'porque no hay pista' };
 function postBox(c) {
   const pp = c.postpone; if (!pp) return '';
   const when = `<b>${cap(fmtWhen(pp.at))}</b>`;
@@ -3090,7 +3116,7 @@ async function postponeFlow(id, rival) {
   let reason = null;
   const val = await sheet(`<h2>Posponer el partido</h2><p>Propón otra fecha. Si ${esc(rival)} la acepta, el partido se mueve sin penalización para nadie.</p>
     <div class="label" style="margin:16px 0 8px 2px">Motivo</div>
-    <div class="chips" id="pr"><button type="button" class="chip" data-r="weather" aria-pressed="false">Mal tiempo</button><button type="button" class="chip" data-r="mutual" aria-pressed="false">Acuerdo mutuo</button></div>
+    <div class="chips reasons" id="pr"><button type="button" class="chip" data-r="weather" aria-pressed="false">Mal tiempo</button><button type="button" class="chip" data-r="court" aria-pressed="false">No hay pista</button><button type="button" class="chip" data-r="mutual" aria-pressed="false">Acuerdo mutuo</button></div>
     ${whenPicker('pw')}
     <div class="err hidden" id="pe" style="margin-top:10px"></div>
     <div class="btns" style="margin-top:16px"><button class="btn ghost" data-close="no">Volver</button><button class="btn" id="psend">Proponer</button></div>`,
@@ -3101,7 +3127,7 @@ async function postponeFlow(id, rival) {
       const btn = el.querySelector('#psend');
       btn.addEventListener('click', () => busy(btn, async () => {
         try {
-          if (!reason) throw new Error('Elige el motivo: mal tiempo o acuerdo mutuo.');
+          if (!reason) throw new Error('Elige el motivo: mal tiempo, no hay pista o acuerdo mutuo.');
           const w = get();
           await api('POST', `challenge/${id}/postpone`, { reason, date: w.date, time: w.time });
           close(true);
@@ -3754,6 +3780,7 @@ function screenPrivacy() {
       <li><b>Contra el mismo rival, 1 partido hasta el día 30.</b> Desde el día 30 se puede jugar la revancha, una vez. No hay más partidos entre los dos en la temporada.</li>
       <li>Rechazar un reto no penaliza. Si lo que no te va es la hora, propón otra en vez de rechazar.</li>
       <li><b>Quien reta elige si lleva las bolas o reserva la pista;</b> al rival le toca lo otro. Las pistas se reservan en el club, como siempre.</li>
+      <li><b>Como mucho 4 partidos del ranking a la misma hora</b> (el club tiene 4 pistas). Las pistas se asignan por orden: el primer reto que se acepta se queda la pista. Si una hora está completa, sale como «Completo» y hay que elegir otra.</li>
     </ul>
     <h3>Cancelaciones</h3>
     <ul>
@@ -3761,7 +3788,7 @@ function screenPrivacy() {
       <li><b>Con más de 2 horas de antelación:</b> se cancela sin penalización.</li>
       <li><b>Con menos de 2 horas, o ya pasada la hora:</b> quien cancela pierde el partido 6-0 6-0. Cuenta como un partido jugado, con sus puntos y su nivel.</li>
       <li>Si no se puede jugar por causas ajenas a los dos (lluvia, pista cerrada…), avisad al club: el club puede cancelar el partido sin penalización.</li>
-      <li><b>Posponer:</b> por mal tiempo o de mutuo acuerdo, cualquiera de los dos puede proponer otra fecha desde Partidos. Si el otro la acepta, el partido se mueve <b>sin penalización</b>, aunque falten menos de 2 horas. Si no la acepta, se mantiene la fecha.</li>
+      <li><b>Posponer:</b> por mal tiempo, porque no hay pista o de mutuo acuerdo, cualquiera de los dos puede proponer otra fecha desde Partidos. Si el otro la acepta, el partido se mueve <b>sin penalización</b>, aunque falten menos de 2 horas. Si no la acepta, se mantiene la fecha.</li>
       <li>Si solo cambiáis la hora el mismo día, no hace falta tocar nada: al terminar, uno pone el resultado.</li>
     </ul>
     <h3>Resultados</h3>
