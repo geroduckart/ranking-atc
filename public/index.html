@@ -353,6 +353,7 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .prose p,.prose li{font-size:15px;line-height:1.55;color:var(--ink)}
 .prose h3{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 4px}
 .prose h3+ul{margin-top:0}
+.pts3.four{grid-template-columns:repeat(4,minmax(0,1fr))}
 .pts3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px}
 .pts3 div{background:var(--card);border:1px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:18px;padding:13px 6px;text-align:center}
 .pts3 b{display:block;font-size:30px;line-height:1;font-variant-numeric:tabular-nums;color:var(--navy)}
@@ -1423,6 +1424,29 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Desde el día 30, punto extra si ganas a alguien 5 o más niveles por encima.": "From day 30, an extra point if you beat someone 5+ levels above you.",
+  "Desde el día 30, punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.": "From day 30, an extra point if you beat someone 5 or more levels above you.",
+  "Antes no, porque al principio los niveles son los que cada uno se puso. Tampoco cuenta en los 5 primeros partidos de ninguno de los dos.": "Not before, because early on levels are the ones each player set themselves. It also doesn't count in either player's first 5 matches.",
+  "Desde el día 30, tienes nivel 64 y ganas 2-0 a alguien de nivel 71: 5 puntos, más 1 extra porque te saca 7 niveles. Total, 6.": "From day 30, you're level 64 and beat someone at level 71 2-0: 5 points, plus 1 extra because they're 7 levels above. Total, 6.",
+  "Desde el día 30, un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.": "From day 30, an extra point if you beat someone 5 or more levels above you. It doesn't count if either player is in their first 5 matches.",
+  "Ganas 2-0": "Win 2-0",
+  "Ganas 2-1": "Win 2-1",
+  "Pierdes 1-2": "Lose 1-2",
+  "Pierdes 0-2": "Lose 0-2",
+  "Si es 2-1: +# pts": "If 2-1: +$1 pts",
+  "Si ganas un set: +# pts": "If you win a set: +$1 pts",
+  "puntos con 1 extra (# si es 2-1)": "points incl. 1 extra ($1 if 2-1)",
+  "puntos (# si es 2-1)": "points ($1 if 2-1)",
+  "punto (# si ganas un set)": "point ($1 if you win a set)",
+  "El nivel, calculado con un 6-4 6-4: cada set y cada juego que le ganes también suma.": "Level calculated with a 6-4 6-4: every set and game you take also counts.",
+  "Jugar siempre suma: aunque pierdas, te llevas puntos. Si pierdes porque cancelaste con menos de 2 horas, 0. Los puntos solo dependen del resultado; ni la edad ni tu valoración inicial cambian estos números.": "Playing always counts: even if you lose, you get points. If you lose because you cancelled less than 2 hours ahead, 0. Points depend only on the result; neither age nor your initial rating changes them.",
+  "Ganas 6-4 6-4: 5 puntos.": "Win 6-4 6-4: 5 points.",
+  "Ganas 6-4 3-6 10-7: 4 puntos.": "Win 6-4 3-6 10-7: 4 points.",
+  "Pierdes 6-4 3-6 7-10: 2 puntos, porque le has quitado un set.": "Lose 6-4 3-6 7-10: 2 points, because you took a set.",
+  "Pierdes 4-6 3-6: 1 punto.": "Lose 4-6 3-6: 1 point.",
+  "Tienes nivel 64 y ganas 2-0 a alguien de nivel 71: 5 puntos, más 1 extra porque te saca 7 niveles. Total, 6.": "You're level 64 and beat someone at level 71 2-0: 5 points, plus 1 extra because they're 7 levels above. Total, 6.",
+  "Ganas 2-0: 5 puntos. Ganas 2-1: 4. Pierdes 1-2: 2. Pierdes 0-2: 1.": "Win 2-0: 5 points. Win 2-1: 4. Lose 1-2: 2. Lose 0-2: 1.",
+  "Si pierdes por cancelar con menos de 2 horas: 0 puntos (tu rival se lleva 5).": "If you lose by cancelling less than 2 hours ahead: 0 points (your opponent gets 5).",
   "Completo": "Full",
   "Las 4 pistas están ocupadas": "All 4 courts are taken",
   "No hay pista": "No court available",
@@ -2795,26 +2819,26 @@ async function screenPlayer(id) {
 function stakesHTML(p, st) {
   const gap = Math.round(p.level) - Math.round(S.me.level);
   const gapTxt = gap > 0 ? `${gap} más que tú` : gap < 0 ? `${-gap} menos que tú` : 'tu mismo nivel';
-  const extra = st.ptsWin > 3;
+  const extra = !!st.bonus;
   return `<div class="sec"><span class="label">Lo que te juegas</span>
     <div class="box stake${extra ? ' hot' : ''}">
       <div class="stk-row">
         <div class="stk-col ok">
           <span class="stk-cap">Si ganas</span>
           <b>+${st.ptsWin}</b>
-          <span class="stk-sub">${extra ? 'puntos (3 + 1 extra)' : 'puntos'}</span>
+          <span class="stk-sub">${extra ? `puntos con 1 extra (${st.ptsWin3} si es 2-1)` : `puntos (${st.ptsWin3} si es 2-1)`}</span>
           <span class="stk-lv">${signed(st.win)} nivel</span>
         </div>
         <div class="stk-col">
           <span class="stk-cap">Si pierdes</span>
           <b>+${st.ptsLoss}</b>
-          <span class="stk-sub">puntos (${st.ptsLoss3} si ganas un set)</span>
+          <span class="stk-sub">${st.ptsLoss === 1 ? 'punto' : 'puntos'} (${st.ptsLoss3} si ganas un set)</span>
           <span class="stk-lv">${signed(st.loss)} nivel</span>
         </div>
       </div>
       <p class="stk-foot">Nivel ${lvl(p.level)} · ${gapTxt}</p>
     </div>
-    <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Punto extra si ganas a alguien 5 o más niveles por encima. '}Calculado con un 6-4 6-4. Cada set y cada juego que le ganes también suma.</p></div>`;
+    <p class="hint" style="margin:8px 4px 0;text-align:center">${extra ? '<b>Punto extra</b> por ganar a alguien 5 o más niveles por encima. ' : 'Desde el día 30, punto extra si ganas a alguien 5 o más niveles por encima. '}El nivel, calculado con un 6-4 6-4: cada set y cada juego que le ganes también suma.</p></div>`;
 }
 let previewOf = null;   // ficha pintada como vista previa (lo que falte entra con un fundido suave)
 function paintPlayer(d, own, o) {
@@ -2937,8 +2961,8 @@ async function screenChallenge(id) {
         <div>${avatar(p, 'lg').replace('class="av', 'style="margin:0 auto;border:2px solid rgba(255,255,255,.3)" class="av')}<div style="margin-top:6px;font-size:14px;font-weight:700">${esc(first(p.full_name))} · ${lvl(p.level)}</div></div>
       </div>
       <div style="margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
-        <div style="background:rgba(31,157,107,.2);border-radius:12px;padding:9px 10px"><div class="label" style="color:#7FD8B2;letter-spacing:.1em">Si ganas</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.win)} nivel · +${v.stakes.ptsWin} pts</div><div style="font-size:12px;opacity:.7;margin-top:2px">6-0 6-0: ${signed(v.stakes.winBig)}</div></div>
-        <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:9px 10px"><div class="label" style="color:rgba(255,255,255,.65);letter-spacing:.1em">Si pierdes</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.loss)} nivel · 0 pts</div><div style="font-size:12px;opacity:.7;margin-top:2px">Si ganas un set: 1 pt</div></div>
+        <div style="background:rgba(31,157,107,.2);border-radius:12px;padding:9px 10px"><div class="label" style="color:#7FD8B2;letter-spacing:.1em">Si ganas</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.win)} nivel · +${v.stakes.ptsWin} pts</div><div style="font-size:12px;opacity:.7;margin-top:2px">Si es 2-1: +${v.stakes.ptsWin3} pts</div></div>
+        <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:9px 10px"><div class="label" style="color:rgba(255,255,255,.65);letter-spacing:.1em">Si pierdes</div><div style="font-size:15px;font-weight:700;margin-top:2px">${signed(v.stakes.loss)} nivel · +${v.stakes.ptsLoss} pt</div><div style="font-size:12px;opacity:.7;margin-top:2px">Si ganas un set: +${v.stakes.ptsLoss3} pts</div></div>
       </div>
     </div>
     ${whenPicker('w')}
@@ -3727,13 +3751,14 @@ function screenHow() {
     <div class="howbox"><p><b>Uno pone el resultado y el otro lo confirma.</b> Si no responde en 48 horas, se da por bueno. Si no estáis de acuerdo, decide el club.</p></div>
 
     <h2>3. Así se ganan puntos</h2>
-    <div class="pts3">
-      <div><b>3</b><span>Ganas</span></div>
-      <div><b>1</b><span>Pierdes en 3 sets</span></div>
-      <div><b>0</b><span>Pierdes en 2 sets</span></div>
+    <div class="pts3 four">
+      <div><b>5</b><span>Ganas 2-0</span></div>
+      <div><b>4</b><span>Ganas 2-1</span></div>
+      <div><b>2</b><span>Pierdes 1-2</span></div>
+      <div><b>1</b><span>Pierdes 0-2</span></div>
     </div>
-    <div class="howbox"><p><b>Punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.</b> No cuenta en los 5 primeros partidos de ninguno de los dos.</p>
-      <p>Los puntos solo dependen del resultado del partido. Ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Ganas 6-4 6-4: 3 puntos.</p><p>Pierdes 6-4 3-6 7-10: 1 punto, porque le has quitado un set.</p><p>Pierdes 4-6 3-6: 0 puntos.</p><p>Tienes nivel 64 y ganas a alguien de nivel 71: 3 puntos, más 1 extra porque te saca 7 niveles. Total, 4.</p></div></div>
+    <div class="howbox"><p><b>Desde el día 30, punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.</b> Antes no, porque al principio los niveles son los que cada uno se puso. Tampoco cuenta en los 5 primeros partidos de ninguno de los dos.</p>
+      <p>Jugar siempre suma: aunque pierdas, te llevas puntos. Si pierdes porque cancelaste con menos de 2 horas, 0. Los puntos solo dependen del resultado; ni la edad ni tu valoración inicial cambian estos números.</p><div class="ej"><span class="t">Ejemplo</span><p>Ganas 6-4 6-4: 5 puntos.</p><p>Ganas 6-4 3-6 10-7: 4 puntos.</p><p>Pierdes 6-4 3-6 7-10: 2 puntos, porque le has quitado un set.</p><p>Pierdes 4-6 3-6: 1 punto.</p><p>Desde el día 30, tienes nivel 64 y ganas 2-0 a alguien de nivel 71: 5 puntos, más 1 extra porque te saca 7 niveles. Total, 6.</p></div></div>
 
     <h2>4. Al final, los Másters</h2>
     <div class="howbox"><p><b>Para entrar en un Máster hay que haber jugado al menos 5 partidos.</b> Al acabar la fase regular se montan cuadros de 8 según la clasificación por puntos: Oro, Plata, Bronce y Challenger.</p>
@@ -3798,8 +3823,9 @@ function screenPrivacy() {
     </ul>
     <h3>Puntos</h3>
     <ul>
-      <li><b>Ganas: 3 puntos. Pierdes en 3 sets: 1 punto. Pierdes en 2 sets: 0 puntos.</b></li>
-      <li>Un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.</li>
+      <li><b>Ganas 2-0: 5 puntos. Ganas 2-1: 4. Pierdes 1-2: 2. Pierdes 0-2: 1.</b></li>
+      <li>Si pierdes por cancelar con menos de 2 horas: 0 puntos (tu rival se lleva 5).</li>
+      <li>Desde el día 30, un punto extra si ganas a alguien con 5 niveles o más por encima de ti. No cuenta si alguno de los dos está en sus 5 primeros partidos.</li>
     </ul>
     <h3>Másters</h3>
     <ul>
@@ -3856,7 +3882,7 @@ function paintAdmin() {
       <div style="display:flex;gap:14px;margin-top:8px">${c.e1 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e1).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n1))}</a>` : ''}${c.e2 ? `<a class="link orange" href="https://wa.me/${esc(String(c.e2).replace(/\D/g, ''))}" target="_blank" rel="noopener">WhatsApp a ${esc(first(c.n2))}</a>` : ''}${!c.match_status ? `<button type="button" class="link" style="margin-left:auto;color:var(--bad)" data-adcancel="${c.id}" data-n="${esc(c.n1)} vs ${esc(c.n2)}">Cancelar</button>` : ''}</div></div>`;
     const W = d.wa || { ok: 0, fail: 0, fails: [] };
     const bDays = d.backupAt ? Math.floor((Date.now() - Date.parse(d.backupAt)) / 864e5) : null;
-    const tplName = { reto_recibido: 'Reto recibido', nueva_hora: 'Nueva hora', partido_confirmado: 'Partido confirmado', partido_aceptado: 'Partido aceptado', reto_aceptado: 'Reto aceptado', aviso_nueva_hora: 'Nueva hora', recordatorio_partido: 'Recordatorio', cuadro_publicado: 'Cuadro publicado', animo_jugar: 'Empujón', partido_cancelado: 'Partido cancelado' };
+    const tplName = { reto_recibido: 'Reto recibido', nueva_hora: 'Nueva hora', partido_confirmado: 'Partido confirmado', partido_aceptado: 'Partido aceptado', reto_aceptado: 'Reto aceptado', aviso_nueva_hora: 'Nueva hora', recordatorio_partido: 'Recordatorio', cuadro_publicado: 'Cuadro publicado', animo_jugar: 'Empujón', rivales_semana: 'Rivales de la semana', partido_cancelado: 'Partido cancelado' };
     const health = `<div class="box health${W.fail ? ' warn' : ''}"><div class="row-between"><b>WhatsApp · últimas 24 h</b><span class="badge ${W.fail ? 'bad' : 'ok'}">${W.ok} enviados${W.fail ? ` · ${W.fail} fallidos` : ''}</span></div>
         ${W.fails.length ? `<div class="hfails">${W.fails.map((f) => `<div><b>${esc(f.name || 'Número desconocido')}</b> · ${esc(tplName[f.template] || f.template)} · ${fmtWhen(String(f.at).slice(0, 10), false)} ${String(new Date(f.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' }))}<span>${esc(f.error || '')}</span></div>`).join('')}</div>`
           : '<p class="hint" style="margin:6px 0 0;text-align:left">Ningún aviso fallido esta semana.</p>'}
