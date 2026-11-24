@@ -24,7 +24,7 @@ import { waChallenge, waCounter, waConfirmed, waReminder, waDraw, waNudge, waCan
 import { okNation } from '../lib/countries.mjs';
 
 
-const NUDGE_DAYS = 10;           // empujón por WhatsApp a quien lleva estos días sin jugar
+const NUDGE_DAYS = 7;            // rivales sugeridos por WhatsApp a quien lleva estos días sin jugar (como mucho 1 por semana)
 const PROMO_MATCHES = 5;         // promoción de estreno: los primeros retos aceptados llevan pista y bolas gratis (insignia en el partido)
 const promoUsed = (sql) => sql`select count(*)::int as n from challenges where promo and status in ('accepted','done')`.then(([r]) => r.n);
 const okLang = (l) => (l === 'en' ? 'en' : 'es');
@@ -202,16 +202,17 @@ async function standings(sql = db()) {
 const posMap = (st) => Object.fromEntries(st.qualified.map((r) => [r.id, r.pos]));
 
 /** Lo que te juegas contra un rival: un partido «normal» (6-4 6-4) ganado o perdido. */
-function stakes(me, meCount, rv, rvCount) {
+function stakes(me, meCount, rv, rvCount, S) {
   const K = meCount < R.PROV_MATCHES ? R.K_PROV : R.K_NORMAL;
   const E = R.expected(Number(me.level), Number(rv.level));
-  const bonus = meCount >= R.PROV_MATCHES && rvCount >= R.PROV_MATCHES && Number(rv.level) - Number(me.level) >= R.BONUS_GAP;
+  const bonus = meCount >= R.PROV_MATCHES && rvCount >= R.PROV_MATCHES && Number(rv.level) - Number(me.level) >= R.BONUS_GAP
+    && (!S || R.seasonDay(madridToday(), S.starts_on) >= R.BAND_FROM_DAY);
   const up = (x) => Math.max(0, x), down = (x) => Math.min(0, x);
   return { win: up(K * (R.matchScore(true, 0.6) - E)), loss: down(K * (R.matchScore(false, 0.4) - E)),
     winBig: up(K * (R.matchScore(true, 1) - E)), lossBig: down(K * (R.matchScore(false, 0) - E)),
-    ptsWin: R.PTS_WIN + (bonus ? R.PTS_BONUS : 0), ptsLoss: R.PTS_LOSS, ptsLoss3: R.PTS_LOSS_3SETS };
+    ptsWin: R.PTS_WIN + (bonus ? R.PTS_BONUS : 0), ptsWin3: R.PTS_WIN_3SETS + (bonus ? R.PTS_BONUS : 0), ptsLoss: R.PTS_LOSS, ptsLoss3: R.PTS_LOSS_3SETS, bonus };
 }
-const stakesLine = (s) => `Ganando 6-4 6-4: ${signed(s.win)} nivel · +${s.ptsWin} pts. Perdiendo 4-6 4-6: ${signed(s.loss)} nivel · 0 pts (1 si le quitas un set).`;
+const stakesLine = (s) => `Ganando 2-0: ${signed(s.win)} nivel · +${s.ptsWin} pts (2-1: +${s.ptsWin3}). Perdiendo 0-2: ${signed(s.loss)} nivel · +${s.ptsLoss} pt (1-2: +${s.ptsLoss3}).`;
 
 /** Desde el día 30, solo se puede retar a tu grupo de 8 y a los de al lado. Devuelve null si se puede. */
 function bandBlock(st, S, aId, bId) {
@@ -521,10 +522,15 @@ async function suggestRivals(sql, me, st) {
       where status in ('pending','accepted') and (challenger = ${me.id} or challenged = ${me.id})`]);
   const pn = Object.fromEntries(played.map((r) => [r.rv, r.n])), busy = new Set(open.map((r) => r.rv));
   const cap = R.pairCap(today, S.starts_on);
-  const myLevel = Number(me.level);
+  const myLevel = Number(me.level), myAge = ageOf(me);
+  // Edad: los menores, primero con menores; los mayores, con gente de su franja; el resto, a ±15 años.
+  // A un adulto nunca se le sugiere un menor.
+  const group = (a) => (a < 18 ? 'teen' : a >= 55 ? 'senior' : 'adult');
+  const close = (r) => { const a = ageOf(r); return group(a) === group(myAge) && (group(a) !== 'adult' || Math.abs(a - myAge) <= 15); };
   return [...st.qualified, ...st.others]
-    .filter((r) => r.id !== me.id && !busy.has(r.id) && (pn[r.id] || 0) < cap && !injuredUntil(r) && !bandBlock(st, S, me.id, r.id))
-    .sort((a, b) => Math.abs(Number(a.level) - myLevel) - Math.abs(Number(b.level) - myLevel) || a.pj - b.pj)
+    .filter((r) => r.id !== me.id && !busy.has(r.id) && (pn[r.id] || 0) < cap && !injuredUntil(r) && !bandBlock(st, S, me.id, r.id)
+      && (myAge < 18 || ageOf(r) >= 18))
+    .sort((a, b) => (close(b) - close(a)) || Math.abs(Number(a.level) - myLevel) - Math.abs(Number(b.level) - myLevel) || a.pj - b.pj)
     .slice(0, 3)
     .map((r) => ({ id: r.id, full_name: r.full_name, photo_v: r.photo_v, level: Number(r.level), pos: r.pos }));
 }
@@ -577,7 +583,7 @@ on('GET', 'player/:id', async ({ req, params }) => {
       pairLeft: Math.max(0, R.PAIR_CAP_LATE - pair.played - (pair.open_id ? 1 : 0)),
       rematchFrom: pair.played >= R.PAIR_CAP && pair.played < R.PAIR_CAP_LATE && R.pairCap(madridToday(), st.S.starts_on) <= pair.played ? revengeDay(st.S) : null,
       openChallenge: pair.open_id ? Number(pair.open_id) : null,
-      stakes: stakes(me, st.count[me.id] || 0, p, st.count[id] || 0),
+      stakes: stakes(me, st.count[me.id] || 0, p, st.count[id] || 0, st.S),
       canChallenge: p.active && st.S.phase === 'regular',
       meInjured: injuredUntil(me),
       bandBlock: bandBlock(st, st.S, me.id, id),
@@ -670,7 +676,7 @@ on('POST', 'challenge', async ({ req, body, out }) => {
 });
 
 function challengeMail(c, to, from, st, isCounter, reminder = false) {
-  const s = stakes(to, st.count[to.id] || 0, from, st.count[from.id] || 0);
+  const s = stakes(to, st.count[to.id] || 0, from, st.count[from.id] || 0, st.S);
   const fn = esc(from.full_name);
   return mail(to.email, (reminder ? 'Recordatorio: ' : '') + (isCounter ? `${firstName(from.full_name)} propone otra hora` : `${from.full_name} te ha retado`), {
     lines: [isCounter ? `<b>${fn}</b> no puede a la hora que dijiste y propone otra:` : `<b>${fn}</b> (nivel ${Math.round(from.level)}) quiere jugar contigo:`,
@@ -1844,7 +1850,7 @@ export async function runCron() {
       }
     }
   }
-  // 2c. Empujón por WhatsApp a quien lleva 10 días sin jugar (una vez cada 10 días, a las 18:00)
+  // 2c. A quien lleva 7 días sin jugar: WhatsApp con 3 rivales de su nivel y edad (1 por semana, a las 18:00)
   log.nudged = 0;
   const S = await season(sql);
   const today = madridToday();
@@ -1854,13 +1860,18 @@ export async function runCron() {
         coalesce((select max(c.updated_at)::date from challenges c where c.challenger = p.id or c.challenged = p.id), '1970-01-01')) as last_act
       from players p where p.active and (p.injured_until is null or p.injured_until < ${today}::date)
         and (p.last_nudge is null or p.last_nudge <= ${addDays(today, -NUDGE_DAYS)}::date)`;
+    const st = idle.length ? await standings(sql) : null;
     for (const p of idle) {
       const last = String(p.last_act).slice(0, 10), days = Math.round((Date.parse(today) - Date.parse(last)) / 864e5);
       if (days < NUDGE_DAYS || !wants(p, 'reminders')) continue;
+      const rivals = await suggestRivals(sql, p, st);
+      if (!rivals.length) continue;   // sin nadie a quien sugerir, no se manda nada
       await sql`update players set last_nudge = ${today}::date where id = ${p.id}`;
-      out.push(() => waNudge(p, days)); log.nudged++;
+      out.push(() => waNudge(p, rivals.map((r) => firstName(r.full_name)))); log.nudged++;
     }
   }
+  // 2d. Recalcular puntos y niveles una vez por hora (así un cambio de reglas se aplica a toda la temporada)
+  try { await sql.begin((tx) => recompute(tx)); } catch (e) { console.error('recompute', e); }
   // 3. Resultados sin confirmar en 48 h → se dan por buenos
   const pend = await sql`select * from matches where status = 'pending' and created_at < now() - interval '48 hours' order by id`;
   for (const m of pend) {
