@@ -36,7 +36,9 @@ export const WEEK_CAP = 3, PAIR_CAP = 1, PAIR_CAP_LATE = 2;
 export const seasonDay = (date, startsOn) => Math.round((Date.parse(String(date).slice(0, 10)) - Date.parse(String(startsOn).slice(0, 10))) / 864e5) + 1;
 /** Partidos que dan puntos contra el mismo rival: 1 hasta el día 30; desde entonces, una revancha más. */
 export const pairCap = (date, startsOn) => (startsOn && seasonDay(date, startsOn) >= BAND_FROM_DAY ? PAIR_CAP_LATE : PAIR_CAP);
-export const PTS_WIN = 3, PTS_LOSS = 0, PTS_LOSS_3SETS = 1, PTS_BONUS = 1, BONUS_GAP = 5;
+/* Puntos por partido: gana 2-0 → 5 · gana 2-1 → 4 · pierde 2-1 → 2 · pierde 2-0 → 1. Perder por cancelar tarde → 0.
+   +1 extra por ganar a alguien 5 niveles o más por encima (si ninguno está en sus 5 primeros partidos). */
+export const PTS_WIN = 5, PTS_WIN_3SETS = 4, PTS_LOSS = 1, PTS_LOSS_3SETS = 2, PTS_BONUS = 1, BONUS_GAP = 5;
 /** Desde este día de la fase regular, solo se puede retar a tu grupo de 8 y a los de al lado. */
 export const BAND_FROM_DAY = 30, BAND_SIZE = 8, BAND_LAST = 3;
 export const TIERS = [
@@ -199,13 +201,14 @@ export function replay(players, matches, { startsOn } = {}) {
       if ((pairUsed[pairKey] || 0) < pairCap(m.played_on, startsOn)) {
         pairUsed[pairKey] = (pairUsed[pairKey] || 0) + 1;
         const wk = isoWeek(m.played_on);
-        const bonusOk = !prov1 && !prov2;
+        // punto extra por nivel: solo desde el día 30 (antes los niveles aún son los que cada uno se puso)
+        const bonusOk = !prov1 && !prov2 && (!startsOn || seasonDay(m.played_on, startsOn) >= BAND_FROM_DAY);
         const give = (me, won, myL, rivalL) => {
           const key = `${me}|${wk}`;
           if ((weekUsed[key] || 0) >= WEEK_CAP) return 0;
           weekUsed[key] = (weekUsed[key] || 0) + 1;
-          if (!won && m.walkover) return 0;           // rechazar no da el punto de participación
-          let p = won ? PTS_WIN : threeSets ? PTS_LOSS_3SETS : PTS_LOSS;
+          if (!won && m.walkover) return 0;           // quien cancela tarde no se lleva el punto de participación
+          let p = won ? (threeSets ? PTS_WIN_3SETS : PTS_WIN) : threeSets ? PTS_LOSS_3SETS : PTS_LOSS;
           if (won && bonusOk && rivalL - myL >= BONUS_GAP) p += PTS_BONUS;
           return p;
         };

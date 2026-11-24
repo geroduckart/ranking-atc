@@ -155,10 +155,11 @@ export const waReminder = (to, rival, playAt) => {
   return sendTemplate(waTo(to), 'recordatorio_partido', l, [firstName(to.full_name), rival.full_name, time]);
 };
 
-/** Lleva días sin jugar: un empujón para que rete a alguien. */
-export const waNudge = (to, days) => {
+/** Lleva una semana sin jugar: 3 rivales de su nivel y edad. Plantilla 'rivales_semana' (Marketing). */
+export const waNudge = (to, names) => {
   const l = lang(to);
-  return sendTemplate(waTo(to), 'animo_jugar', l, [firstName(to.full_name), String(days)]);
+  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} ${l === 'en' ? 'and' : 'y'} ${names[names.length - 1]}` : names[0];
+  return sendTemplate(waTo(to), 'rivales_semana', l, [firstName(to.full_name), list]);
 };
 
 /** Han cancelado vuestro partido (el rival o el club). byName: quien cancela; null = el club. */
