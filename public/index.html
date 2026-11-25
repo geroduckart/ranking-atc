@@ -44,7 +44,7 @@
   background:radial-gradient(80% 40% at 100% 0%,rgba(227,91,42,.06),transparent 70%),#F4F3F0}
 .glass{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none;background:#F3F1ED}
+html,body{margin:0;padding:0;height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow:hidden;overscroll-behavior:none;background:#F3F1ED}
 /* La app vive en una «carcasa» del tamaño exacto de la parte visible de la pantalla (visualViewport).
    Dentro se desplaza el contenido; el menú va anclado a la carcasa, no a la página. */
 #shell{position:fixed;left:0;right:0;top:0;height:100%;overflow:hidden}
@@ -215,6 +215,7 @@ h1.h{margin:16px 0 0;font-size:30px;line-height:1.05;font-weight:700;letter-spac
 .fut.diamond::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(118deg,transparent 34%,rgba(255,255,255,.72) 46%,transparent 56%),
              linear-gradient(62deg,transparent 60%,rgba(255,255,255,.45) 70%,transparent 78%)}
+.fut-in{transform-origin:top center}
 .fut-top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px}
 .fut-lvl{display:flex;flex-direction:column;align-items:center;line-height:1}
 .fut-lvl b{font-size:50px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
@@ -2271,7 +2272,7 @@ function cardHTML(p) {
   const t = cardTier(p);
   const logo = t === 'special' ? LOGO_W : LOGO_N;
   const short = cardName(p);
-  return `<div class="fut-wrap"><div class="fut ${t}">
+  return `<div class="fut-wrap"><div class="fut ${t}"><div class="fut-in">
     <div class="fut-top">
       <div class="fut-lvl"><b>${lvl(p.level)}</b><span>NIVEL</span>${p.nat || p.provisional ? `<span class="fut-meta">${p.nat ? flagImg(p.nat, 'fut-flag') : ''}${p.provisional ? '<i>PROVISIONAL</i>' : ''}</span>` : ''}</div>
       ${p.photo_v > 0 ? `<img class="fut-photo" src="/api/photo/${p.id}?v=${p.photo_v}" alt="">` : `<img class="fut-logo" src="${logo}" alt="ATC">`}
@@ -2279,7 +2280,7 @@ function cardHTML(p) {
     <div class="fut-name">${esc(short)}</div>
     <div class="fut-tier">${esc(T(S.season?.name || 'Temporada 1'))} · ATC${p.ageTag ? ` · <b class="fut-age">${esc(p.ageTag)}</b>` : ''}</div>
     <div class="fut-stats">${ATTRS.map(([k, l]) => `<div class="fs"><span>${l}</span><b>${p.attrs[k]}</b></div>`).join('')}</div>
-  </div></div>`;
+  </div></div></div>`;
 }
 async function shareCard(p) {
   const W = 1080, H = 1920;
@@ -2409,6 +2410,19 @@ async function shareCard(p) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 /* La carta se inclina hacia el dedo (o el ratón) y brilla; al soltar vuelve con un pequeño rebote. */
+/* Si el móvil tiene la letra grande (ajuste de Android o el navegador de WhatsApp), el contenido
+   no cabe en la carta: se encoge el interior para que quepa entero. */
+function fitCard(root) {
+  root && root.querySelectorAll('.fut').forEach((c) => {
+    const i = c.querySelector('.fut-in'); if (!i) return;
+    i.style.transform = ''; i.style.width = '';
+    const cs = getComputedStyle(c);
+    const w = c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const h = c.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const z = Math.min(1, h / i.scrollHeight, w / i.scrollWidth);
+    if (z < 0.98) { i.style.width = (w / z) + 'px'; i.style.marginLeft = ((w - w / z) / 2) + 'px'; i.style.transform = `scale(${z.toFixed(3)})`; }
+  });
+}
 function bindTilt(root) {
   const el = root && root.querySelector('.fut');
   if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -2904,7 +2918,9 @@ function paintPlayer(d, own, o) {
       : `<p class="hint" style="text-align:center;margin-top:22px">${own ? 'Todavía no has jugado. Ve a la clasificación y reta a alguien.' : 'Todavía no ha jugado ningún partido.'}</p>`) + '</div>'}
     ${own && S.me.is_admin ? `<a class="btn block ghost" style="margin-top:22px" href="#/admin">Panel del club</a>` : ''}
   </main>${nav(own ? 'perfil' : 'ranking')}`);
-  bindTilt($app);
+  fitCard($app); bindTilt($app);
+  $app.querySelectorAll('.fut img').forEach((im) => { if (!im.complete) im.addEventListener('load', () => fitCard($app), { once: true }); });
+  document.fonts?.ready.then(() => fitCard($app));
   const bShare = document.getElementById('share-card');
   if (bShare) bShare.addEventListener('click', () => busy(bShare, () => shareCard(p)));
   if (own) bindInjury(p);
