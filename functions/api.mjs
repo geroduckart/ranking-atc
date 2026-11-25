@@ -1,0 +1,1897 @@
+/**
+ * Ranking ATC — API (Netlify Function). Todas las rutas cuelgan de /api/...
+ *
+ * Cuentas:   POST signup · POST login · POST forgot · POST reset · GET me · POST me · POST pin · POST me/delete
+ * Ranking:   GET ranking · GET player/:id · GET photo/:id
+ * Retos:     GET retos · POST challenge · GET challenge/:id · POST challenge/:id/respond · POST challenge/:id/cancel
+ *            POST challenge/:id/result
+ * Partidos:  POST match/:id/confirm · POST match/:id/dispute · POST match/:id/withdraw
+ * Tablón:    GET feed · POST feed/:id/comment · POST comment/:id/delete
+ * Másters:   GET masters · POST masters/:id/result
+ * Email:     GET/POST act (botones de un toque de los emails)
+ * Admin:     GET admin · POST admin/player/:id · POST admin/player/:id/delete · POST admin/match/:id
+ *            POST admin/post · POST admin/feed/:id/delete · POST admin/season
+ *            POST admin/masters/generate · POST admin/masters/reset · GET admin/export
+ */
+import * as R from '../lib/rules.mjs';
+import {
+  db, resetDb, isConnError, hashPin, checkPin, validPin, signSession, readSession, randomToken, sha, sameStr,
+  madridNow, madridToday, fmtWhen, fmtDay, fmtNum, signed, ord, esc, firstName, siteUrl,
+} from '../lib/core.mjs';
+import { mail, layout, setLangResolver } from '../lib/mail.mjs';
+import { trHtml } from '../lib/i18n.mjs';
+import { waChallenge, waCounter, waConfirmed, waReminder, waDraw, waNudge, waCancelled } from '../lib/wa.mjs';
+import { okNation } from '../lib/countries.mjs';
+
+
+const NUDGE_DAYS = 7;            // rivales sugeridos por WhatsApp a quien lleva estos días sin jugar (como mucho 1 por semana)
+const PROMO_MATCHES = 5;         // promoción de estreno: los primeros retos aceptados llevan pista y bolas gratis (insignia en el partido)
+const promoUsed = (sql) => sql`select count(*)::int as n from challenges where promo and status in ('accepted','done')`.then(([r]) => r.n);
+const okLang = (l) => (l === 'en' ? 'en' : 'es');
+// Cada email sale en el idioma del jugador (si aún no existe la columna «lang», en español).
+setLangResolver(async (email) => {
+  try { const [p] = await db()`select lang from players where email = ${email}`; return okLang(p && p.lang); } catch (e) { return 'es'; }
+});
+
+export const config = { path: '/api/*' };
+
+const OPEN_LIMIT = 5;            // retos pendientes que puede tener abiertos un jugador
+const COUNTER_LIMIT = 3;         // contrapropuestas de hora por reto
+const CHALLENGE_DAYS = 3;        // caducidad de un reto
+const OPEN_DAYS_BEFORE = 4;      // los retos se abren el 15 nov, 4 días antes del inicio (los partidos, desde el 19)
+const LOCK_FAILS = 5, LOCK_MIN = 15;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
+const fail = (msg, status = 400) => { throw new HttpError(status, msg); };
+const json = (data, status = 200, headers = {}) =>
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers } });
+const html = (body, status = 200) =>
+  new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+
+/* ════════════════════════════════════════════════════════════════════
+   Router
+   ════════════════════════════════════════════════════════════════════ */
+const routes = [];
+const on = (method, pattern, fn) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:id/g, '([^/]+)') + '$'), fn });
+
+export default async function handler(req) {
+  const url = new URL(req.url);
+  const path = url.pathname.replace(/^\/(\.netlify\/functions\/api|api)\/?/, '').replace(/\/$/, '');
+  const method = req.method === 'HEAD' ? 'GET' : req.method;
+  for (const r of routes) {
+    if (r.method !== method) continue;
+    const m = path.match(r.re);
+    if (!m) continue;
+    const out = [];   // emails a enviar cuando todo haya ido bien
+    const t0 = Date.now();
+    try {
+      let body = {};
+      if (method === 'POST') {
+        const ct = req.headers.get('content-type') || '';
+        if (ct.includes('application/x-www-form-urlencoded')) body = Object.fromEntries(new URLSearchParams(await req.text()));
+        else { const t = await req.text(); body = t ? JSON.parse(t) : {}; }
+      }
+      const args = { req, url, body, params: m.slice(1).map(decodeURIComponent), out };
+      let res;
+      try { res = await r.fn(args); }
+      catch (e) {
+        // Si el pooler de Supabase ha cortado la conexión, se reintenta una vez con una conexión nueva.
+        // (Las escrituras van en transacciones: si falló la conexión, no se guardó nada a medias.)
+        if (!isConnError(e)) throw e;
+        console.warn('Conexión cortada, reintento:', e.code || e.message);
+        resetDb(); out.length = 0;
+        res = await r.fn(args);
+      }
+      if (method === 'POST') _season = null;
+      await flush(out);
+      let resp = res instanceof Response ? res : json(res ?? { ok: true });
+      // Las páginas de los botones de los emails salen en inglés si el móvil no está en español
+      if (path === 'act' && resp.status === 200 && !/^\s*es/i.test(req.headers.get('accept-language') || 'es'))
+        resp = html(trHtml(await resp.text(), 'en'));
+      try { resp.headers.set('Server-Timing', `app;dur=${Date.now() - t0}`); } catch (e) {}
+      return resp;
+    } catch (e) {
+      if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      if (e instanceof SyntaxError) return json({ error: 'Petición no válida.' }, 400);
+      console.error(e);
+      if (isConnError(e)) resetDb();
+      if (e && e.code === '23505') {   // unicidad: usuario o móvil repetido
+        const q = String(e.constraint_name || e.constraint || '');
+        return json({ error: /phone/.test(q) ? 'Ya hay una cuenta con ese móvil.' : /username/.test(q) ? 'Ese usuario ya existe. Prueba con otro.' : 'Ese dato ya está en uso.' }, 409);
+      }
+      // La pista de la causa ayuda a arreglarlo sin bucear en los registros; no lleva datos de nadie.
+      // En 42703 (columna que no existe) y 42P01 (tabla que no existe) Postgres deja el nombre
+      // solo en el mensaje, así que lo enseñamos: casi siempre es que falta ejecutar el SQL.
+      const falta = e && (e.code === '42703' || e.code === '42P01') ? ' · ' + String(e.message || '').slice(0, 80) + ' · falta ejecutar el SQL de migración' : '';
+      const pista = e && e.code ? ` (${e.code}${e.column_name ? ' · ' + e.column_name : ''}${e.constraint_name ? ' · ' + e.constraint_name : ''}${falta})` : '';
+      return json({ error: 'Error del servidor. Inténtalo de nuevo en un momento.' + pista }, 500);
+    }
+  }
+  return json({ error: 'No encontrado.' }, 404);
+}
+async function flush(out) {
+  for (const f of out) { try { await f(); } catch (e) { console.error('email', e); } }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Ayudas
+   ════════════════════════════════════════════════════════════════════ */
+/** Id del jugador según el token (sin ir a la base de datos). Sirve para lanzar consultas en paralelo con auth(). */
+function sessionUid(req) {
+  const h = req.headers.get('authorization') || '';
+  const s = readSession(h.replace(/^Bearer\s+/i, ''));
+  if (!s || !UUID.test(s.u)) fail('Tu sesión ha caducado. Vuelve a entrar.', 401);
+  return s;
+}
+async function auth(req, { admin = false } = {}) {
+  const s = sessionUid(req);
+  const [p] = await db()`select * from players where id = ${s.u}`;
+  if (!p || !p.active || p.session_v !== s.v) fail('Tu sesión ha caducado. Vuelve a entrar.', 401);
+  if (admin && !p.is_admin) fail('Solo para el administrador del club.', 403);
+  return p;
+}
+const wants = (p, key) => !(p.notify && p.notify[key] === false);
+const ageOf = (p) => R.ageOn(p.birth_date, new Date(madridToday() + 'T12:00:00Z'));
+const isMinor = (p) => ageOf(p) < 18;
+const checkId = (id) => { if (!UUID.test(id)) fail('Jugador no encontrado.', 404); return id; };
+const checkNum = (id) => { if (!/^\d{1,12}$/.test(id)) fail('No encontrado.', 404); return Number(id); };
+// La temporada casi nunca cambia: se guarda unos segundos en memoria (se olvida con cualquier escritura).
+let _season = null, _seasonAt = 0;
+async function season(sql = db()) {
+  const shared = sql === db();
+  if (shared && _season && Date.now() - _seasonAt < 15000) return _season;
+  const [s] = await sql`select * from season where id = 1`;
+  if (shared) { _season = s; _seasonAt = Date.now(); }
+  return s;
+}
+
+/** Bandera para la tarjeta (null si no la ha puesto o prefiere no decirlo). */
+const natOf = (p) => (p.nationality && p.nationality !== '-' ? p.nationality : null);
+
+function selfView(p) {
+  return {
+    id: p.id, username: p.username, full_name: p.full_name, card_name: p.card_name, phone: p.phone, birth_date: p.birth_date,
+    hand: p.hand, backhand: p.backhand, level: Number(p.level), start_level: Number(p.start_level),
+    attrs: R.shownAttrs(p.attrs, p.start_level, p.level), photo_v: p.photo_v, is_admin: p.is_admin,
+    notify: { challenges: wants(p, 'challenges'), results: wants(p, 'results'), drop: wants(p, 'drop'), reminders: wants(p, 'reminders') },
+    minor: isMinor(p), ageTag: R.ageTag(ageOf(p)), lang: okLang(p.lang), nationality: p.nationality ?? null, nat: natOf(p), wa: p.wa_consent === true, injured: injuredUntil(p),
+  };
+}
+
+/** La tarjeta se puede editar hasta que el jugador tenga su primer partido (puesto, en revisión o confirmado). */
+async function cardLocked(sql, id) {
+  const [{ n }] = await sql`select count(*)::int as n from matches where status <> 'annulled' and (p1 = ${id} or p2 = ${id})`;
+  return n > 0;
+}
+
+/** Recalcula niveles y puntos repitiendo todos los partidos confirmados. */
+async function recompute(sql) {
+  const [players, S] = await Promise.all([sql`select id, start_level, band_bonus from players`, season(sql)]);
+  const ms = await sql`select id, p1, p2, winner, sets, walkover, master_id, played_on
+                       from matches where status = 'confirmed' order by played_on, confirmed_at, id`;
+  const { level, perMatch } = R.replay(players, ms, { startsOn: S.starts_on });
+  const lv = players.map((p) => ({ id: p.id, level: String(level[p.id]) }));
+  if (lv.length) {
+    await sql`update players set level = v.level::numeric from (values ${sql(lv.map((x) => [x.id, x.level]))}) as v(id, level)
+              where players.id = v.id::uuid and players.level <> v.level::numeric`;
+  }
+  const pm = Object.entries(perMatch).map(([id, x]) => [id, x.p1_before, x.p1_after, x.p2_before, x.p2_after, x.p1_pts, x.p2_pts].map(String));
+  if (pm.length) {
+    await sql`update matches set p1_before = v.a::numeric, p1_after = v.b::numeric, p2_before = v.c::numeric, p2_after = v.d::numeric,
+              p1_pts = v.e::int, p2_pts = v.f::int
+              from (values ${sql(pm)}) as v(id, a, b, c, d, e, f) where matches.id = v.id::bigint`;
+  }
+}
+
+/** Fecha 'YYYY-MM-DD' hasta la que el jugador está lesionado, o null si no lo está (o ya pasó). */
+const injuredUntil = (p) => { if (!p || !p.injured_until) return null; const d = p.injured_until instanceof Date ? p.injured_until.toISOString().slice(0, 10) : String(p.injured_until).slice(0, 10); return d >= madridToday() ? d : null; };
+/** Clasificación actual + nº de partidos de cada jugador (para «provisional»). */
+async function standings(sql = db()) {
+  const [S, players, ms] = await Promise.all([
+    season(sql),
+    sql`select id, full_name, username, level, photo_v, attrs, start_level, hand, backhand, birth_date, nationality, injured_until::text as injured_until from players where active`,
+    sql`select id, p1, p2, winner, master_id, p1_pts, p2_pts from matches where status = 'confirmed'`,
+  ]);
+  const count = {};
+  for (const m of ms) { count[m.p1] = (count[m.p1] || 0) + 1; count[m.p2] = (count[m.p2] || 0) + 1; }
+  const st = R.standings(players.map((p) => ({ ...p, level: Number(p.level) })), ms, S.min_matches);
+  for (const r of [...st.qualified, ...st.others]) r.provisional = (count[r.id] || 0) < R.PROV_MATCHES;
+  return { S, ...st, count, played: ms.filter((m) => !m.master_id).length };
+}
+const posMap = (st) => Object.fromEntries(st.qualified.map((r) => [r.id, r.pos]));
+
+/** Lo que te juegas contra un rival: un partido «normal» (6-4 6-4) ganado o perdido. */
+function stakes(me, meCount, rv, rvCount, S) {
+  const K = meCount < R.PROV_MATCHES ? R.K_PROV : R.K_NORMAL;
+  const E = R.expected(Number(me.level), Number(rv.level));
+  const bonus = meCount >= R.PROV_MATCHES && rvCount >= R.PROV_MATCHES && Number(rv.level) - Number(me.level) >= R.BONUS_GAP
+    && (!S || R.seasonDay(madridToday(), S.starts_on) >= R.BAND_FROM_DAY);
+  const up = (x) => Math.max(0, x), down = (x) => Math.min(0, x);
+  return { win: up(K * (R.matchScore(true, 0.6) - E)), loss: down(K * (R.matchScore(false, 0.4) - E)),
+    winBig: up(K * (R.matchScore(true, 1) - E)), lossBig: down(K * (R.matchScore(false, 0) - E)),
+    ptsWin: R.PTS_WIN + (bonus ? R.PTS_BONUS : 0), ptsWin3: R.PTS_WIN_3SETS + (bonus ? R.PTS_BONUS : 0), ptsLoss: R.PTS_LOSS, ptsLoss3: R.PTS_LOSS_3SETS, bonus };
+}
+const stakesLine = (s) => `Ganando 2-0: ${signed(s.win)} nivel · +${s.ptsWin} pts (2-1: +${s.ptsWin3}). Perdiendo 0-2: ${signed(s.loss)} nivel · +${s.ptsLoss} pt (1-2: +${s.ptsLoss3}).`;
+
+/** Desde el día 30, solo se puede retar a tu grupo de 8 y a los de al lado. Devuelve null si se puede. */
+function bandBlock(st, S, aId, bId) {
+  const day = Math.round((new Date(madridToday()) - new Date(S.starts_on)) / 864e5) + 1;
+  if (S.phase !== 'regular' || day < R.BAND_FROM_DAY) return null;
+  const order = [...st.qualified, ...st.others].map((r) => r.id);
+  const ia = order.indexOf(aId), ib = order.indexOf(bId);
+  if (ia < 0 || ib < 0) return null;
+  const ga = R.bandOf(ia), gb = R.bandOf(ib);
+  if (Math.abs(ga - gb) <= 1) return null;
+  return `Desde el día ${R.BAND_FROM_DAY} solo se puede retar al propio grupo y a los de al lado. Tú estás en el grupo ${R.bandName(ga)} y este jugador en el ${R.bandName(gb)}.`;
+}
+
+/* Horario del club (horas de inicio). L-V 9-14 y 16-22 · S 9-14 y 17-21 · D 9-14 */
+function clubHours(d) {
+  const wd = new Date(d + 'T12:00:00Z').getUTCDay();
+  const r = (a, b) => Array.from({ length: b - a }, (_, i) => `${String(a + i).padStart(2, '0')}:00`);
+  return wd === 0 ? r(9, 14) : wd === 6 ? [...r(9, 14), ...r(17, 21)] : [...r(9, 14), ...r(16, 22)];
+}
+
+/* ── Pistas: el club tiene COURTS pistas; a una misma hora caben como mucho COURTS partidos aceptados.
+   Se asignan por orden: el primero que acepta se queda la pista. ── */
+const COURTS = 4;
+async function slotTaken(sql, at, exceptId = 0) {
+  const [{ n }] = await sql`select count(*)::int as n from challenges where status = 'accepted' and play_at = ${at} and id <> ${exceptId}`;
+  return n;
+}
+async function checkSlot(sql, at, exceptId = 0) {
+  if ((await slotTaken(sql, at, exceptId)) >= COURTS)
+    fail(`A esa hora ya están las ${COURTS} pistas ocupadas con partidos del ranking. Elige otra hora.`, 409);
+}
+on('GET', 'slots', async ({ req }) => {
+  await auth(req);
+  const rows = await db()`select to_char(play_at, 'YYYY-MM-DD HH24:MI') as at, count(*)::int as n from challenges
+    where status = 'accepted' and play_at >= ${madridToday()}::date group by 1 having count(*) >= ${COURTS}`;
+  return { full: rows.map((r) => r.at), courts: COURTS };
+});
+
+function checkWhen(date, time, S, { allowToday = true } = {}) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) fail('Elige el día.');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time || ''))) fail('Elige la hora.');
+  if (!String(time).endsWith(':00')) fail('Las pistas se reservan en horas en punto. Elige una hora sin medias.');
+  if (!clubHours(date).includes(time)) fail('A esa hora el club está cerrado. Elige una hora dentro del horario.');
+  const now = madridNow();
+  const at = `${date} ${time}`;
+  if (at <= now) fail('Esa fecha ya ha pasado.');
+  if (!allowToday && date === now.slice(0, 10)) fail('Elige otro día.');
+  if (date < String(S.starts_on)) fail(`Los partidos cuentan desde el ${fmtDay(S.starts_on)}. Elige ese día o uno posterior.`);
+  if (date > String(S.ends_on)) fail(`La fase regular termina el ${fmtDay(S.ends_on)}. Elige un día antes.`);
+  if (date > addDays(now.slice(0, 10), 30)) fail('Elige un día dentro del próximo mes.');
+  return at;
+}
+/** Primer día en que se puede jugar la revancha (día 30 de la temporada). */
+const revengeDay = (S) => addDays(String(S.starts_on).slice(0, 10), R.BAND_FROM_DAY - 1);
+function addDays(day, n) { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+
+const actUrl = (kind, id, token, a) => `${siteUrl()}/api/act?t=${encodeURIComponent(`${kind}.${id}.${token}`)}&a=${a}`;
+const appUrl = (hash) => `${siteUrl()}/#/${hash}`;
+
+/* Jugadores por id, en un mapa */
+async function playersById(sql, ids) {
+  const list = [...new Set(ids.filter(Boolean))];
+  if (!list.length) return {};
+  const rows = await sql`select * from players where id in ${sql(list)}`;
+  return Object.fromEntries(rows.map((p) => [p.id, p]));
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Cuentas
+   ════════════════════════════════════════════════════════════════════ */
+// Móvil para WhatsApp en E.164. Nueve cifras que empiezan por 6, 7 o 9 se toman como España (+34).
+function waPhone(raw) {
+  let s = String(raw || '').replace(/[\s().-]/g, '');
+  if (/^00/.test(s)) s = '+' + s.slice(2);
+  if (/^[679]\d{8}$/.test(s)) s = '+34' + s;
+  return /^\+[1-9]\d{7,14}$/.test(s) ? s : null;
+}
+
+on('POST', 'signup', async ({ body }) => {
+  const sql = db();
+  const full_name = String(body.full_name || '').trim().replace(/\s+/g, ' ');
+  const username = String(body.username || '').trim().toLowerCase();
+  if (full_name.length < 2 || full_name.length > 60) fail('Escribe tu nombre.');
+  if (!/^[a-z0-9._]{3,20}$/.test(username)) fail('El usuario debe tener de 3 a 20 letras, números, puntos o guiones bajos, sin espacios.');
+  if (!validPin(body.pin)) fail('El PIN tiene que tener 4 cifras.');
+  if ((/^(\d)\1{3}$/.test(body.pin) || ['1234', '4321', '0123', '3210', '1212', '2121', '1122', '1313', '2580', '6969', '2000', '2001'].includes(body.pin))) fail('Ese PIN es demasiado fácil. Elige otro.');
+  // Se pide la edad, no la fecha exacta. Por dentro se guarda una fecha aproximada
+  // (hoy menos esos años) para que las franjas +20, +30… sigan funcionando con el tiempo.
+  const age = Math.trunc(Number(body.age));
+  if (!Number.isFinite(age) || age < 1 || age > 100) fail('Revisa tu edad.');
+  if (age < 14) fail('Para apuntarte al ranking hay que tener al menos 14 años.');
+  const [yy, mm, dd] = madridToday().split('-').map(Number);
+  const birth_date = `${yy - age}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+  if (body.accept !== true) fail('Tienes que aceptar la política de privacidad y las normas.');
+  const wa = waPhone(body.phone);
+  if (!wa) fail('Revisa tu móvil de WhatsApp: elige el prefijo del país y escribe el número sin espacios.');
+  const hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
+  const backhand = body.backhand === 'una' ? 'una' : 'dos';
+  const nationality = body.nationality == null || body.nationality === '' ? null : okNation(body.nationality) ? body.nationality : fail('Elige tu nacionalidad de la lista.');
+  const attrs = R.checkAttrs(body.attrs);
+  if (!attrs) fail('Valora cada golpe entre 50 y 99.');
+  const lvl = R.levelFromAttrs(attrs);
+  const [dupU] = await sql`select 1 from players where username = ${username}`;
+  if (dupU) fail('Ese usuario ya existe. Prueba con otro.');
+  const [dupP] = await sql`select active from players where phone = ${wa}`;
+  if (dupP) fail(dupP.active ? 'Ya hay una cuenta con ese móvil. Si es tuya, pide en el club que te cambien el PIN.'
+    : 'Ese móvil ya se usó en una cuenta dada de baja. Pide en el club que la reactiven.');
+  const isAdmin = (process.env.ADMIN_USERNAME || '').toLowerCase().split(',').map((s) => s.trim()).includes(username);
+  const [p] = await sql`insert into players (username, full_name, pin_hash, birth_date, hand, backhand, attrs, start_level, level, is_admin, phone, wa_consent, wa_consent_at, wa_consent_src, nationality)
+    values (${username}, ${full_name}, ${hashPin(body.pin)}, ${birth_date}, ${hand}, ${backhand}, ${sql.json(attrs)}, ${lvl}, ${lvl}, ${isAdmin}, ${wa}, true, ${new Date()}, 'app', ${nationality})
+    returning *`;
+  await sql`insert into feed (kind, actor, data) values ('new_player', ${p.id}, ${sql.json({ level: lvl })})`;
+  if (body.lang === 'en') { try { await sql`update players set lang = 'en' where id = ${p.id}`; p.lang = 'en'; } catch (e) {} }
+  return { token: signSession(p.id, p.session_v), me: selfView(p) };
+});
+
+on('POST', 'login', async ({ body }) => {
+  const sql = db();
+  const username = String(body.username || '').trim().toLowerCase();
+  const [p] = await sql`select * from players where username = ${username}`;
+  if (p && p.locked_until && new Date(p.locked_until) > new Date()) {
+    const min = Math.ceil((new Date(p.locked_until) - Date.now()) / 60000);
+    fail(`Demasiados intentos. Prueba otra vez dentro de ${min} min, o pide en el club que te cambien el PIN.`, 429);
+  }
+  const ok = p && checkPin(String(body.pin || ''), p.pin_hash);
+  if (!ok) {
+    if (p) {
+      const fails = p.failed_logins + 1;
+      if (fails >= LOCK_FAILS) await sql`update players set failed_logins = 0, locked_until = now() + ${LOCK_MIN + ' minutes'}::interval where id = ${p.id}`;
+      else await sql`update players set failed_logins = ${fails} where id = ${p.id}`;
+    }
+    fail('Usuario o PIN incorrectos.', 401);
+  }
+  if (!p.active) fail('Esta cuenta está desactivada. Habla con el club.', 403);
+  await sql`update players set failed_logins = 0, locked_until = null where id = ${p.id}`;
+  return { token: signSession(p.id, p.session_v), me: { ...selfView(p), card_locked: await cardLocked(db(), p.id) } };
+});
+
+on('POST', 'forgot', async () => {
+  // Ya no se piden emails en el alta, así que el PIN lo cambia el club desde el panel.
+  fail('Pide en el club que te cambien el PIN: lo hacemos en un momento desde el panel.');
+});
+
+on('GET', 'me', async ({ req }) => {
+  const uid = sessionUid(req).u;
+  const sql = db();
+  const [p, S, [todo], [board]] = await Promise.all([auth(req), season(sql), sql`select
+      (select count(*) from challenges where status = 'pending' and proposed_by <> ${uid} and (challenger = ${uid} or challenged = ${uid}))::int as respond,
+      (select count(*) from matches where status = 'pending' and reported_by <> ${uid} and (p1 = ${uid} or p2 = ${uid}))::int as confirm,
+      (select count(*) from challenges c where c.status = 'accepted' and (c.challenger = ${uid} or c.challenged = ${uid})
+         and c.play_at::date <= ${madridToday()}::date
+         and not exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')))::int as report,
+      (select count(*) from challenges c where (c.challenger = ${uid} or c.challenged = ${uid}) and exists (select 1 from chat h
+         where h.challenge_id = c.id and h.sender is distinct from ${uid}
+           and h.created_at > coalesce(case when c.challenger = ${uid} then c.seen_a else c.seen_b end, 'epoch')))::int as chat`,
+    boardNews(sql, uid),
+  ]);
+  const locked = await cardLocked(sql, uid);
+  // Actividad: última entrada y un registro por día (solo lo ve el club en su panel)
+  try {
+    await Promise.all([sql`update players set last_seen = now() where id = ${uid}`,
+      sql`insert into player_days (player, day) values (${uid}, ${madridToday()}) on conflict do nothing`]);
+  } catch (e) {}
+  return { me: { ...selfView(p), card_locked: locked }, season: seasonView(S), todo: todo.respond + todo.confirm + todo.report + todo.chat, chat: todo.chat, board: board.n };
+});
+function seasonView(S) {
+  const today = madridToday();
+  // días de la fase regular (los Másters van después)
+  const total = Math.round((new Date(S.ends_on) - new Date(S.starts_on)) / 864e5) + 1;
+  const day = Math.round((new Date(today) - new Date(S.starts_on)) / 864e5) + 1;
+  return { name: S.name, starts_on: S.starts_on, ends_on: S.ends_on, masters_end: S.masters_end, phase: S.phase, min_matches: S.min_matches,
+    day: Math.max(0, Math.min(day, total)), total, started: today >= S.starts_on, regularOver: today > S.ends_on,
+    opensOn: addDays(String(S.starts_on), -OPEN_DAYS_BEFORE), challengesOpen: today >= addDays(String(S.starts_on), -OPEN_DAYS_BEFORE) };
+}
+
+on('POST', 'me', async ({ req, body }) => {
+  const p = await auth(req);
+  const sql = db();
+  const upd = {};
+  if (body.lang) {   // idioma de la app y de los emails
+    try { await sql`update players set lang = ${okLang(body.lang)} where id = ${p.id}`; p.lang = okLang(body.lang); } catch (e) {}
+  }
+  if (typeof body.full_name === 'string') {
+    const n = body.full_name.trim().replace(/\s+/g, ' ');
+    if (n.length < 2 || n.length > 60) fail('Escribe tu nombre.');
+    upd.full_name = n;
+  }
+  if (typeof body.username === 'string') {
+    const u = body.username.trim().toLowerCase();
+    if (u !== p.username) {
+      if (!/^[a-z0-9._]{3,20}$/.test(u)) fail('El usuario debe tener de 3 a 20 letras, números, puntos o guiones bajos, sin espacios.');
+      const [dup] = await sql`select 1 from players where username = ${u}`;
+      if (dup) fail('Ese usuario ya existe. Prueba con otro.');
+      upd.username = u;
+    }
+  }
+  if ('card_name' in body) {
+    const cn = String(body.card_name || '').trim().replace(/\s+/g, ' ');
+    if (!cn) upd.card_name = null;                       // vacío: se vuelve al automático
+    else if (cn.length > 18 || !/^[\p{L}\p{M}0-9 .'’-]+$/u.test(cn)) fail('El nombre de la tarjeta: hasta 18 caracteres, solo letras, puntos y guiones.');
+    else upd.card_name = cn;
+  }
+  if (typeof body.phone === 'string') {
+    const wa = waPhone(body.phone);
+    if (!wa) fail('Revisa tu móvil de WhatsApp: elige el prefijo del país y escribe el número sin espacios.');
+    if (wa !== p.phone) {
+      const [dup] = await sql`select 1 from players where phone = ${wa} and id <> ${p.id}`;
+      if (dup) fail('Ya hay una cuenta con ese móvil.');
+      upd.phone = wa; upd.wa_consent = true; upd.wa_consent_at = new Date(); upd.wa_consent_src = 'app';
+    }
+  }
+  if ('nationality' in body) {
+    if (!okNation(body.nationality)) fail('Elige tu nacionalidad de la lista.');
+    upd.nationality = body.nationality;
+  }
+  if (body.hand) upd.hand = body.hand === 'zurdo' ? 'zurdo' : 'diestro';
+  if (body.backhand) upd.backhand = body.backhand === 'una' ? 'una' : 'dos';
+  if (body.notify && typeof body.notify === 'object') {
+    upd.notify = {};
+    for (const k of ['challenges', 'results', 'drop', 'reminders']) upd.notify[k] = body.notify[k] !== false;
+  }
+  if ('photo' in body) {
+    if (body.photo === null) { upd.photo = null; }
+    else {
+      const ph = String(body.photo);
+      if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(ph) || ph.length > 150000) fail('La foto no es válida o es demasiado grande.');
+      upd.photo = ph;
+    }
+  }
+  // Lesionado: nadie puede retarle hasta esa fecha (incluida). null = ya está bien.
+  let cancelled = 0;
+  if ('injured_until' in body) {
+    if (body.injured_until === null || body.injured_until === '') upd.injured_until = null;
+    else {
+      const d = String(body.injured_until);
+      const S = await season(sql);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < madridToday()) fail('Elige una fecha a partir de hoy.');
+      if (d > String(S.masters_end).slice(0, 10)) fail(`Elige una fecha antes del ${fmtDay(S.masters_end)}.`);
+      upd.injured_until = d;
+      // los retos que aún nadie ha aceptado se cancelan
+      const c = await sql`update challenges set status = 'cancelled', updated_at = now()
+        where status = 'pending' and (challenger = ${p.id} or challenged = ${p.id}) returning id`;
+      cancelled = c.length;
+    }
+  }
+  // La tarjeta (barritas) se puede cambiar hasta que juegues tu primer partido
+  if (body.attrs) {
+    if (await cardLocked(sql, p.id)) fail('Ya has jugado tu primer partido: ahora tus barritas las mueven tus partidos.');
+    const a = R.checkAttrs(body.attrs);
+    if (!a) fail('Valora cada golpe entre 50 y 99.');
+    const lvl = R.levelFromAttrs(a);
+    upd.attrs = sql.json(a); upd.start_level = lvl; upd.level = lvl;
+  }
+  if (!Object.keys(upd).length) return { me: { ...selfView(p), card_locked: await cardLocked(sql, p.id) } };
+  const [u] = await sql`update players set ${sql(upd)}, photo_v = photo_v + ${'photo' in upd ? 1 : 0} where id = ${p.id} returning *`;
+  if (body.attrs) await sql`update feed set data = jsonb_set(data, '{level}', to_jsonb(${Number(u.level)}::numeric)) where kind = 'new_player' and actor = ${p.id}`;
+  return { me: { ...selfView(u), card_locked: await cardLocked(sql, p.id) }, cancelled };
+});
+
+on('POST', 'pin', async ({ req, body }) => {
+  const p = await auth(req);
+  if (!checkPin(String(body.old || ''), p.pin_hash)) fail('El PIN actual no es correcto.');
+  if (!validPin(body.pin)) fail('El PIN nuevo tiene que tener 4 cifras.');
+  const [u] = await db()`update players set pin_hash = ${hashPin(body.pin)}, session_v = session_v + 1 where id = ${p.id} returning *`;
+  return { token: signSession(u.id, u.session_v), me: selfView(u) };
+});
+
+on('POST', 'me/delete', async ({ req, body }) => {
+  const p = await auth(req);
+  if (!checkPin(String(body.pin || ''), p.pin_hash)) fail('El PIN no es correcto.');
+  await anonymize(db(), p.id);
+  return { ok: true };
+});
+/** Borra los datos personales. Los partidos se quedan (cuentan para los rivales) con el nombre «Jugador eliminado». */
+async function anonymize(sql, id) {
+  await sql.begin(async (tx) => {
+    await tx`update challenges set status = 'cancelled', updated_at = now() where status in ('pending','accepted') and (challenger = ${id} or challenged = ${id})`;
+    await tx`update players set full_name = 'Jugador eliminado', username = ${'eliminado_' + id.slice(0, 8)}, email = ${'eliminado-' + id + '@invalid'},
+      pin_hash = 'deleted', photo = null, active = false, is_admin = false, session_v = session_v + 1, notify = '{}'::jsonb,
+      birth_date = '1900-01-01', reset_hash = null,
+      phone = null, wa_consent = false, wa_consent_at = null, wa_consent_src = null
+      where id = ${id}`;
+    await tx`delete from comments where author = ${id}`;
+    await tx`delete from feed where (actor = ${id} or target = ${id}) and kind in ('new_player','admin','challenge','accepted')`;
+    await tx`delete from likes where player = ${id}`;
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Ranking y perfiles
+   ════════════════════════════════════════════════════════════════════ */
+const rowView = (r) => ({ id: r.id, full_name: r.full_name, username: r.username, level: r.level, photo_v: r.photo_v,
+  // lo justo para pintar la carta al instante al abrir la ficha (la edad, solo la franja)
+  attrs: R.shownAttrs(r.attrs, r.start_level, r.level), start_level: Number(r.start_level), hand: r.hand, backhand: r.backhand,
+  ageTag: R.ageTag(R.ageOn(r.birth_date, new Date(madridToday() + 'T12:00:00Z'))),
+  pts: r.pts, pj: r.pj, won: r.won, pos: r.pos, zone: r.zone, missing: r.missing ?? 0, provisional: r.provisional, injured: injuredUntil(r), nat: natOf(r) });
+
+on('GET', 'ranking', async ({ req }) => {
+  const [me, st, used] = await Promise.all([auth(req), standings(), promoUsed(db())]);
+  return { season: seasonView(st.S), qualified: st.qualified.map(rowView), others: st.others.map(rowView),
+    promo: { total: PROMO_MATCHES, left: Math.max(0, PROMO_MATCHES - used) }, suggest: await suggestRivals(db(), me, st) };
+});
+
+/** «Rivales para ti»: hasta 3 jugadores cerca de tu nivel a los que puedes retar ahora mismo. */
+async function suggestRivals(sql, me, st) {
+  const S = st.S, today = madridToday();
+  if (S.phase !== 'regular' || today < addDays(String(S.starts_on), -OPEN_DAYS_BEFORE) || today > String(S.ends_on) || injuredUntil(me)) return [];
+  const [played, open] = await Promise.all([
+    sql`select case when p1 = ${me.id} then p2 else p1 end as rv, count(*)::int as n from matches
+      where master_id is null and status in ('pending','confirmed','disputed') and (p1 = ${me.id} or p2 = ${me.id}) group by 1`,
+    sql`select case when challenger = ${me.id} then challenged else challenger end as rv from challenges
+      where status in ('pending','accepted') and (challenger = ${me.id} or challenged = ${me.id})`]);
+  const pn = Object.fromEntries(played.map((r) => [r.rv, r.n])), busy = new Set(open.map((r) => r.rv));
+  const cap = R.pairCap(today, S.starts_on);
+  const myLevel = Number(me.level), myAge = ageOf(me);
+  // Edad: los menores, primero con menores; los mayores, con gente de su franja; el resto, a ±15 años.
+  // A un adulto nunca se le sugiere un menor.
+  const group = (a) => (a < 18 ? 'teen' : a >= 55 ? 'senior' : 'adult');
+  const close = (r) => { const a = ageOf(r); return group(a) === group(myAge) && (group(a) !== 'adult' || Math.abs(a - myAge) <= 15); };
+  return [...st.qualified, ...st.others]
+    .filter((r) => r.id !== me.id && !busy.has(r.id) && (pn[r.id] || 0) < cap && !injuredUntil(r) && !bandBlock(st, S, me.id, r.id)
+      && (myAge < 18 || ageOf(r) >= 18))
+    .sort((a, b) => (close(b) - close(a)) || Math.abs(Number(a.level) - myLevel) - Math.abs(Number(b.level) - myLevel) || a.pj - b.pj)
+    .slice(0, 3)
+    .map((r) => ({ id: r.id, full_name: r.full_name, photo_v: r.photo_v, level: Number(r.level), pos: r.pos }));
+}
+
+on('GET', 'player/:id', async ({ req, params }) => {
+  const uid = sessionUid(req).u;
+  const id = checkId(params[0]);
+  const sql = db();
+  const [me, [p], st, recent, [pair]] = await Promise.all([
+    auth(req),
+    sql`select * from players where id = ${id}`,
+    standings(sql),
+    sql`select m.id, m.p1, m.p2, m.winner, m.sets, m.walkover, m.played_on, m.master_id,
+      m.p1_before, m.p1_after, m.p2_before, m.p2_after, a.full_name as n1, b.full_name as n2
+    from matches m join players a on a.id = m.p1 join players b on b.id = m.p2
+    where m.status = 'confirmed' and (m.p1 = ${id} or m.p2 = ${id}) order by m.played_on desc, m.id desc limit 10`,
+    id === uid ? [null] : sql`select
+        (select count(*) from matches where master_id is null and status in ('pending','confirmed','disputed')
+           and ((p1 = ${uid} and p2 = ${id}) or (p1 = ${id} and p2 = ${uid})))::int as played,
+        (select id from challenges where status in ('pending','accepted')
+           and ((challenger = ${uid} and challenged = ${id}) or (challenger = ${id} and challenged = ${uid})) limit 1) as open_id`,
+  ]);
+  if (!p || (!p.active && !me.is_admin)) fail('Jugador no encontrado.', 404);
+  // Insignias de sus rivales: solo cuando ya tiene 3 valoraciones (para que no se sepa quién votó qué)
+  let badges = [];
+  try {
+    const fb = await sql`select count(*)::int as n, coalesce(sum((tags @> '{fair}')::int), 0)::int as fair, coalesce(sum((tags @> '{punctual}')::int), 0)::int as punctual,
+      coalesce(sum((tags @> '{vibe}')::int), 0)::int as vibe, coalesce(sum((tags @> '{great}')::int), 0)::int as great from match_feedback where ratee = ${id}`;
+    if (fb[0] && fb[0].n >= 3) badges = FB_TAGS.map((t) => [t, fb[0][t]]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  } catch (e) {}
+  const row = [...st.qualified, ...st.others].find((r) => r.id === id) || { pts: 0, pj: 0, won: 0, pos: null, zone: null, missing: st.S.min_matches };
+  const out = {
+    player: {
+      id: p.id, full_name: p.full_name, card_name: p.card_name, username: p.username, hand: p.hand, backhand: p.backhand,
+      level: Number(p.level), start_level: Number(p.start_level), attrs: R.shownAttrs(p.attrs, p.start_level, p.level),
+      photo_v: p.photo_v, ageTag: R.ageTag(ageOf(p)), since: String(p.created_at.toISOString?.() || p.created_at).slice(0, 10),
+      pos: row.pos, zone: row.zone, pts: row.pts, pj: row.pj, won: row.won, missing: row.missing ?? 0,
+      provisional: (st.count[id] || 0) < R.PROV_MATCHES, matches_total: st.count[id] || 0, injured: injuredUntil(p), nat: natOf(p), badges,
+    },
+    recent: recent.map((m) => {
+      const mine = m.p1 === id;
+      return { id: m.id, rival: mine ? m.n2 : m.n1, rival_id: mine ? m.p2 : m.p1, won: m.winner === id,
+        score: R.fmtSets(m.sets, !mine), walkover: m.walkover, played_on: m.played_on, master: !!m.master_id,
+        delta: Number(mine ? m.p1_after - m.p1_before : m.p2_after - m.p2_before) };
+    }),
+    season: seasonView(st.S),
+  };
+  if (id !== me.id) {
+    out.vs = {
+      pairLeft: Math.max(0, R.PAIR_CAP_LATE - pair.played - (pair.open_id ? 1 : 0)),
+      rematchFrom: pair.played >= R.PAIR_CAP && pair.played < R.PAIR_CAP_LATE && R.pairCap(madridToday(), st.S.starts_on) <= pair.played ? revengeDay(st.S) : null,
+      openChallenge: pair.open_id ? Number(pair.open_id) : null,
+      stakes: stakes(me, st.count[me.id] || 0, p, st.count[id] || 0, st.S),
+      canChallenge: p.active && st.S.phase === 'regular',
+      meInjured: injuredUntil(me),
+      bandBlock: bandBlock(st, st.S, me.id, id),
+    };
+  }
+  return out;
+});
+
+// Diagnóstico de velocidad: región del servidor y lo que tarda la base de datos en contestar
+on('GET', 'ping', async () => {
+  const sql = db();
+  const t = Date.now(); await sql`select 1`; const first = Date.now() - t;
+  const t2 = Date.now(); await sql`select 1`; const second = Date.now() - t2;
+  // Comprobación del esquema: si falta algo, el alta fallará con «Error del servidor».
+  const want = { players: ['lang', 'phone', 'wa_consent', 'wa_consent_at', 'wa_consent_src', 'band_bonus', 'card_name', 'feed_seen_at'], challenges: ['day_reminded'] };
+  const falta = [];
+  const cols = await sql`select table_name, column_name, is_nullable from information_schema.columns
+    where table_schema = 'public' and table_name in ('players','challenges')`;
+  const have = new Set(cols.map((c) => `${c.table_name}.${c.column_name}`));
+  for (const [tb, list] of Object.entries(want)) for (const c of list) if (!have.has(`${tb}.${c}`)) falta.push(`${tb}.${c}`);
+  const emailRow = cols.find((c) => c.table_name === 'players' && c.column_name === 'email');
+  if (emailRow && emailRow.is_nullable === 'NO') falta.push('players.email sigue siendo obligatoria');
+  return {
+    region: process.env.AWS_REGION || process.env.NETLIFY_REGION || '?', dbFirstMs: first, dbMs: second,
+    esquema: falta.length ? 'FALTA EJECUTAR EL SQL' : 'al día',
+    falta,
+    whatsapp: { token: !!process.env.WHATSAPP_TOKEN, phoneId: !!process.env.WHATSAPP_PHONE_ID },
+  };
+});
+
+on('GET', 'photo/:id', async ({ params }) => {
+  const id = checkId(params[0]);
+  const [p] = await db()`select photo from players where id = ${id}`;
+  if (!p || !p.photo) return new Response('', { status: 404 });
+  const [, mime, data] = p.photo.match(/^data:(image\/[a-z]+);base64,(.+)$/) || [];
+  if (!data) return new Response('', { status: 404 });
+  return new Response(Buffer.from(data, 'base64'), { headers: { 'Content-Type': mime, 'Cache-Control': 'public, max-age=31536000, immutable' } });
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   Retos
+   ════════════════════════════════════════════════════════════════════ */
+const CH_SELECT = (sql) => sql`select c.*, c.play_at::text as play_at, a.full_name as challenger_name, b.full_name as challenged_name
+  from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged`;
+
+on('POST', 'challenge', async ({ req, body, out }) => {
+  const me = await auth(req);
+  const sql = db();
+  const S = await season(sql);
+  if (S.phase !== 'regular') fail('La fase regular ha terminado: ya no se pueden crear retos.');
+  const opens = addDays(String(S.starts_on), -OPEN_DAYS_BEFORE);
+  if (madridToday() < opens) fail(`Los retos se abren el ${fmtDay(opens)}.`);
+  const to = checkId(String(body.to || ''));
+  if (to === me.id) fail('No puedes retarte a ti mismo.');
+  const at = checkWhen(body.date, body.time, S);
+  const [rv] = await sql`select * from players where id = ${to} and active`;
+  if (!rv) fail('Ese jugador no está disponible.');
+  if (injuredUntil(me)) fail(`Estás marcado como lesionado hasta el ${fmtDay(injuredUntil(me))}. Si ya estás bien, cámbialo en tu perfil.`);
+  if (injuredUntil(rv)) fail(`${firstName(rv.full_name)} está lesionado hasta el ${fmtDay(injuredUntil(rv))}. Podrás retarle después.`);
+  const message = String(body.message || '').trim().slice(0, 500) || null;   // va como primer mensaje del chat
+  const duty = ['balls', 'court'].includes(body.duty) ? body.duty : fail('Elige si llevas tú las bolas o reservas tú la pista.');
+  const blocked = bandBlock(await standings(sql), S, me.id, to);
+  if (blocked) fail(blocked);
+  await checkSlot(sql, at);
+  const ch = await sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(hashtext(${[me.id, to].sort().join('|')}))`;
+    const [chk] = await tx`select
+        (select count(*) from challenges where status in ('pending','accepted')
+          and ((challenger = ${me.id} and challenged = ${to}) or (challenger = ${to} and challenged = ${me.id})))::int as open,
+        (select count(*) from matches where master_id is null and status in ('pending','confirmed','disputed')
+          and ((p1 = ${me.id} and p2 = ${to}) or (p1 = ${to} and p2 = ${me.id})))::int as played,
+        (select count(*) from challenges where status = 'pending' and challenger = ${me.id})::int as mine`;
+    if (chk.open) fail(`Ya tienes un reto abierto con ${firstName(rv.full_name)}.`);
+    if (chk.played >= R.PAIR_CAP_LATE) fail('Ya habéis jugado la ida y la revancha. Esta temporada no se puede repetir más.');
+    if (chk.played >= R.pairCap(body.date, S.starts_on)) fail(`Ya habéis jugado. La revancha se puede jugar desde el ${fmtDay(revengeDay(S))}.`);
+    if (chk.mine >= OPEN_LIMIT) fail(`Tienes ${OPEN_LIMIT} retos esperando respuesta. Espera a que te contesten.`);
+    const [c] = await tx`insert into challenges (challenger, challenged, play_at, proposed_by, token, duty, seen_a)
+      values (${me.id}, ${to}, ${at}, ${me.id}, ${randomToken()}, ${duty}, now()) returning *, play_at::text as play_at`;
+    if (message) await tx`insert into chat (challenge_id, sender, body) values (${c.id}, ${me.id}, ${message})`;
+    c.message = message;
+    await tx`insert into feed (kind, actor, target, data) values ('challenge', ${me.id}, ${to}, ${tx.json({ challenge: c.id })})`;
+    return c;
+  });
+  if (wants(rv, 'challenges')) {
+    const st = await standings(sql);
+    out.push(() => challengeMail(ch, rv, me, st, false));
+    out.push(() => waChallenge(rv, me, new Date(new Date(ch.created_at).getTime() + CHALLENGE_DAYS * 864e5), ch.play_at));
+  }
+  return { challenge: { id: Number(ch.id) } };
+});
+
+function challengeMail(c, to, from, st, isCounter, reminder = false) {
+  const s = stakes(to, st.count[to.id] || 0, from, st.count[from.id] || 0, st.S);
+  const fn = esc(from.full_name);
+  return mail(to.email, (reminder ? 'Recordatorio: ' : '') + (isCounter ? `${firstName(from.full_name)} propone otra hora` : `${from.full_name} te ha retado`), {
+    lines: [isCounter ? `<b>${fn}</b> no puede a la hora que dijiste y propone otra:` : `<b>${fn}</b> (nivel ${Math.round(from.level)}) quiere jugar contigo:`,
+      c.message ? `«${esc(c.message)}»` : ''].filter(Boolean),
+    highlight: { big: esc(cap(fmtWhen(c.play_at))), small: stakesLine(s) },
+    buttons: [
+      { label: 'Acepto', url: actUrl('c', c.id, c.token, 'accept') },
+      { label: 'Otra hora', url: appUrl(`reto/${c.id}`), style: 'ghost' },
+      { label: 'No puedo', url: actUrl('c', c.id, c.token, 'reject'), style: 'ghost' },
+    ],
+    foot: `Si aceptas, reservad pista en el club. El reto caduca a los ${CHALLENGE_DAYS} días si nadie responde.`,
+  });
+}
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+on('GET', 'retos', async ({ req }) => {
+  const uid = sessionUid(req).u;
+  const sql = db();
+  const [me, S, chs, nodes, rounds] = await Promise.all([auth(req), season(sql), sql`select c.id, c.challenger, c.challenged, c.play_at::text as play_at, c.proposed_by, c.counters, c.message, c.status,
+      c.walkover, c.promo, c.updated_at, c.duty, c.post_at::text as post_at, c.post_by, c.post_reason, a.full_name as challenger_name,
+      (select count(*) from chat h where h.challenge_id = c.id and h.sender is distinct from ${uid}
+         and h.created_at > coalesce(case when c.challenger = ${uid} then c.seen_a else c.seen_b end, 'epoch'))::int as unread,
+      (select count(*) from chat h where h.challenge_id = c.id)::int as msgs,
+      (select h.body from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_msg,
+      (select h.sender is null from chat h where h.challenge_id = c.id order by h.id desc limit 1) as last_sys,
+      exists (select 1 from match_feedback f join matches mm on mm.id = f.match_id where mm.challenge_id = c.id and f.rater = ${uid}) as fb_done, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
+      m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner,
+      m.p1 as match_p1, m.p1_before as match_p1b, m.p1_after as match_p1a, m.p2_before as match_p2b, m.p2_after as match_p2a
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
+    left join lateral (select * from matches mm where mm.challenge_id = c.id and mm.status <> 'annulled' order by mm.id desc limit 1) m on true
+    where (c.challenger = ${uid} or c.challenged = ${uid})
+      and (c.status in ('pending','accepted') or c.updated_at > now() - interval '14 days')
+    order by c.play_at`,
+    sql`select n.*, a.full_name as n1, b.full_name as n2,
+      m.id as match_id, m.status as match_status, m.sets as match_sets, m.reported_by as match_reporter, m.winner as match_winner
+    from masters n left join players a on a.id = n.p1 left join players b on b.id = n.p2
+    left join lateral (select * from matches mm where mm.master_id = n.id and mm.status <> 'annulled' order by mm.id desc limit 1) m on true
+    where n.winner is null and n.p1 is not null and n.p2 is not null and (n.p1 = ${uid} or n.p2 = ${uid})`,
+    masterRounds(sql),
+  ]);
+  const today = madridToday();
+  const challenges = chs.map((c) => {
+    const iAmChallenger = c.challenger === me.id;
+    return {
+      id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, walkover: c.walkover, promo: !!c.promo,
+      postpone: c.post_at ? { at: c.post_at, byMe: c.post_by === me.id, reason: c.post_reason } : null,
+      myDuty: dutyOf(c, me.id), lateCancel: lateCancel(c) && S.phase === 'regular', unread: c.unread, msgs: c.msgs, lastMsg: c.last_msg, lastSys: !!c.last_sys, fbDone: !!c.fb_done, updated_at: c.updated_at, chatOpen: chatOpen(c),
+      rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name, photo_v: iAmChallenger ? c.challenged_pv : c.challenger_pv },
+      iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
+      canReport: c.status === 'accepted' && c.play_at.slice(0, 10) <= today && !c.match_id && S.phase === 'regular',
+      match: c.match_id ? { id: Number(c.match_id), status: c.match_status, score: R.fmtSets(c.match_sets, !iAmChallenger),
+        iReported: c.match_reporter === me.id, iWon: c.match_winner === me.id,
+        delta: (c.match_p1 === me.id ? (c.match_p1a != null && c.match_p1b != null ? Number(c.match_p1a) - Number(c.match_p1b) : null)
+                                     : (c.match_p2a != null && c.match_p2b != null ? Number(c.match_p2a) - Number(c.match_p2b) : null)) } : null,
+    };
+  });
+  const masters = nodes.map((n) => {
+    const mine1 = n.p1 === me.id;
+    return { id: Number(n.id), tier: n.tier, round: R.roundName(n.round, rounds[n.tier]),
+      rival: { id: mine1 ? n.p2 : n.p1, name: mine1 ? n.n2 : n.n1 },
+      match: n.match_id ? { id: Number(n.match_id), status: n.match_status, score: R.fmtSets(n.match_sets, !mine1), iReported: n.match_reporter === me.id, iWon: n.match_winner === me.id } : null };
+  });
+  return { challenges, masters, season: seasonView(S) };
+});
+
+/** Lo que le toca a este jugador: 'balls' (lleva bolas) o 'court' (reserva pista). null en retos antiguos. */
+const dutyOf = (c, uid) => (!c.duty ? null : c.challenger === uid ? c.duty : c.duty === 'balls' ? 'court' : 'balls');
+/** El chat se puede usar mientras el reto está vivo y hasta 7 días después de cerrarse. */
+const chatOpen = (c) => ['pending', 'accepted'].includes(c.status) || new Date(c.updated_at) > new Date(Date.now() - 7 * 864e5);
+
+/* Chat del partido (los dos jugadores; también con menores) */
+async function chatChallenge(sql, req, idRaw) {
+  const me = await auth(req);
+  const [c] = await sql`select c.id, c.challenger, c.challenged, c.status, c.updated_at, c.duty, c.play_at::text as play_at, c.promo,
+      a.full_name as challenger_name, b.full_name as challenged_name, a.photo_v as challenger_pv, b.photo_v as challenged_pv,
+      exists (select 1 from matches m where m.challenge_id = c.id and m.status in ('pending','confirmed','disputed')) as has_match
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged where c.id = ${checkNum(idRaw)}`;
+  if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+  return { me, c };
+}
+on('GET', 'challenge/:id/chat', async ({ req, params }) => {
+  const sql = db();
+  const { me, c } = await chatChallenge(sql, req, params[0]);
+  const mine = c.challenger === me.id;
+  const [msgs] = await Promise.all([
+    sql`select id, sender, body, created_at from chat where challenge_id = ${c.id} order by id limit 300`,
+    mine ? sql`update challenges set seen_a = now() where id = ${c.id}` : sql`update challenges set seen_b = now() where id = ${c.id}`,
+  ]);
+  return {
+    challenge: { id: Number(c.id), status: c.status, play_at: c.play_at, promo: !!c.promo, myDuty: dutyOf(c, me.id), open: chatOpen(c),
+      iAmChallenger: mine, canCancel: ['pending', 'accepted'].includes(c.status) && !c.has_match, lateCancel: lateCancel(c),
+      rival: { id: mine ? c.challenged : c.challenger, name: mine ? c.challenged_name : c.challenger_name, photo_v: mine ? c.challenged_pv : c.challenger_pv } },
+    messages: msgs.map((m) => ({ id: Number(m.id), mine: m.sender === me.id, sys: m.sender === null, body: m.body, at: m.created_at })),
+  };
+});
+on('POST', 'challenge/:id/chat', async ({ req, params, body }) => {
+  const sql = db();
+  const { me, c } = await chatChallenge(sql, req, params[0]);
+  if (!chatOpen(c)) fail('Este chat ya está cerrado.');
+  const text = String(body.body || '').trim().replace(/\n{3,}/g, '\n\n');
+  if (!text) fail('Escribe algo.');
+  if (text.length > 500) fail('Máximo 500 caracteres.');
+  const [{ n }] = await sql`select count(*)::int as n from chat where challenge_id = ${c.id} and sender = ${me.id} and created_at > now() - interval '1 hour'`;
+  if (n >= 40) fail('Demasiados mensajes seguidos. Espera un poco.');
+  const [m] = await sql`insert into chat (challenge_id, sender, body) values (${c.id}, ${me.id}, ${text}) returning id, created_at`;
+  if (c.challenger === me.id) await sql`update challenges set seen_a = now() where id = ${c.id}`;
+  else await sql`update challenges set seen_b = now() where id = ${c.id}`;
+  return { message: { id: Number(m.id), mine: true, body: text, at: m.created_at } };
+});
+
+/* Retos creados antes de existir esta opción: cualquiera de los dos puede decir qué pone (una vez) */
+on('POST', 'challenge/:id/duty', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const mine = ['balls', 'court'].includes(body.mine) ? body.mine : fail('Elige si llevas tú las bolas o reservas tú la pista.');
+  const [c] = await sql`select id, challenger, challenged, status, duty from challenges where id = ${checkNum(params[0])}`;
+  if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+  if (!['pending', 'accepted'].includes(c.status)) fail('Este reto ya no está abierto.');
+  const duty = c.challenger === me.id ? mine : mine === 'balls' ? 'court' : 'balls';
+  const [u] = await sql`update challenges set duty = ${duty} where id = ${c.id} and duty is null returning id`;
+  if (!u) fail('Tu rival ya lo ha elegido. Míralo en el reto.');
+  return { myDuty: mine };
+});
+
+on('GET', 'challenge/:id', async ({ req, params }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [c] = await sql`${CH_SELECT(sql)} where c.id = ${id}`;
+  if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+  const iAmChallenger = c.challenger === me.id;
+  return {
+    challenge: {
+      id: Number(c.id), status: c.status, play_at: c.play_at, message: c.message, counters: c.counters, myDuty: dutyOf(c, me.id),
+      rival: { id: iAmChallenger ? c.challenged : c.challenger, name: iAmChallenger ? c.challenged_name : c.challenger_name },
+      iAmChallenger, myTurn: c.status === 'pending' && c.proposed_by !== me.id,
+      countersLeft: COUNTER_LIMIT - c.counters,
+    },
+  };
+});
+on('POST', 'challenge/:id/respond', async ({ req, params, body, out }) => {
+  const me = await auth(req);
+  return respond(db(), checkNum(params[0]), me, String(body.action || ''), body, out);
+});
+
+async function respond(sql, id, me, action, body, out) {
+  const S = await season(sql);
+  let result;
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (c.status === 'pending' && new Date(c.created_at) < new Date(Date.now() - CHALLENGE_DAYS * 864e5)) {
+      await tx`update challenges set status = 'expired', updated_at = now() where id = ${id}`;
+      fail('Este reto ha caducado.');
+    }
+    if (c.status !== 'pending') fail(c.status === 'accepted' ? 'Este reto ya está aceptado.' : 'Este reto ya no está abierto.');
+    if (c.proposed_by === me.id) fail('Te toca esperar a que responda tu rival.');
+    const P = await playersById(tx, [c.challenger, c.challenged]);
+    const other = P[c.challenger === me.id ? c.challenged : c.challenger];
+    if (action === 'accept') {
+      // los primeros PROMO_MATCHES retos aceptados (y no cancelados) llevan pista y bolas gratis
+      await tx`select pg_advisory_xact_lock(hashtext('promo'))`;
+      await tx`select pg_advisory_xact_lock(hashtext(${'slot ' + c.play_at.slice(0, 16)}))`;
+      await checkSlot(tx, c.play_at, c.id);
+      const promo = S.phase === 'regular' && (await promoUsed(tx)) < PROMO_MATCHES;
+      await tx`update challenges set status = 'accepted', promo = ${promo}, responded_by = ${me.id}, updated_at = now() where id = ${id}`;
+      c.promo = promo;
+      await tx`insert into feed (kind, actor, target, data) values ('accepted', ${c.challenger}, ${c.challenged}, ${tx.json({ challenge: c.id, play_at: c.play_at })})`;
+      for (const p of [P[c.challenger], P[c.challenged]]) {
+        if (!wants(p, 'challenges')) continue;
+        const rival = p.id === c.challenger ? P[c.challenged] : P[c.challenger];
+        if (p.id !== me.id) out.push(() => waConfirmed(p, rival, c.play_at));   // solo a quien no ha aceptado (el otro ya lo sabe)
+        out.push(() => mail(p.email, `Partido confirmado con ${firstName(rival.full_name)}`, {
+          lines: [`Jugáis <b>${esc(firstName(P[c.challenger].full_name))}</b> contra <b>${esc(firstName(P[c.challenged].full_name))}</b>:`],
+          highlight: { big: esc(cap(fmtWhen(c.play_at))), small: promo ? '¡Premio! Pista y bolas gratis: sois de los 5 primeros partidos. Reservad pista en el club.' : 'Almuñécar Tennis Club. Reservad pista en el club.' },
+          buttons: [{ label: 'Ver el reto', url: appUrl('retos') }],
+          foot: 'Después del partido, uno de los dos pone el resultado en la app y el otro lo confirma.',
+        }));
+      }
+      result = { status: 'accepted', promo };
+    } else if (action === 'counter') {
+      if (c.counters >= COUNTER_LIMIT) fail('Ya habéis cambiado la hora 3 veces. Habladlo directamente y que uno cree un reto nuevo.');
+      const at = checkWhen(body.date, body.time, S);
+      await checkSlot(tx, at);
+      const [u] = await tx`update challenges set play_at = ${at}, proposed_by = ${me.id}, counters = counters + 1, token = ${randomToken()},
+        reminded = false, updated_at = now() where id = ${id} returning *, play_at::text as play_at`;
+      if (wants(other, 'challenges')) {
+        const st = await standings(tx);
+        out.push(() => challengeMail(u, other, me, st, true));
+        out.push(() => waCounter(other, me, u.play_at));
+      }
+      result = { status: 'pending' };
+    } else if (action === 'reject') {
+      if (me.id === c.challenger) {
+        await tx`update challenges set status = 'cancelled', responded_by = ${me.id}, updated_at = now() where id = ${id}`;
+        if (wants(other, 'challenges')) out.push(() => mail(other.email, `${firstName(me.full_name)} no puede a esa hora`, {
+          lines: [`<b>${esc(me.full_name)}</b> no puede jugar a la hora que propusiste y el reto se ha cancelado.`, 'Podéis crear otro reto cuando queráis.'],
+          buttons: [{ label: 'Abrir el ranking', url: appUrl('') }],
+        }));
+        result = { status: 'cancelled' };
+      } else {
+        await tx`update challenges set status = 'rejected', responded_by = ${me.id}, updated_at = now() where id = ${id}`;
+        if (wants(other, 'challenges')) out.push(() => mail(other.email, `${firstName(me.full_name)} no puede jugar`, {
+          lines: [`<b>${esc(me.full_name)}</b> no puede jugar el ${esc(fmtWhen(c.play_at))}.`, 'Puedes retar a otro jugador, o volver a retarle otro día.'],
+          buttons: [{ label: 'Ver la clasificación', url: appUrl('') }],
+        }));
+        result = { status: 'rejected' };
+      }
+    } else fail('Acción no válida.');
+  });
+  return result;
+}
+
+/* ── Cancelar un partido ─────────────────────────────────────────────
+   Cualquiera de los dos puede cancelar. Un partido aceptado que se cancela con menos de
+   LATE_CANCEL_H horas (o ya pasada la hora) cuenta como derrota 6-0 6-0 para quien cancela.
+   El club puede cancelar cualquier partido sin penalización. */
+const LATE_CANCEL_H = 2;
+const minsTo = (playAt) => (Date.parse(String(playAt).slice(0, 16).replace(' ', 'T') + ':00Z') - Date.parse(madridNow().replace(' ', 'T') + ':00Z')) / 60000;
+const lateCancel = (c) => c.status === 'accepted' && minsTo(c.play_at) < LATE_CANCEL_H * 60;
+/** Mensaje del sistema en el chat; quien lo provoca ya lo ha «leído» (no le cuenta como nuevo). */
+async function sysChat(tx, chId, text, actorId = null) {
+  await tx`insert into chat (challenge_id, sender, body) values (${chId}, null, ${text})`;
+  if (actorId) await tx`update challenges set seen_a = case when challenger = ${actorId} then now() else seen_a end,
+    seen_b = case when challenged = ${actorId} then now() else seen_b end where id = ${chId}`;
+}
+
+async function cancelChallenge(sql, id, me, { admin = false, acceptLoss = false } = {}, out) {
+  const S = await season(sql);
+  let res;
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
+    if (!c || (!admin && c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (!['pending', 'accepted'].includes(c.status)) fail('Este partido ya no está abierto.');
+    const [hasMatch] = await tx`select 1 from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
+    if (hasMatch) fail('Este partido ya tiene un resultado.');
+    const name = admin ? 'El club' : firstName(me.full_name);
+    const late = !admin && lateCancel(c) && S.phase === 'regular';
+    // Aviso por WhatsApp: al rival (o a los dos si cancela el club)
+    const P = await playersById(tx, [c.challenger, c.challenged]);
+    for (const p of Object.values(P)) {
+      if (!p || (!admin && p.id === me.id) || !wants(p, 'challenges')) continue;
+      out.push(() => waCancelled(p, admin ? null : me.full_name, c.play_at));
+    }
+    if (late && !acceptLoss) fail(`Quedan menos de ${LATE_CANCEL_H} horas: si cancelas ahora, pierdes 6-0 6-0.`, 409);
+    if (late) {
+      // derrota 6-0 6-0 para quien cancela (marcador desde p1 = quien retó)
+      const iAmP1 = c.challenger === me.id;
+      const winner = iAmP1 ? c.challenged : c.challenger;
+      const sets = iAmP1 ? [[0, 6], [0, 6]] : [[6, 0], [6, 0]];
+      const [m] = await tx`insert into matches (challenge_id, p1, p2, sets, winner, walkover, reported_by, played_on)
+        values (${id}, ${c.challenger}, ${c.challenged}, ${tx.json(sets)}, ${winner}, true, ${me.id}, ${c.play_at.slice(0, 10)}) returning *`;
+      await tx`update challenges set walkover = true, responded_by = ${me.id} where id = ${id}`;
+      await sysChat(tx, id, `${name} ha cancelado con menos de ${LATE_CANCEL_H} horas: el partido cuenta como 6-0 6-0 para su rival.`, me && me.id);
+      await confirmMatch(tx, m, out);
+      res = { status: 'done', walkover: true };
+    } else {
+      const st = admin || c.challenger === me.id || c.status === 'accepted' ? 'cancelled' : 'rejected';
+      await tx`update challenges set status = ${st}, responded_by = ${admin ? null : me.id}, post_at = null, post_by = null, post_reason = null, updated_at = now() where id = ${id}`;
+      await sysChat(tx, id, c.status === 'accepted' ? `${name} ha cancelado el partido.` : `${name} ha cancelado el reto.`, admin ? null : me.id);
+      res = { status: st };
+    }
+  });
+  return res;
+}
+on('POST', 'challenge/:id/cancel', async ({ req, params, body, out }) => {
+  const me = await auth(req);
+  return cancelChallenge(db(), checkNum(params[0]), me, { acceptLoss: body && body.acceptLoss === true }, out);
+});
+/* ── Posponer (mal tiempo o acuerdo mutuo): uno propone nueva fecha y el otro la acepta. Sin penalización. */
+const REASON = { weather: 'mal tiempo', mutual: 'acuerdo mutuo', court: 'no hay pista' };
+on('POST', 'challenge/:id/postpone', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const S = await season(sql);
+  const id = checkNum(params[0]);
+  const reason = ['weather', 'mutual', 'court'].includes(body.reason) ? body.reason : fail('Elige el motivo: mal tiempo, no hay pista o acuerdo mutuo.');
+  const at = checkWhen(body.date, body.time, S);
+  await checkSlot(sql, at, checkNum(params[0]));
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (c.status !== 'accepted') fail('Solo se puede posponer un partido aceptado.');
+    const [hasMatch] = await tx`select 1 from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
+    if (hasMatch) fail('Este partido ya tiene un resultado.');
+    if (c.post_at && c.post_by !== me.id) fail('Tu rival ya ha propuesto una fecha. Respóndele primero.');
+    if (`${body.date} ${body.time}` === c.play_at.slice(0, 16)) fail('Elige una fecha distinta a la actual.');
+    await tx`update challenges set post_at = ${at}, post_by = ${me.id}, post_reason = ${reason} where id = ${id}`;
+    await sysChat(tx, id, `${firstName(me.full_name)} propone posponer el partido (${REASON[reason]}) al ${fmtWhen(at)}.`, me && me.id);
+  });
+  return { ok: true };
+});
+on('POST', 'challenge/:id/postpone/answer', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const S = await season(sql);
+  const id = checkNum(params[0]);
+  let res;
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at, post_at::text as post_at from challenges where id = ${id} for update`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (!c.post_at) fail('No hay ninguna propuesta para posponer.');
+    const name = firstName(me.full_name);
+    if (body.action === 'withdraw') {
+      if (c.post_by !== me.id) fail('Solo quien la ha propuesto puede retirarla.');
+      await tx`update challenges set post_at = null, post_by = null, post_reason = null where id = ${id}`;
+      await sysChat(tx, id, `${name} ha retirado la propuesta de posponer. El partido sigue el ${fmtWhen(c.play_at)}.`, me && me.id);
+      res = { status: 'withdrawn' };
+    } else if (body.action === 'accept') {
+      if (c.post_by === me.id) fail('La tiene que aceptar tu rival.');
+      checkWhen(c.post_at.slice(0, 10), c.post_at.slice(11, 16), S);   // la fecha propuesta sigue siendo válida
+      await tx`select pg_advisory_xact_lock(hashtext(${'slot ' + c.post_at.slice(0, 16)}))`;
+      await checkSlot(tx, c.post_at, c.id);
+      await tx`update challenges set play_at = post_at, post_at = null, post_by = null, post_reason = null,
+        day_reminded = false, updated_at = now() where id = ${id}`;
+      await sysChat(tx, id, `${name} ha aceptado. Partido pospuesto al ${fmtWhen(c.post_at)}.`, me && me.id);
+      res = { status: 'accepted', play_at: c.post_at };
+    } else if (body.action === 'reject') {
+      if (c.post_by === me.id) fail('La tiene que responder tu rival.');
+      await tx`update challenges set post_at = null, post_by = null, post_reason = null where id = ${id}`;
+      await sysChat(tx, id, `${name} prefiere mantener la fecha: el partido sigue el ${fmtWhen(c.play_at)}.`, me && me.id);
+      res = { status: 'rejected' };
+    } else fail('Acción no válida.');
+  });
+  return res;
+});
+
+on('POST', 'admin/challenge/:id/cancel', async ({ req, params, out }) => {
+  const me = await auth(req, { admin: true });
+  return cancelChallenge(db(), checkNum(params[0]), me, { admin: true }, out);
+});
+
+/* ── Resultados ──────────────────────────────────────────────────────── */
+function setsFromMine(sets, iAmP1) {
+  if (!Array.isArray(sets)) fail('Pon el marcador.');
+  const clean = sets.filter((s) => Array.isArray(s) && s.some((x) => x !== '' && x !== null && x !== undefined))
+    .map((s) => s.map((x) => Number(x)));
+  const p1sets = iAmP1 ? clean : clean.map(([a, b]) => [b, a]);
+  const chk = R.checkSets(p1sets);
+  if (!chk.ok) fail(chk.error);
+  return { sets: p1sets, winnerIdx: chk.winner };
+}
+
+on('POST', 'challenge/:id/result', async ({ req, params, body, out }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const S = await season(sql);
+  if (S.phase !== 'regular') fail('La fase regular ha terminado. Si tienes un resultado pendiente, habla con el club.');
+  let created;
+  await sql.begin(async (tx) => {
+    const [c] = await tx`select *, play_at::text as play_at from challenges where id = ${id} for update`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    if (c.status !== 'accepted') fail('Solo se puede poner el resultado de un reto aceptado.');
+    if (c.play_at.slice(0, 10) > madridToday()) fail('Este partido todavía no se ha jugado.');
+    const [ex] = await tx`select id from matches where challenge_id = ${id} and status in ('pending','confirmed','disputed')`;
+    if (ex) fail('Este partido ya tiene un resultado. Si no es correcto, márcalo como «No estoy de acuerdo».');
+    const { sets, winnerIdx } = setsFromMine(body.sets, me.id === c.challenger);
+    const [m] = await tx`insert into matches (challenge_id, p1, p2, sets, winner, reported_by, token, played_on)
+      values (${id}, ${c.challenger}, ${c.challenged}, ${tx.json(sets)}, ${winnerIdx === 0 ? c.challenger : c.challenged}, ${me.id},
+              ${randomToken()}, ${c.play_at.slice(0, 10)}) returning *`;
+    created = m;
+  });
+  const other = (await playersById(sql, [created.p1 === me.id ? created.p2 : created.p1]));
+  out.push(() => resultToConfirmMail(created, me, Object.values(other)[0]));
+  return { match: { id: Number(created.id), status: 'pending' } };
+});
+
+function resultToConfirmMail(m, reporter, other) {
+  if (!other || !wants(other, 'results')) return;
+  const flip = other.id === m.p2;   // el marcador, visto desde quien confirma
+  const won = m.winner === other.id;
+  return mail(other.email, `Confirma el resultado contra ${firstName(reporter.full_name)}`, {
+    lines: [`<b>${esc(reporter.full_name)}</b> ha puesto este resultado:`],
+    highlight: { big: `${won ? 'Ganas' : 'Pierdes'} ${esc(R.fmtSets(m.sets, flip))}`, small: 'Tu marcador va primero.' },
+    buttons: [
+      { label: 'Confirmar', url: actUrl('m', m.id, m.token, 'confirm') },
+      { label: 'No estoy de acuerdo', url: appUrl('retos'), style: 'ghost' },
+    ],
+    foot: 'Si no respondes en 48 horas, el resultado se da por bueno.',
+  });
+}
+
+/* ── Valoración rápida después del partido (solo etiquetas positivas) y avisos privados al club ── */
+const FB_TAGS = ['fair', 'punctual', 'vibe', 'great'];
+async function matchOf(sql, idRaw, me) {
+  const [m] = await sql`select id, p1, p2, status, challenge_id, created_at from matches where id = ${checkNum(idRaw)}`;
+  if (!m || (m.p1 !== me.id && m.p2 !== me.id)) fail('Partido no encontrado.', 404);
+  return m;
+}
+on('POST', 'match/:id/feedback', async ({ req, params, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const m = await matchOf(sql, params[0], me);
+  if (!['pending', 'confirmed'].includes(m.status)) fail('Este partido ya no se puede valorar.');
+  if (new Date(m.created_at) < new Date(Date.now() - 14 * 864e5)) fail('Ya ha pasado demasiado tiempo para valorar este partido.');
+  const tags = [...new Set((Array.isArray(body.tags) ? body.tags : []).filter((t) => FB_TAGS.includes(t)))];
+  const level = ['higher', 'same', 'lower'].includes(body.level) ? body.level : null;
+  const ratee = m.p1 === me.id ? m.p2 : m.p1;
+  await sql`insert into match_feedback (match_id, rater, ratee, tags, level_cmp) values (${m.id}, ${me.id}, ${ratee}, ${tags}, ${level})
+    on conflict (match_id, rater) do update set tags = excluded.tags, level_cmp = excluded.level_cmp, created_at = now()`;
+  return { ok: true };
+});
+on('POST', 'report', async ({ req, body }) => {
+  const me = await auth(req);
+  const sql = db();
+  const text = String(body.body || '').trim();
+  if (!text) fail('Cuéntanos brevemente qué ha pasado.');
+  if (text.length > 1000) fail('Máximo 1000 caracteres.');
+  let matchId = null, chId = null, about = null;
+  if (body.match) { const m = await matchOf(sql, String(body.match), me); matchId = m.id; chId = m.challenge_id; about = m.p1 === me.id ? m.p2 : m.p1; }
+  else if (body.challenge) {
+    const [c] = await sql`select id, challenger, challenged from challenges where id = ${checkNum(String(body.challenge))}`;
+    if (!c || (c.challenger !== me.id && c.challenged !== me.id)) fail('Reto no encontrado.', 404);
+    chId = c.id; about = c.challenger === me.id ? c.challenged : c.challenger;
+  } else if (body.about) {
+    const [p] = await sql`select id from players where id = ${checkId(String(body.about))}`;
+    if (!p || p.id === me.id) fail('Jugador no encontrado.', 404);
+    about = p.id;
+  }
+  const [{ n }] = await sql`select count(*)::int as n from club_reports where reporter = ${me.id} and created_at > now() - interval '1 day'`;
+  if (n >= 5) fail('Ya has enviado varios avisos hoy. Si es urgente, escribe al club por WhatsApp.');
+  await sql`insert into club_reports (match_id, challenge_id, reporter, about, body) values (${matchId}, ${chId}, ${me.id}, ${about}, ${text})`;
+  return { ok: true };
+});
+on('POST', 'admin/report/:id/resolve', async ({ req, params }) => {
+  await auth(req, { admin: true });
+  await db()`update club_reports set resolved = true where id = ${checkNum(params[0])}`;
+  return { ok: true };
+});
+on('GET', 'admin/chat/:id', async ({ req, params }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const [c] = await sql`select c.id, c.play_at::text as play_at, a.full_name as n1, b.full_name as n2, c.challenger
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged where c.id = ${checkNum(params[0])}`;
+  if (!c) fail('Reto no encontrado.', 404);
+  const msgs = await sql`select h.id, h.body, h.created_at, p.full_name as who from chat h left join players p on p.id = h.sender
+    where h.challenge_id = ${c.id} order by h.id limit 500`;
+  return { challenge: { id: Number(c.id), play_at: c.play_at, n1: c.n1, n2: c.n2 },
+    messages: msgs.map((m) => ({ id: Number(m.id), who: m.who, body: m.body, at: m.created_at })) };
+});
+
+on('POST', 'match/:id/confirm', async ({ req, params, out }) => {
+  const me = await auth(req);
+  await confirmAs(db(), checkNum(params[0]), me, out);
+  return { ok: true };
+});
+async function confirmAs(sql, id, me, out) {
+  await sql.begin(async (tx) => {
+    const [m] = await tx`select * from matches where id = ${id} for update`;
+    if (!m || (me && m.p1 !== me.id && m.p2 !== me.id)) fail('Partido no encontrado.', 404);
+    if (m.status !== 'pending') fail(m.status === 'confirmed' ? 'Este resultado ya está confirmado.' : 'Este resultado ya no se puede confirmar.');
+    if (me && m.reported_by === me.id) fail('Lo tiene que confirmar tu rival.');
+    await confirmMatch(tx, m, out);
+  });
+}
+/** Confirma un partido (dentro de una transacción): niveles, puntos, cuadro, tablón y emails. */
+async function confirmMatch(tx, m, out) {
+  const before = posMap(await standings(tx));
+  await tx`update matches set status = 'confirmed', confirmed_at = now(), token = null where id = ${m.id}`;
+  if (m.challenge_id) await tx`update challenges set status = 'done', updated_at = now() where id = ${m.challenge_id}`;
+  if (m.master_id) await advance(tx, m.master_id, m.winner);
+  await recompute(tx);
+  await afterConfirm(tx, m.id, before, out, { walkover: !!m.walkover });
+}
+async function afterConfirm(tx, matchId, before, out, { walkover }) {
+  const [m] = await tx`select * from matches where id = ${matchId}`;
+  const st = await standings(tx);
+  const after = posMap(st);
+  const P = await playersById(tx, [m.p1, m.p2]);
+  const wIs1 = m.winner === m.p1;
+  const W = P[m.winner], L = P[wIs1 ? m.p2 : m.p1];
+  const wd = Number(wIs1 ? m.p1_after - m.p1_before : m.p2_after - m.p2_before);
+  const ld = Number(wIs1 ? m.p2_after - m.p2_before : m.p1_after - m.p1_before);
+  const wp = wIs1 ? m.p1_pts : m.p2_pts;
+  const lp = wIs1 ? m.p2_pts : m.p1_pts;
+  let tier = null;
+  if (m.master_id) { const [n] = await tx`select tier from masters where id = ${m.master_id}`; tier = n?.tier; }
+  await tx`insert into feed (kind, actor, target, data) values (${walkover ? 'walkover' : 'result'}, ${W.id}, ${L.id},
+    ${tx.json({ match: Number(m.id), score: R.fmtSets(m.sets, !wIs1), delta: wd, pts: m.master_id ? null : wp, tier })})`;
+  for (const [p, won, d, pts] of [[W, true, wd, wp], [L, false, ld, lp]]) {
+    if (!wants(p, 'results')) continue;
+    const rival = p.id === W.id ? L : W;
+    const pos = after[p.id];
+    const subj = walkover
+      ? (won ? `${firstName(rival.full_name)} no puede jugar: ganas 6-0 6-0` : `Partido perdido 6-0 6-0 contra ${firstName(rival.full_name)}`)
+      : `${won ? 'Victoria' : 'Derrota'} contra ${firstName(rival.full_name)}: resultado confirmado`;
+    out.push(() => mail(p.email, subj, {
+      lines: walkover
+        ? [won ? `<b>${esc(rival.full_name)}</b> ha cancelado con menos de ${LATE_CANCEL_H} horas, así que el partido cuenta como victoria tuya 6-0 6-0.`
+               : `Has cancelado con menos de ${LATE_CANCEL_H} horas, así que el partido cuenta como derrota 6-0 6-0.`]
+        : [`${won ? 'Has ganado' : 'Has perdido'} <b>${esc(R.fmtSets(m.sets, p.id !== m.p1))}</b> contra <b>${esc(rival.full_name)}</b>.`],
+      highlight: { big: `Nivel ${Math.round(Number(P[p.id].level))} (${signed(d)})${m.master_id ? '' : ` · +${pts || 0} pts`}`,
+        small: pos ? `Vas ${ord(pos)} en la clasificación.` : (m.master_id ? 'Partido de los Másters.' : `Te faltan ${Math.max(0, st.S.min_matches - ([...st.others].find((r) => r.id === p.id)?.pj ?? 0))} partidos para clasificarte.`) },
+      buttons: [{ label: 'Ver la clasificación', url: appUrl('') }],
+    }));
+  }
+  // Avisos de «has bajado de puesto» (como mucho uno al día)
+  const today = madridToday();
+  const dropped = Object.keys(before).filter((id) => after[id] && after[id] > before[id] && id !== m.p1 && id !== m.p2);
+  if (dropped.length) {
+    const DP = await playersById(tx, dropped);
+    for (const id of dropped) {
+      const p = DP[id];
+      if (!p || !p.active || !wants(p, 'drop') || String(p.last_drop_mail) === today) continue;
+      await tx`update players set last_drop_mail = ${today} where id = ${id}`;
+      out.push(() => mail(p.email, `Has bajado al ${ord(after[id])} puesto`, {
+        lines: [`<b>${esc(W.full_name)}</b> ha ganado a ${esc(L.full_name)} y la clasificación se ha movido.`, `Ahora vas <b>${ord(after[id])}</b> (antes ${ord(before[id])}).`],
+        buttons: [{ label: 'Retar a alguien', url: appUrl('') }],
+      }));
+    }
+  }
+}
+
+on('POST', 'match/:id/dispute', async ({ req, params, body, out }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [m] = await sql`select * from matches where id = ${id}`;
+  if (!m || (m.p1 !== me.id && m.p2 !== me.id)) fail('Partido no encontrado.', 404);
+  if (m.status !== 'pending') fail('Este resultado ya no se puede discutir. Habla con el club.');
+  if (m.reported_by === me.id) fail('Si te has equivocado, borra el resultado y ponlo otra vez.');
+  await sql`update matches set status = 'disputed', token = null where id = ${id}`;
+  const note = String(body.note || '').trim().slice(0, 300);
+  const P = await playersById(sql, [m.p1, m.p2]);
+  const admins = await sql`select email from players where is_admin and active`;
+  for (const a of admins) out.push(() => mail(a.email, `Resultado en disputa: ${P[m.p1].full_name} vs ${P[m.p2].full_name}`, {
+    lines: [`<b>${esc(P[m.reported_by].full_name)}</b> puso ${esc(R.fmtSets(m.sets))} (marcador de ${esc(P[m.p1].full_name)} primero), y <b>${esc(me.full_name)}</b> no está de acuerdo.`,
+      note ? `Su comentario: «${esc(note)}»` : ''].filter(Boolean),
+    buttons: [{ label: 'Resolver en el panel', url: appUrl('admin') }],
+  }));
+  const rep = P[m.reported_by];
+  out.push(() => mail(rep.email, `${firstName(me.full_name)} no está de acuerdo con el resultado`, {
+    lines: [`<b>${esc(me.full_name)}</b> no está de acuerdo con el resultado que pusiste. El club lo revisará y os dirá algo.`],
+  }));
+  return { ok: true };
+});
+
+on('POST', 'match/:id/withdraw', async ({ req, params }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [m] = await sql`select * from matches where id = ${id}`;
+  if (!m || m.reported_by !== me.id || m.status !== 'pending') fail('Este resultado ya no se puede borrar.');
+  await sql`delete from matches where id = ${id}`;
+  return { ok: true };
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   Másters
+   ════════════════════════════════════════════════════════════════════ */
+async function masterRounds(sql) {
+  const rows = await sql`select tier, max(round)::int as r from masters group by tier`;
+  return Object.fromEntries(rows.map((x) => [x.tier, x.r]));
+}
+/** Pasa al ganador de un nodo a la siguiente ronda. */
+async function advance(tx, nodeId, winner) {
+  const [n] = await tx`update masters set winner = ${winner} where id = ${nodeId} returning *`;
+  const [{ r }] = await tx`select max(round)::int as r from masters where tier = ${n.tier}`;
+  if (n.round >= r) return;
+  const seed = winner === n.p1 ? n.seed1 : n.seed2;
+  if (n.slot % 2 === 0) await tx`update masters set p1 = ${winner}, seed1 = ${seed} where tier = ${n.tier} and round = ${n.round + 1} and slot = ${Math.floor(n.slot / 2)}`;
+  else await tx`update masters set p2 = ${winner}, seed2 = ${seed} where tier = ${n.tier} and round = ${n.round + 1} and slot = ${Math.floor(n.slot / 2)}`;
+}
+/** Deshace el avance de un nodo (si la siguiente ronda aún no se ha jugado). */
+async function unadvance(tx, n) {
+  const [{ r }] = await tx`select max(round)::int as r from masters where tier = ${n.tier}`;
+  if (n.round < r) {
+    const [parent] = await tx`select * from masters where tier = ${n.tier} and round = ${n.round + 1} and slot = ${Math.floor(n.slot / 2)}`;
+    if (parent.winner) fail('La siguiente ronda ya se ha jugado: no se puede cambiar este partido.');
+    const [pm] = await tx`select 1 from matches where master_id = ${parent.id} and status in ('pending','confirmed','disputed')`;
+    if (pm) fail('La siguiente ronda ya tiene resultado: no se puede cambiar este partido.');
+    if (n.slot % 2 === 0) await tx`update masters set p1 = null, seed1 = null where id = ${parent.id}`;
+    else await tx`update masters set p2 = null, seed2 = null where id = ${parent.id}`;
+  }
+  await tx`update masters set winner = null where id = ${n.id}`;
+}
+
+on('GET', 'masters', async ({ req }) => {
+  await auth(req);
+  const sql = db();
+  const S = await season(sql);
+  const nodes = await sql`select n.*, a.full_name as n1, b.full_name as n2, m.sets, m.p1 as mp1
+    from masters n left join players a on a.id = n.p1 left join players b on b.id = n.p2
+    left join lateral (select * from matches mm where mm.master_id = n.id and mm.status = 'confirmed' order by mm.id desc limit 1) m on true
+    order by n.tier, n.round, n.slot`;
+  const rounds = await masterRounds(sql);
+  const tiers = R.TIERS.filter(([t]) => rounds[t]).map(([t, name]) => {
+    const list = nodes.filter((n) => n.tier === t);
+    const final = list.find((n) => n.round === rounds[t]);
+    return {
+      tier: t, name,
+      champion: final?.winner ? (final.winner === final.p1 ? final.n1 : final.n2) : null,
+      rounds: Array.from({ length: rounds[t] }, (_, i) => ({
+        name: R.roundName(i + 1, rounds[t]),
+        matches: list.filter((n) => n.round === i + 1).map((n) => ({
+          id: Number(n.id), p1: n.p1 ? { id: n.p1, name: n.n1, seed: n.seed1 } : null, p2: n.p2 ? { id: n.p2, name: n.n2, seed: n.seed2 } : null,
+          winner: n.winner, score: n.sets ? R.fmtSets(n.sets) : null,
+          bye: n.round === 1 && (!n.p1 || !n.p2) && !!n.winner,
+        })),
+      })),
+    };
+  });
+  return { season: seasonView(S), tiers };
+});
+
+on('POST', 'masters/:id/result', async ({ req, params, body, out }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  let created;
+  await sql.begin(async (tx) => {
+    const [n] = await tx`select * from masters where id = ${id} for update`;
+    if (!n || (n.p1 !== me.id && n.p2 !== me.id)) fail('Partido no encontrado.', 404);
+    if (n.winner || !n.p1 || !n.p2) fail('Este partido no está pendiente.');
+    const [ex] = await tx`select id from matches where master_id = ${id} and status in ('pending','confirmed','disputed')`;
+    if (ex) fail('Este partido ya tiene un resultado.');
+    const { sets, winnerIdx } = setsFromMine(body.sets, me.id === n.p1);
+    const [m] = await tx`insert into matches (master_id, p1, p2, sets, winner, reported_by, token, played_on)
+      values (${id}, ${n.p1}, ${n.p2}, ${tx.json(sets)}, ${winnerIdx === 0 ? n.p1 : n.p2}, ${me.id}, ${randomToken()}, ${madridToday()}) returning *`;
+    created = m;
+  });
+  const P = await playersById(sql, [created.p1, created.p2]);
+  out.push(() => resultToConfirmMail(created, me, P[created.p1 === me.id ? created.p2 : created.p1]));
+  return { match: { id: Number(created.id) } };
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   Tablón
+   ════════════════════════════════════════════════════════════════════ */
+/**
+ * Novedades del tablón que te tocan desde la última vez que lo abriste:
+ * publicaciones donde sales, comentarios de otros en esas o en las que has comentado,
+ * y me gusta de otros a las tuyas. Lo que haces tú no cuenta.
+ */
+const boardNews = (sql, uid) => sql`
+  with visto as (select feed_seen_at as t from players where id = ${uid}),
+       mias as (select id from feed where actor = ${uid} or target = ${uid}),
+       comentadas as (select distinct post_id as id from comments where author = ${uid})
+  select (
+      (select count(*) from feed, visto
+         where feed.created_at > visto.t and feed.target = ${uid} and feed.actor is distinct from ${uid})
+    + (select count(*) from comments c, visto
+         where c.created_at > visto.t and c.author is distinct from ${uid}
+           and (c.post_id in (select id from mias) or c.post_id in (select id from comentadas)))
+    + (select count(*) from likes l, visto
+         where l.created_at > visto.t and l.player <> ${uid} and l.post_id in (select id from mias))
+  )::int as n`;
+
+on('POST', 'feed/seen', async ({ req }) => {
+  const uid = sessionUid(req).u;
+  await db()`update players set feed_seen_at = now() where id = ${uid}`;
+  return { ok: true };
+});
+
+/** Agenda: partidos aceptados y jugados entre dos fechas (máx. 2 semanas), para el Tablón. */
+on('GET', 'agenda', async ({ req, url }) => {
+  await auth(req);
+  const from = String(url.searchParams.get('from') || madridToday());
+  const to = String(url.searchParams.get('to') || addDays(from, 6));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from || to > addDays(from, 13)) fail('Fechas no válidas.');
+  const rows = await db()`select c.id, c.play_at::text as play_at, c.status, c.promo, c.challenger, c.challenged,
+      a.full_name as n1, a.photo_v as pv1, a.level as l1, a.injured_until::text as i1,
+      b.full_name as n2, b.photo_v as pv2, b.level as l2, b.injured_until::text as i2,
+      m.status as mstatus, m.sets, m.winner, m.p1 as mp1, m.walkover
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
+    left join lateral (select * from matches mm where mm.challenge_id = c.id and mm.status <> 'annulled' order by mm.id desc limit 1) m on true
+    where c.status in ('accepted', 'done') and a.active and b.active
+      and c.play_at >= ${from}::date and c.play_at < (${to}::date + 1)
+    order by c.play_at, c.id`;
+  return {
+    from, to,
+    matches: rows.map((r) => ({
+      id: Number(r.id), play_at: r.play_at, promo: !!r.promo,
+      p1: { id: r.challenger, full_name: r.n1, photo_v: r.pv1, level: Number(r.l1) },
+      p2: { id: r.challenged, full_name: r.n2, photo_v: r.pv2, level: Number(r.l2) },
+      result: r.mstatus === 'confirmed' ? { sets: (r.sets || []).map(([x, y]) => (r.mp1 === r.challenger ? [x, y] : [y, x])), winner: r.winner, walkover: r.walkover } : null,
+      pending: r.mstatus === 'pending' || r.mstatus === 'disputed',
+    })),
+  };
+});
+
+on('GET', 'feed', async ({ req, url }) => {
+  const uid = sessionUid(req).u;
+  const sql = db();
+  const before = Number(url.searchParams.get('before')) || 9e15;
+  // Publicaciones, comentarios y me gusta en una sola ida y vuelta a la base de datos
+  const [, posts, comments, likes] = await Promise.all([
+    auth(req),
+    sql`select f.*, a.full_name as actor_name, a.photo_v as actor_pv, t.full_name as target_name
+      from feed f left join players a on a.id = f.actor left join players t on t.id = f.target
+      where f.id < ${before} order by f.id desc limit 30`,
+    sql`select c.*, p.full_name as author_name, p.photo_v as author_pv from comments c
+      left join players p on p.id = c.author where c.post_id in (select id from feed where id < ${before} order by id desc limit 30) order by c.id`,
+    sql`select post_id, count(*)::int as n, bool_or(player = ${uid}) as mine
+      from likes where post_id in (select id from feed where id < ${before} order by id desc limit 30) group by post_id`,
+  ]);
+  const likeOf = Object.fromEntries(likes.map((l) => [Number(l.post_id), l]));
+  return {
+    posts: posts.map((p) => ({
+      id: Number(p.id), kind: p.kind, data: p.data, body: p.body, created_at: p.created_at,
+      likes: likeOf[Number(p.id)]?.n || 0, liked: !!likeOf[Number(p.id)]?.mine,
+      actor: p.actor ? { id: p.actor, name: p.actor_name, photo_v: p.actor_pv } : null,
+      target: p.target ? { id: p.target, name: p.target_name } : null,
+      comments: comments.filter((c) => c.post_id === p.id).map((c) => ({ id: Number(c.id), body: c.body, created_at: c.created_at,
+        author: c.author ? { id: c.author, name: c.author_name, photo_v: c.author_pv } : null })),
+    })),
+    more: posts.length === 30,
+  };
+});
+
+on('POST', 'feed/:id/comment', async ({ req, params, body }) => {
+  const me = await auth(req);
+  if (me.muted) fail('El club ha desactivado tus comentarios.');
+  const text = String(body.body || '').trim();
+  if (!text) fail('Escribe algo.');
+  if (text.length > 500) fail('Máximo 500 caracteres.');
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [f] = await sql`select id from feed where id = ${id}`;
+  if (!f) fail('Publicación no encontrada.', 404);
+  const [recent] = await sql`select count(*)::int as n from comments where author = ${me.id} and created_at > now() - interval '1 minute'`;
+  if (recent.n >= 5) fail('Vas muy rápido. Espera un momento.');
+  const [c] = await sql`insert into comments (post_id, author, body) values (${id}, ${me.id}, ${text}) returning id`;
+  return { id: Number(c.id) };
+});
+
+on('POST', 'feed/:id/like', async ({ req, params }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [f] = await sql`select id from feed where id = ${id}`;
+  if (!f) fail('Publicación no encontrada.', 404);
+  const del = await sql`delete from likes where post_id = ${id} and player = ${me.id} returning 1`;
+  if (!del.length) await sql`insert into likes (post_id, player) values (${id}, ${me.id}) on conflict do nothing`;
+  const [{ n }] = await sql`select count(*)::int as n from likes where post_id = ${id}`;
+  return { liked: !del.length, likes: n };
+});
+
+on('GET', 'feed/:id/likes', async ({ req, params }) => {
+  await auth(req);
+  const rows = await db()`select p.id, p.full_name, p.photo_v from likes l join players p on p.id = l.player
+    where l.post_id = ${checkNum(params[0])} and p.active order by l.created_at desc`;
+  return { players: rows };
+});
+
+on('POST', 'comment/:id/delete', async ({ req, params }) => {
+  const me = await auth(req);
+  const sql = db();
+  const id = checkNum(params[0]);
+  const [c] = await sql`select * from comments where id = ${id}`;
+  if (!c) return { ok: true };
+  if (c.author !== me.id && !me.is_admin) fail('Solo puedes borrar tus comentarios.');
+  await sql`delete from comments where id = ${id}`;
+  return { ok: true };
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   Botones de los emails (un toque). GET enseña la pregunta; POST la ejecuta.
+   Así, los programas que abren enlaces de los emails para revisarlos no aceptan nada solos.
+   ════════════════════════════════════════════════════════════════════ */
+function actPage(title, text, { form, link } = {}) {
+  const { html: page } = layout({ title, lines: [text] });
+  const extra = form
+    ? `<form method="post" action="${siteUrl()}/api/act" style="margin:0;text-align:center;padding:0 20px 24px">
+        <input type="hidden" name="t" value="${esc(form.t)}"><input type="hidden" name="a" value="${esc(form.a)}">
+        <button type="submit" style="border:0;cursor:pointer;padding:15px 30px;border-radius:999px;font:700 16px -apple-system,Helvetica,Arial,sans-serif;background:${form.a === 'reject' ? '#12294A' : '#E35B2A'};color:#fff">${esc(form.label)}</button>
+        <div style="margin-top:14px"><a href="${appUrl(form.alt || '')}" style="font:600 14px -apple-system,Helvetica,Arial,sans-serif;color:#546073">Abrir la app</a></div></form>`
+    : `<div style="text-align:center;padding:0 20px 26px"><a href="${link || appUrl('')}" style="display:inline-block;padding:14px 26px;border-radius:999px;font:700 15px -apple-system,Helvetica,Arial,sans-serif;background:#12294A;color:#fff;text-decoration:none">Abrir la app</a></div>`;
+  return html(page.replace(/(<tr><td style="padding:18px 28px 26px)/, `<tr><td>${extra}</td></tr>$1`));
+}
+async function parseAct(sql, t) {
+  const [kind, id, raw] = String(t || '').split('.');
+  if (!['c', 'm'].includes(kind) || !/^\d+$/.test(id || '') || !raw) return null;
+  if (kind === 'c') {
+    const [c] = await sql`${CH_SELECT(sql)} where c.id = ${Number(id)}`;
+    if (!c || !sameStr(c.token, raw)) return null;
+    return { kind, c };
+  }
+  const [m] = await sql`select * from matches where id = ${Number(id)}`;
+  if (!m || !sameStr(m.token, raw)) return null;
+  return { kind, m };
+}
+on('GET', 'act', async ({ url }) => {
+  const sql = db();
+  const t = url.searchParams.get('t'), a = url.searchParams.get('a');
+  const x = await parseAct(sql, t);
+  if (!x) return actPage('Este enlace ya no vale', 'Puede que ya hayas respondido o que haya cambiado la hora. Entra en la app para ver cómo está.');
+  if (x.kind === 'c') {
+    const c = x.c;
+    if (c.status !== 'pending') return actPage('Este reto ya está respondido', 'Entra en la app para ver cómo está.', { link: appUrl('retos') });
+    const who = c.proposed_by === c.challenger ? c.challenger_name : c.challenged_name;
+    if (a === 'accept') return actPage(`¿Aceptas jugar contra ${who}?`, `${cap(fmtWhen(c.play_at))}, en el Almuñécar Tennis Club.`, { form: { t, a, label: 'Sí, acepto', alt: `reto/${c.id}` } });
+    if (a === 'reject') {
+      return actPage(`¿No puedes jugar contra ${who}?`,
+        `${cap(fmtWhen(c.play_at))}. Si prefieres otra hora, abre la app y propón una.`, { form: { t, a, label: 'No puedo jugar', alt: `reto/${c.id}` } });
+    }
+  } else if (a === 'confirm') {
+    const m = x.m;
+    if (m.status !== 'pending') return actPage('Este resultado ya está gestionado', 'Entra en la app para verlo.');
+    const P = await playersById(sql, [m.p1, m.p2]);
+    return actPage('¿Confirmas el resultado?', `${esc(P[m.p1].full_name)} ${esc(R.fmtSets(m.sets))} ${esc(P[m.p2].full_name)} (gana ${esc(P[m.winner].full_name)}).`,
+      { form: { t, a, label: 'Sí, es correcto', alt: 'retos' } });
+  }
+  return actPage('Enlace no válido', 'Entra en la app para continuar.');
+});
+on('POST', 'act', async ({ body, out }) => {
+  const sql = db();
+  const x = await parseAct(sql, body.t);
+  if (!x) return actPage('Este enlace ya no vale', 'Puede que ya hayas respondido o que haya cambiado la hora. Entra en la app para ver cómo está.');
+  try {
+    if (x.kind === 'c' && ['accept', 'reject'].includes(body.a)) {
+      const c = x.c;
+      const actorId = c.proposed_by === c.challenger ? c.challenged : c.challenger;
+      const [actor] = await sql`select * from players where id = ${actorId} and active`;
+      if (!actor) fail('Cuenta no disponible.');
+      const r = await respond(sql, Number(c.id), actor, body.a, {}, out);
+      await flush(out.splice(0));
+      if (r.status === 'accepted') return actPage('¡Partido aceptado!', `${cap(fmtWhen(c.play_at))}.${r.promo ? ' ¡Premio! Pista y bolas gratis: sois de los 5 primeros partidos.' : ''} Os hemos enviado un email a los dos. Recordad reservar pista en el club.`, { link: appUrl('retos') });
+      return actPage('Hecho', 'Hemos avisado a tu rival de que no puedes jugar.', { link: appUrl('') });
+    }
+    if (x.kind === 'm' && body.a === 'confirm') {
+      const m = x.m;
+      const actorId = m.reported_by === m.p1 ? m.p2 : m.p1;
+      const [actor] = await sql`select * from players where id = ${actorId}`;
+      await confirmAs(sql, Number(m.id), actor, out);
+      await flush(out.splice(0));
+      return actPage('Resultado confirmado', 'Los niveles y la clasificación ya están actualizados.', { link: appUrl('') });
+    }
+  } catch (e) {
+    if (e instanceof HttpError) return actPage('No se ha podido hacer', esc(e.message), { link: appUrl('retos') });
+    throw e;
+  }
+  return actPage('Enlace no válido', 'Entra en la app para continuar.');
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   Admin
+   ════════════════════════════════════════════════════════════════════ */
+on('GET', 'admin', async ({ req }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const st = await standings(sql);
+  const rowOf = Object.fromEntries([...st.qualified, ...st.others].map((r) => [r.id, r]));
+  const players = await sql`select id, username, full_name, phone, birth_date, hand, backhand, attrs, start_level, level,
+    is_admin, active, muted, created_at from players order by full_name`;
+  const matches = await sql`select m.*, a.full_name as n1, b.full_name as n2, r.full_name as reporter
+    from matches m join players a on a.id = m.p1 join players b on b.id = m.p2 left join players r on r.id = m.reported_by
+    order by (m.status = 'disputed') desc, (m.status = 'pending') desc, m.id desc limit 150`;
+  // Agenda: retos abiertos y partidos programados de todo el club
+  const agenda = await sql`select c.id, c.status, c.promo, c.play_at::text as play_at, c.proposed_by, c.challenger, c.challenged,
+      a.full_name as n1, b.full_name as n2, a.phone as e1, b.phone as e2, a.level as l1, b.level as l2,
+      (select m.status from matches m where m.challenge_id = c.id and m.status <> 'annulled' order by m.id desc limit 1) as match_status
+    from challenges c join players a on a.id = c.challenger join players b on b.id = c.challenged
+    where c.status in ('pending','accepted') order by c.play_at`;
+  const promo = await sql`select c.id, c.play_at::text as played_on, c.status, a.full_name as n1, b.full_name as n2 from challenges c
+    join players a on a.id = c.challenger join players b on b.id = c.challenged
+    where c.promo and c.status in ('accepted','done') order by c.updated_at, c.id limit ${PROMO_MATCHES}`;
+  let reports = [], lvlFb = {}, act = {};
+  try {
+    for (const a of await sql`select p.id, p.last_seen, (select count(*)::int from player_days d where d.player = p.id and d.day > ${addDays(madridToday(), -14)}::date) as d14,
+        (select count(*)::int from player_days d where d.player = p.id) as dall from players p`)
+      act[a.id] = { last: a.last_seen, d14: a.d14, all: a.dall };
+  } catch (e) {}
+  try {
+    reports = (await sql`select r.id, r.body, r.created_at, r.challenge_id, a.full_name as reporter, b.full_name as about
+      from club_reports r left join players a on a.id = r.reporter left join players b on b.id = r.about where not r.resolved order by r.id desc limit 30`)
+      .map((r) => ({ id: Number(r.id), body: r.body, at: r.created_at, challenge: r.challenge_id ? Number(r.challenge_id) : null, reporter: r.reporter, about: r.about }));
+    for (const f of await sql`select ratee, level_cmp, count(*)::int as n from match_feedback where level_cmp is not null group by ratee, level_cmp`)
+      (lvlFb[f.ratee] ||= { higher: 0, same: 0, lower: 0 })[f.level_cmp] = f.n;
+  } catch (e) {}
+  // Avisos de WhatsApp de las últimas 24 h y fallos de la última semana; fecha de la última copia
+  let wa = { ok: 0, fail: 0, fails: [] }, backupAt = null;
+  try {
+    const [[c]] = await Promise.all([sql`select count(*) filter (where ok)::int as ok, count(*) filter (where not ok)::int as fail from wa_log where at > now() - interval '24 hours'`]);
+    const f = await sql`select w.at, w.template, w.error, p.full_name from wa_log w left join players p on replace(p.phone, '+', '') = w.to_phone
+      where not w.ok and w.at > now() - interval '7 days' order by w.at desc limit 15`;
+    wa = { ok: c.ok, fail: c.fail, fails: f.map((x) => ({ at: x.at, template: x.template, error: x.error, name: x.full_name })) };
+    const [b] = await sql`select last_backup_at from season where id = 1`; backupAt = b && b.last_backup_at;
+  } catch (e) {}
+  return {
+    wa, backupAt, reports,
+    promo: { total: PROMO_MATCHES, matches: promo.map((m) => ({ id: Number(m.id), n1: m.n1, n2: m.n2, played_on: m.played_on })) },
+    agenda: agenda.map((c) => ({ id: Number(c.id), status: c.status, promo: !!c.promo, play_at: c.play_at, n1: c.n1, n2: c.n2, e1: c.e1, e2: c.e2,
+      l1: Number(c.l1), l2: Number(c.l2), waitingFor: c.status === 'pending' ? (c.proposed_by === c.challenger ? c.n2 : c.n1) : null, match_status: c.match_status })),
+    season: seasonView(st.S),
+    players: players.map((p) => ({ ...p, attrs: R.migrateAttrs(p.attrs), level: Number(p.level), start_level: Number(p.start_level), age: R.ageOn(p.birth_date),
+      pj: rowOf[p.id]?.pj ?? 0, pts: rowOf[p.id]?.pts ?? 0, pos: rowOf[p.id]?.pos ?? null, deleted: p.full_name === 'Jugador eliminado', lvlFb: lvlFb[p.id] || null, act: act[p.id] || null })),
+    matches: matches.map((m) => ({ id: Number(m.id), status: m.status, n1: m.n1, n2: m.n2, p1: m.p1, p2: m.p2, sets: m.sets, score: R.fmtSets(m.sets),
+      winner: m.winner, walkover: m.walkover, reporter: m.reporter, played_on: m.played_on, master: !!m.master_id,
+      d1: m.p1_after != null ? Number(m.p1_after - m.p1_before) : null, d2: m.p2_after != null ? Number(m.p2_after - m.p2_before) : null })),
+  };
+});
+
+on('POST', 'admin/player/:id', async ({ req, params, body }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const id = checkId(params[0]);
+  const upd = {};
+  if (typeof body.full_name === 'string') {
+    const n = body.full_name.trim().replace(/\s+/g, ' ');
+    if (n.length < 3 || n.length > 60) fail('Nombre no válido.');
+    upd.full_name = n;
+  }
+  for (const k of ['active', 'muted', 'is_admin']) if (typeof body[k] === 'boolean') upd[k] = body[k];
+  let needRecompute = false;
+  if (body.attrs) {
+    const a = R.checkAttrs(body.attrs);
+    if (!a) fail('Valora cada golpe entre 50 y 99.');
+    upd.attrs = sql.json(a);
+    upd.start_level = R.levelFromAttrs(a);
+    needRecompute = true;
+  }
+  if (body.pin) {
+    if (!validPin(body.pin)) fail('El PIN tiene que tener 4 cifras.');
+    upd.pin_hash = hashPin(body.pin);
+    upd.failed_logins = 0; upd.locked_until = null;
+  }
+  if (!Object.keys(upd).length) return { ok: true };
+  await sql.begin(async (tx) => {
+    await tx`update players set ${tx(upd)}${body.pin ? tx`, session_v = session_v + 1` : tx``} where id = ${id}`;
+    if (upd.active === false) await tx`update challenges set status = 'cancelled', updated_at = now() where status in ('pending','accepted') and (challenger = ${id} or challenged = ${id})`;
+    if (needRecompute) await recompute(tx);
+  });
+  return { ok: true };
+});
+
+on('POST', 'admin/player/:id/delete', async ({ req, params }) => {
+  const me = await auth(req, { admin: true });
+  const id = checkId(params[0]);
+  if (id === me.id) fail('No puedes borrar tu propia cuenta desde aquí.');
+  await anonymize(db(), id);
+  return { ok: true };
+});
+
+on('POST', 'admin/match/:id', async ({ req, params, body, out }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const id = checkNum(params[0]);
+  await sql.begin(async (tx) => {
+    const [m] = await tx`select * from matches where id = ${id} for update`;
+    if (!m) fail('Partido no encontrado.', 404);
+    const node = m.master_id ? (await tx`select * from masters where id = ${m.master_id}`)[0] : null;
+    if (body.action === 'annul') {
+      if (m.status === 'annulled') return;
+      if (node && m.status === 'confirmed') await unadvance(tx, node);
+      await tx`update matches set status = 'annulled', token = null where id = ${id}`;
+      if (m.challenge_id) await tx`update challenges set status = 'cancelled', updated_at = now() where id = ${m.challenge_id}`;
+      await recompute(tx);
+    } else if (body.action === 'set' || body.action === 'confirm') {
+      let sets = m.sets, winner = m.winner;
+      if (body.action === 'set') {
+        const chk = R.checkSets((body.sets || []).map((s) => s.map(Number)));
+        if (!chk.ok) fail(chk.error);
+        sets = body.sets.map((s) => s.map(Number));
+        winner = chk.winner === 0 ? m.p1 : m.p2;
+      }
+      if (m.status === 'confirmed') {
+        if (node && winner !== m.winner) { await unadvance(tx, node); await advance(tx, node.id, winner); }
+        await tx`update matches set sets = ${tx.json(sets)}, winner = ${winner} where id = ${id}`;
+        await recompute(tx);
+      } else {
+        await tx`update matches set sets = ${tx.json(sets)}, winner = ${winner}, status = 'pending' where id = ${id}`;
+        const [fresh] = await tx`select * from matches where id = ${id}`;
+        await confirmMatch(tx, fresh, out);
+      }
+    } else fail('Acción no válida.');
+  });
+  return { ok: true };
+});
+
+on('POST', 'admin/post', async ({ req, body }) => {
+  const me = await auth(req, { admin: true });
+  const text = String(body.body || '').trim();
+  if (!text || text.length > 1000) fail('Escribe el aviso (máximo 1.000 caracteres).');
+  await db()`insert into feed (kind, actor, body) values ('admin', ${me.id}, ${text})`;
+  return { ok: true };
+});
+
+on('POST', 'admin/feed/:id/delete', async ({ req, params }) => {
+  await auth(req, { admin: true });
+  await db()`delete from feed where id = ${checkNum(params[0])}`;
+  return { ok: true };
+});
+
+on('POST', 'admin/season', async ({ req, body }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const upd = {};
+  if (body.name) upd.name = String(body.name).trim().slice(0, 40);
+  for (const k of ['starts_on', 'ends_on', 'masters_end']) if (body[k]) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body[k])) fail('Fecha no válida.');
+    upd[k] = body[k];
+  }
+  if (body.min_matches != null) {
+    const n = Number(body.min_matches);
+    if (!Number.isInteger(n) || n < 1 || n > 20) fail('Mínimo de partidos entre 1 y 20.');
+    upd.min_matches = n;
+  }
+  if (body.phase && ['regular', 'masters', 'closed'].includes(body.phase)) upd.phase = body.phase;
+  if (Object.keys(upd).length) await sql`update season set ${sql(upd)} where id = 1`;
+  const S = await season(sql);
+  if (S.ends_on < S.starts_on) fail('El fin de la fase regular tiene que ser después del inicio.');
+  return { season: seasonView(S) };
+});
+
+on('POST', 'admin/masters/generate', async ({ req, body, out }) => {
+  await auth(req, { admin: true });
+  if (body.confirm !== true) fail('Falta confirmar.');
+  const sql = db();
+  let summary;
+  await sql.begin(async (tx) => {
+    const [ex] = await tx`select 1 from masters limit 1`;
+    if (ex) fail('Los cuadros ya existen. Si quieres rehacerlos, bórralos primero.');
+    const st = await standings(tx);
+    const groups = R.mastersGroups(st.qualified.map((r) => r.id));
+    if (!Object.keys(groups).length) fail('Todavía no hay al menos 2 jugadores clasificados.');
+    summary = {};
+    for (const [tier, ids] of Object.entries(groups)) {
+      const fr = R.firstRound(ids);
+      for (let r = 1; r <= fr.rounds; r++) {
+        const n = fr.size / 2 ** r;
+        for (let s = 0; s < n; s++) {
+          const f = r === 1 ? fr.first[s] : { p1: null, p2: null, seed1: null, seed2: null };
+          await tx`insert into masters (tier, round, slot, p1, p2, seed1, seed2) values (${tier}, ${r}, ${s}, ${f.p1}, ${f.p2}, ${f.seed1}, ${f.seed2})`;
+        }
+      }
+      // byes: pasa directamente quien no tiene rival
+      const byes = await tx`select * from masters where tier = ${tier} and round = 1 and (p1 is null or p2 is null) and not (p1 is null and p2 is null)`;
+      for (const b of byes) await advance(tx, b.id, b.p1 || b.p2);
+      summary[tier] = ids.length;
+    }
+    await tx`update season set phase = 'masters' where id = 1`;
+    const names = R.TIERS.filter(([t]) => summary[t]).map(([t, n]) => `${n} (${summary[t]})`).join(', ');
+    await tx`insert into feed (kind, data, body) values ('masters', ${tx.json(summary)}, ${`¡Cuadros de los Másters listos! ${names}. Mirad vuestro primer partido en la pestaña Partidos.`})`;
+    // El nivel de cada clasificado se recoloca en la banda de su Máster. Nunca baja.
+    const nivel = Object.fromEntries((await tx`select id, level from players`).map((r) => [r.id, Number(r.level)]));
+    const bonos = [];
+    for (const [tier, ids] of Object.entries(groups)) {
+      ids.forEach((pid, i) => {
+        const destino = R.bandLevel(tier, i, ids.length);
+        const sube = Math.max(0, destino - (nivel[pid] ?? destino));
+        bonos.push([pid, String(Math.round(sube * 100) / 100)]);
+      });
+    }
+    if (bonos.length) {
+      await tx`update players set band_bonus = v.b::numeric from (values ${tx(bonos)}) as v(id, b) where players.id = v.id::uuid`;
+      await recompute(tx);
+    }
+    const P = await playersById(tx, Object.values(groups).flat());
+    const rivalOf = {};
+    for (const n of await tx`select p1, p2 from masters where round = 1 and p1 is not null and p2 is not null`) {
+      rivalOf[n.p1] = n.p2; rivalOf[n.p2] = n.p1;
+    }
+    for (const [tier, ids] of Object.entries(groups)) {
+      const tname = R.TIERS.find(([t]) => t === tier)[1];
+      ids.forEach((pid, i) => {
+        const p = P[pid];
+        if (!p || !wants(p, 'results')) return;
+        out.push(() => waDraw(p, tname, P[rivalOf[pid]]));
+        out.push(() => mail(p.email, `Te has clasificado para el ${tname}`, {
+          lines: [`¡Enhorabuena, ${esc(firstName(p.full_name))}! Juegas el <b>${tname}</b> como cabeza de serie nº ${i + 1}.`, 'En la app tienes el cuadro y tu primer rival. Quedad entre vosotros y reservad pista en el club.'],
+          buttons: [{ label: 'Ver el cuadro', url: appUrl('masters') }],
+        }));
+      });
+    }
+  });
+  return { ok: true, summary };
+});
+
+on('POST', 'admin/masters/reset', async ({ req, body }) => {
+  await auth(req, { admin: true });
+  if (body.confirm !== true) fail('Falta confirmar.');
+  const sql = db();
+  await sql.begin(async (tx) => {
+    await tx`delete from matches where master_id is not null`;
+    await tx`delete from masters`;
+    await tx`update season set phase = 'regular' where id = 1`;
+    await recompute(tx);
+  });
+  return { ok: true };
+});
+
+/** Copia completa de la base de datos en JSON (sin PIN cifrados ni códigos de recuperación). */
+on('GET', 'admin/backup', async ({ req }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const tables = ['season', 'players', 'challenges', 'matches', 'masters', 'feed', 'comments', 'likes'];
+  const data = {};
+  for (const t of tables) {
+    try { data[t] = await sql`select * from ${sql(t)}`; } catch (e) { data[t] = []; }
+  }
+  for (const p of data.players) { delete p.pin_hash; delete p.reset_hash; delete p.photo; }
+  await sql`update season set last_backup_at = now() where id = 1`.catch(() => {});
+  return new Response(JSON.stringify({ app: 'ranking-atc', at: new Date().toISOString(), data }, null, 1), {
+    headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="ranking-atc-copia-${madridToday()}.json"` } });
+});
+
+on('GET', 'admin/export', async ({ req, url }) => {
+  await auth(req, { admin: true });
+  const sql = db();
+  const what = url.searchParams.get('what') === 'matches' ? 'matches' : 'players';
+  const csv = (rows) => rows.map((r) => r.map((v) => {
+    const s = v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }).join(',')).join('\n');
+  let rows;
+  if (what === 'players') {
+    const st = await standings(sql);
+    const rowOf = Object.fromEntries([...st.qualified, ...st.others].map((r) => [r.id, r]));
+    const ps = await sql`select * from players order by full_name`;
+    rows = [['usuario', 'nombre', 'móvil', 'nacimiento', 'mano', 'revés', 'nivel_inicial', 'nivel', 'puesto', 'puntos', 'partidos', 'victorias', 'activo', 'alta'],
+      ...ps.map((p) => [p.username, p.full_name, p.phone || '', p.birth_date, p.hand, p.backhand === 'una' ? 'una mano' : 'dos manos', Number(p.start_level), Number(p.level),
+        rowOf[p.id]?.pos ?? '', rowOf[p.id]?.pts ?? 0, rowOf[p.id]?.pj ?? 0, rowOf[p.id]?.won ?? 0, p.active ? 'sí' : 'no', String(p.created_at.toISOString?.() || p.created_at).slice(0, 10)])];
+  } else {
+    const ms = await sql`select m.*, a.full_name as n1, b.full_name as n2, w.full_name as nw from matches m
+      join players a on a.id = m.p1 join players b on b.id = m.p2 join players w on w.id = m.winner order by m.played_on, m.id`;
+    rows = [['id', 'fecha', 'jugador1', 'jugador2', 'marcador', 'ganador', 'estado', 'másters', 'abandono', 'nivel1_antes', 'nivel1_después', 'nivel2_antes', 'nivel2_después', 'puntos1', 'puntos2'],
+      ...ms.map((m) => [m.id, m.played_on, m.n1, m.n2, R.fmtSets(m.sets), m.nw, m.status, m.master_id ? 'sí' : 'no', m.walkover ? 'sí' : 'no',
+        m.p1_before, m.p1_after, m.p2_before, m.p2_after, m.p1_pts, m.p2_pts])];
+  }
+  return new Response('﻿' + csv(rows), { headers: { 'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': `attachment; filename="ranking-atc-${what}-${madridToday()}.csv"`, 'Cache-Control': 'no-store' } });
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   Tareas programadas (las llama cron.mjs cada hora)
+   ════════════════════════════════════════════════════════════════════ */
+export async function runCron() {
+  const sql = db();
+  const out = [];
+  const log = { expired: 0, reminded: 0, dayReminded: 0, autoConfirmed: 0 };
+  // 1. Retos sin respuesta en 3 días → caducan
+  const exp = await sql`update challenges set status = 'expired', updated_at = now()
+    where status = 'pending' and created_at < now() - ${CHALLENGE_DAYS + ' days'}::interval returning *, play_at::text as play_at`;
+  log.expired = exp.length;
+  if (exp.length) {
+    const P = await playersById(sql, exp.flatMap((c) => [c.challenger, c.challenged]));
+    for (const c of exp) {
+      const p = P[c.challenger], o = P[c.challenged];
+      if (p && wants(p, 'challenges')) out.push(() => mail(p.email, `Tu reto a ${firstName(o.full_name)} ha caducado`, {
+        lines: [`Han pasado ${CHALLENGE_DAYS} días sin respuesta y el reto se ha cerrado, sin penalización para nadie.`],
+        buttons: [{ label: 'Retar a alguien', url: appUrl('') }],
+      }));
+    }
+  }
+  // 2. Recordatorio a los 2 días (el reto caduca a los 3)
+  const rem = await sql`update challenges set reminded = true
+    where status = 'pending' and not reminded and updated_at < now() - interval '2 days' returning *, play_at::text as play_at`;
+  log.reminded = rem.length;
+  if (rem.length) {
+    const P = await playersById(sql, rem.flatMap((c) => [c.challenger, c.challenged]));
+    for (const c of rem) {
+      const to = P[c.proposed_by === c.challenger ? c.challenged : c.challenger];
+      const from = P[c.proposed_by];
+      if (to && to.active && wants(to, 'reminders')) {
+        const st = await standings(sql);
+        out.push(() => challengeMail(c, to, from, st, c.counters > 0, true));
+      }
+    }
+  }
+  // 2b. El día antes del partido: recordatorio por WhatsApp (a quien lo haya aceptado).
+  //     Se manda a partir de las 10:00 (hora de Madrid), nunca de madrugada.
+  const hourMadrid = Number(madridNow().slice(11, 13));
+  const soon = hourMadrid < 10 || hourMadrid >= 22 ? [] : await sql`update challenges set day_reminded = true
+    where status = 'accepted' and not day_reminded
+      and play_at::date = ((now() at time zone 'Europe/Madrid')::date + 1)
+    returning *, play_at::text as play_at`;
+  log.dayReminded = soon.length;
+  if (soon.length) {
+    const P = await playersById(sql, soon.flatMap((c) => [c.challenger, c.challenged]));
+    for (const c of soon) {
+      for (const [a, b] of [[c.challenger, c.challenged], [c.challenged, c.challenger]]) {
+        const p = P[a], rival = P[b];
+        if (p && p.active && rival && wants(p, 'reminders')) out.push(() => waReminder(p, rival, c.play_at));
+      }
+    }
+  }
+  // 2c. A quien lleva 7 días sin jugar: WhatsApp con 3 rivales de su nivel y edad (1 por semana, a las 18:00)
+  log.nudged = 0;
+  const S = await season(sql);
+  const today = madridToday();
+  if (hourMadrid === 18 && S.phase === 'regular' && today >= addDays(String(S.starts_on), NUDGE_DAYS) && today <= String(S.ends_on)) {
+    const idle = await sql`select p.*, greatest(p.created_at::date,
+        coalesce((select max(m.played_on) from matches m where m.status <> 'annulled' and (m.p1 = p.id or m.p2 = p.id)), '1970-01-01'),
+        coalesce((select max(c.updated_at)::date from challenges c where c.challenger = p.id or c.challenged = p.id), '1970-01-01')) as last_act
+      from players p where p.active and (p.injured_until is null or p.injured_until < ${today}::date)
+        and (p.last_nudge is null or p.last_nudge <= ${addDays(today, -NUDGE_DAYS)}::date)`;
+    const st = idle.length ? await standings(sql) : null;
+    for (const p of idle) {
+      const last = String(p.last_act).slice(0, 10), days = Math.round((Date.parse(today) - Date.parse(last)) / 864e5);
+      if (days < NUDGE_DAYS || !wants(p, 'reminders')) continue;
+      const rivals = await suggestRivals(sql, p, st);
+      if (!rivals.length) continue;   // sin nadie a quien sugerir, no se manda nada
+      await sql`update players set last_nudge = ${today}::date where id = ${p.id}`;
+      out.push(() => waNudge(p, rivals.map((r) => firstName(r.full_name)))); log.nudged++;
+    }
+  }
+  // 2d. Recalcular puntos y niveles una vez por hora (así un cambio de reglas se aplica a toda la temporada)
+  try { await sql.begin((tx) => recompute(tx)); } catch (e) { console.error('recompute', e); }
+  // 3. Resultados sin confirmar en 48 h → se dan por buenos
+  const pend = await sql`select * from matches where status = 'pending' and created_at < now() - interval '48 hours' order by id`;
+  for (const m of pend) {
+    try {
+      await sql.begin(async (tx) => {
+        const [x] = await tx`select * from matches where id = ${m.id} for update`;
+        if (x.status === 'pending') { await confirmMatch(tx, x, out); log.autoConfirmed++; }
+      });
+    } catch (e) { console.error('auto-confirm', m.id, e); }
+  }
+  await flush(out);
+  return log;
+}

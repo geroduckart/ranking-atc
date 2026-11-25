@@ -371,6 +371,11 @@ on('GET', 'me', async ({ req }) => {
     boardNews(sql, uid),
   ]);
   const locked = await cardLocked(sql, uid);
+  // Actividad: última entrada y un registro por día (solo lo ve el club en su panel)
+  try {
+    await Promise.all([sql`update players set last_seen = now() where id = ${uid}`,
+      sql`insert into player_days (player, day) values (${uid}, ${madridToday()}) on conflict do nothing`]);
+  } catch (e) {}
   return { me: { ...selfView(p), card_locked: locked }, season: seasonView(S), todo: todo.respond + todo.confirm + todo.report + todo.chat, chat: todo.chat, board: board.n };
 });
 function seasonView(S) {
@@ -1535,7 +1540,12 @@ on('GET', 'admin', async ({ req }) => {
   const promo = await sql`select c.id, c.play_at::text as played_on, c.status, a.full_name as n1, b.full_name as n2 from challenges c
     join players a on a.id = c.challenger join players b on b.id = c.challenged
     where c.promo and c.status in ('accepted','done') order by c.updated_at, c.id limit ${PROMO_MATCHES}`;
-  let reports = [], lvlFb = {};
+  let reports = [], lvlFb = {}, act = {};
+  try {
+    for (const a of await sql`select p.id, p.last_seen, (select count(*)::int from player_days d where d.player = p.id and d.day > ${addDays(madridToday(), -14)}::date) as d14,
+        (select count(*)::int from player_days d where d.player = p.id) as dall from players p`)
+      act[a.id] = { last: a.last_seen, d14: a.d14, all: a.dall };
+  } catch (e) {}
   try {
     reports = (await sql`select r.id, r.body, r.created_at, r.challenge_id, a.full_name as reporter, b.full_name as about
       from club_reports r left join players a on a.id = r.reporter left join players b on b.id = r.about where not r.resolved order by r.id desc limit 30`)
@@ -1559,7 +1569,7 @@ on('GET', 'admin', async ({ req }) => {
       l1: Number(c.l1), l2: Number(c.l2), waitingFor: c.status === 'pending' ? (c.proposed_by === c.challenger ? c.n2 : c.n1) : null, match_status: c.match_status })),
     season: seasonView(st.S),
     players: players.map((p) => ({ ...p, attrs: R.migrateAttrs(p.attrs), level: Number(p.level), start_level: Number(p.start_level), age: R.ageOn(p.birth_date),
-      pj: rowOf[p.id]?.pj ?? 0, pts: rowOf[p.id]?.pts ?? 0, pos: rowOf[p.id]?.pos ?? null, deleted: p.full_name === 'Jugador eliminado', lvlFb: lvlFb[p.id] || null })),
+      pj: rowOf[p.id]?.pj ?? 0, pts: rowOf[p.id]?.pts ?? 0, pos: rowOf[p.id]?.pos ?? null, deleted: p.full_name === 'Jugador eliminado', lvlFb: lvlFb[p.id] || null, act: act[p.id] || null })),
     matches: matches.map((m) => ({ id: Number(m.id), status: m.status, n1: m.n1, n2: m.n2, p1: m.p1, p2: m.p2, sets: m.sets, score: R.fmtSets(m.sets),
       winner: m.winner, walkover: m.walkover, reporter: m.reporter, played_on: m.played_on, master: !!m.master_id,
       d1: m.p1_after != null ? Number(m.p1_after - m.p1_before) : null, d2: m.p2_after != null ? Number(m.p2_after - m.p2_before) : null })),

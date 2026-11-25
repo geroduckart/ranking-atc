@@ -43,7 +43,8 @@ create table if not exists players (
   locked_until    timestamptz,
   reset_hash      text,
   reset_expires   timestamptz,
-  created_at      timestamptz not null default now()
+  created_at      timestamptz not null default now(),
+  injured_until date               -- lesionado: no se le puede retar hasta esta fecha (incluida)
 );
 
 -- Retos
@@ -59,6 +60,7 @@ create table if not exists challenges (
                check (status in ('pending','accepted','rejected','expired','cancelled','done')),
   responded_by uuid references players(id) on delete set null,
   walkover     boolean not null default false,
+  promo        boolean not null default false,   -- promoción de estreno: pista y bolas gratis
   token        text,
   reminded     boolean not null default false,
   created_at   timestamptz not null default now(),
@@ -147,3 +149,96 @@ update players set attrs = (attrs - 'saque1' - 'saque2') || jsonb_build_object(
 
 -- Idioma de cada jugador (app y emails): 'es' o 'en'.
 alter table players add column if not exists lang text not null default 'es';
+
+-- WhatsApp: móvil y consentimiento expreso para avisos (los de Marketing exigen opt-in).
+alter table players add column if not exists phone          text;
+alter table players add column if not exists wa_consent     boolean not null default false;
+alter table players add column if not exists wa_consent_at timestamptz;
+alter table players add column if not exists wa_consent_src text;
+
+-- Recordatorio del día antes del partido (para no repetirlo cada hora).
+alter table challenges add column if not exists day_reminded boolean not null default false;
+
+-- El alta ya no pide email: solo usuario, PIN y móvil de WhatsApp.
+alter table players alter column email drop not null;
+create unique index if not exists players_phone_uniq on players (phone) where phone is not null;
+
+-- El nivel se recoloca en la banda de su Máster al publicar los cuadros (nunca baja).
+alter table players add column if not exists band_bonus numeric(5,2) not null default 0;
+
+-- Cómo quiere aparecer cada uno en su tarjeta (si está vacío, se calcula del nombre).
+alter table players add column if not exists card_name text;
+
+-- Cuándo miró cada uno el tablón por última vez (para el aviso del menú).
+alter table players add column if not exists feed_seen_at timestamptz not null default now();
+create table if not exists wa_log (
+  id        bigserial primary key,
+  at        timestamptz not null default now(),
+  to_phone  text,
+  template  text not null,
+  lang      text,
+  ok        boolean not null,
+  error     text
+);
+create index if not exists wa_log_at on wa_log (at desc);
+
+alter table players add column if not exists last_nudge date;
+alter table season  add column if not exists last_backup_at timestamptz;
+-- Ranking ATC · Quién lleva bolas / quién reserva pista + chat de cada partido
+-- Ejecutar en Supabase (SQL Editor) ANTES de subir los archivos nuevos.
+
+-- Lo que pone quien reta: 'balls' = lleva bolas (el otro reserva pista) · 'court' = reserva pista (el otro lleva bolas)
+alter table challenges add column if not exists duty text check (duty in ('balls','court'));
+-- Hasta dónde ha leído cada uno el chat
+alter table challenges add column if not exists seen_a timestamptz;   -- quien reta
+alter table challenges add column if not exists seen_b timestamptz;   -- el retado
+
+create table if not exists chat (
+  id           bigserial primary key,
+  challenge_id bigint not null references challenges(id) on delete cascade,
+  sender       uuid references players(id) on delete set null,
+  body         text not null check (char_length(body) between 1 and 500),
+  created_at   timestamptz not null default now()
+);
+create index if not exists chat_challenge on chat (challenge_id, id);
+alter table chat enable row level security;
+-- Ranking ATC · Posponer un partido (mal tiempo o acuerdo mutuo)
+-- Ejecutar en Supabase (SQL Editor) ANTES de subir los archivos nuevos.
+alter table challenges add column if not exists post_at timestamp;        -- nueva fecha propuesta (hora del club)
+alter table challenges add column if not exists post_by uuid references players(id) on delete set null;
+alter table challenges add column if not exists post_reason text check (post_reason in ('weather','mutual','court'));
+-- Ranking ATC · Valoración rápida después del partido + avisos privados al club
+-- Ejecutar en Supabase (SQL Editor) ANTES de subir los archivos nuevos. Se puede ejecutar varias veces.
+create table if not exists match_feedback (
+  id         bigserial primary key,
+  match_id   bigint not null references matches(id) on delete cascade,
+  rater      uuid references players(id) on delete cascade,
+  ratee      uuid references players(id) on delete cascade,
+  tags       text[] not null default '{}',               -- fair · punctual · vibe · great
+  level_cmp  text check (level_cmp in ('higher','same','lower')),   -- solo lo ve el club
+  created_at timestamptz not null default now(),
+  unique (match_id, rater)
+);
+create index if not exists match_feedback_ratee on match_feedback (ratee);
+alter table match_feedback enable row level security;
+
+create table if not exists club_reports (
+  id           bigserial primary key,
+  match_id     bigint references matches(id) on delete set null,
+  challenge_id bigint references challenges(id) on delete set null,
+  reporter     uuid references players(id) on delete set null,
+  about        uuid references players(id) on delete set null,
+  body         text not null check (char_length(body) between 1 and 1000),
+  resolved     boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+alter table club_reports enable row level security;
+-- Ranking ATC · Actividad de los jugadores (cuándo entran en la app)
+-- Ejecutar en Supabase (SQL Editor) ANTES de subir. Se puede ejecutar varias veces.
+alter table players add column if not exists last_seen timestamptz;
+create table if not exists player_days (
+  player uuid not null references players(id) on delete cascade,
+  day    date not null,
+  primary key (player, day)
+);
+alter table player_days enable row level security;
