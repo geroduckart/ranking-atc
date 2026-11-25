@@ -485,6 +485,9 @@ details.adm summary::-webkit-details-marker{display:none}
 .fbadges b{color:var(--muted);font-weight:700}
 .linkbtn.subtle{font-size:13px;color:var(--muted)}
 .mrow .rate{flex:none;font-size:13px;margin-right:8px;color:var(--orange)}
+.actdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.actdot.green{background:#1F9D6B}.actdot.yellow{background:#E0A526}.actdot.red{background:var(--bad)}
+.actsum .actrow{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:14px;font-weight:700;color:var(--ink)}
 .rpt{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .rpt p{margin:4px 0 0;font-size:14px;color:var(--ink);white-space:pre-wrap}
 .admchat{margin-top:12px;max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
@@ -1424,6 +1427,8 @@ const EN = {/*DICT*/
   "Los niveles y la clasificación ya están actualizados.": "Levels and standings have been updated.",
   "No se ha podido hacer": "That couldn't be done",
   "Abrir la app": "Open the app",
+  "Actividad:": "Activity:",
+  "el club ve cuándo entraste por última vez y cuántos días has entrado, solo para organizar la liga. Los demás jugadores no lo ven.": "the club can see when you last opened the app and on how many days, only to run the league. Other players can't see it.",
   "Desde el día 30, punto extra si ganas a alguien 5 o más niveles por encima.": "From day 30, an extra point if you beat someone 5+ levels above you.",
   "Desde el día 30, punto extra si ganas a alguien que esté 5 niveles o más por encima de ti.": "From day 30, an extra point if you beat someone 5 or more levels above you.",
   "Antes no, porque al principio los niveles son los que cada uno se puso. Tampoco cuenta en los 5 primeros partidos de ninguno de los dos.": "Not before, because early on levels are the ones each player set themselves. It also doesn't count in either player's first 5 matches.",
@@ -3847,6 +3852,7 @@ function screenPrivacy() {
     <p><b>Para qué:</b> para gestionar el ranking del club, enviarte los avisos que elijas y recuperar tu PIN. La base legal es tu consentimiento al registrarte.</p>
     <p><b>Quién lo ve:</b> solo los jugadores registrados ven el ranking, los perfiles y el tablón. Tu móvil no se muestra a nadie; de tu edad solo se ve la franja (Junior, +20, +30…). La edad solo sirve para comprobar que tienes 14 años o más.</p>
     <p><b>Chat del partido:</b> cada partido tiene un chat solo entre los dos jugadores, para quedar (pista, bolas, hora). Los mensajes se guardan y el club puede revisarlos si hay un problema. Respeto siempre: cualquier mal uso supone la baja del ranking.</p>
+    <p><b>Actividad:</b> el club ve cuándo entraste por última vez y cuántos días has entrado, solo para organizar la liga. Los demás jugadores no lo ven.</p>
     <p><b>Proveedores:</b> la app funciona con Netlify (web), Supabase (base de datos, servidores en la UE) y WhatsApp de Meta (avisos), que tratan los datos solo por encargo del club.</p>
     <p><b>Cuánto tiempo:</b> mientras tengas cuenta. Puedes borrarla cuando quieras desde Ajustes; tus partidos se mantienen de forma anónima para no alterar la clasificación de tus rivales.</p>
     <p><b>Tus derechos:</b> puedes pedir acceso, rectificación, supresión, oposición o portabilidad escribiendo a info@almunecartennisclub.com, y reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
@@ -3855,7 +3861,7 @@ function screenPrivacy() {
 }
 
 /* ── Panel del club (admin) ────────────────────────────────────────── */
-let adminTab = 'agenda', adminData = null;
+let adminTab = 'agenda', adminData = null, admSort = 'act';
 async function screenAdmin() {
   if (!S.me?.is_admin) return go('');
   render(`<main class="screen">${spinner()}</main>${nav('perfil')}`);
@@ -3916,8 +3922,27 @@ function paintAdmin() {
           <button class="btn xs navy" data-mact="set" data-id="${m.id}">Guardar marcador</button><button class="btn xs ghost" data-mact="annul" data-id="${m.id}">Anular</button></div></div>` : ''}
     </details>`).join('') : '<div class="empty">Todavía no hay partidos.</div>';
   } else if (adminTab === 'jugadores') {
-    body = `<p class="hint" style="margin:0 4px 10px">${d.players.filter((p) => p.active).length} jugadores activos.</p>` + d.players.filter((p) => !p.deleted).map((p) => `<details class="adm"><summary>${avatar(p)}
-        <span style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.full_name)}</b><br><span class="when">@${esc(p.username)} · Nivel ${lvl(p.level)} · ${p.pj} PJ · ${p.age} años${p.lvlFb && (p.lvlFb.higher + p.lvlFb.lower) >= 3 && Math.max(p.lvlFb.higher, p.lvlFb.lower) > p.lvlFb.same ? ` · <b style="color:var(--orange)">${p.lvlFb.higher > p.lvlFb.lower ? 'nivel bajo?' : 'nivel alto?'}</b>` : ''}${p.is_admin ? ' · Admin' : ''}${!p.active ? ' · desactivado' : ''}${p.muted ? ' · sin comentarios' : ''}</span></span></summary>
+    // Actividad: 🟢 entró en los últimos 3 días · 🟡 hace más · 🔴 nunca (o solo el día que se registró)
+    const ago = (t) => t ? Math.floor((Date.now() - Date.parse(t)) / 864e5) : null;
+    const actOf = (p) => {
+      const a = p.act || {}, n = ago(a.last);
+      if (n === null || (a.all <= 1 && String(a.last).slice(0, 10) === String(p.created_at).slice(0, 10))) return { k: 'red', n, a };
+      return { k: n <= 3 ? 'green' : 'yellow', n, a };
+    };
+    const PL = d.players.filter((p) => !p.deleted && p.active);
+    const cnt = { green: 0, yellow: 0, red: 0 }; PL.forEach((p) => cnt[actOf(p).k]++);
+    const order = { green: 0, yellow: 1, red: 2 };
+    const list = d.players.filter((p) => !p.deleted).slice().sort(admSort === 'act'
+      ? (a, b) => order[actOf(a).k] - order[actOf(b).k] || (b.act?.d14 || 0) - (a.act?.d14 || 0) || (ago(a.act?.last) ?? 1e9) - (ago(b.act?.last) ?? 1e9)
+      : (a, b) => a.full_name.localeCompare(b.full_name));
+    const actLine = (p) => { const x = actOf(p);
+      return `<span class="actdot ${x.k}" aria-hidden="true"></span>${x.n === null ? 'No ha entrado desde que se mide' : `${x.n === 0 ? 'Hoy' : x.n === 1 ? 'Ayer' : `Hace ${x.n} días`} · ${x.a.d14 || 0} ${x.a.d14 === 1 ? 'día' : 'días'} en 2 semanas`}`; };
+    body = `<div class="box actsum"><b>Actividad en la app</b>
+        <div class="actrow"><span><i class="actdot green"></i>${cnt.green} activos</span><span><i class="actdot yellow"></i>${cnt.yellow} flojos</span><span><i class="actdot red"></i>${cnt.red} nunca</span></div>
+        <p class="hint" style="margin:6px 0 0;text-align:left">Activos: entraron en los últimos 3 días. Flojos: hace más. Nunca: no han vuelto a entrar desde que se mide (25 nov) o solo el día que se registraron.</p></div>
+      <div class="chips" style="margin:10px 0" id="asort"><button type="button" class="chip" data-s="act" aria-pressed="${admSort === 'act'}">Por actividad</button><button type="button" class="chip" data-s="name" aria-pressed="${admSort === 'name'}">Por nombre</button></div>
+      <p class="hint" style="margin:0 4px 10px">${PL.length} jugadores activos.</p>` + list.map((p) => `<details class="adm"><summary>${avatar(p)}
+        <span style="flex:1;min-width:0"><b style="font-size:15px">${esc(p.full_name)}</b><br><span class="when">@${esc(p.username)} · Nivel ${lvl(p.level)} · ${p.pj} PJ · ${p.age} años<br>${actLine(p)}${p.lvlFb && (p.lvlFb.higher + p.lvlFb.lower) >= 3 && Math.max(p.lvlFb.higher, p.lvlFb.lower) > p.lvlFb.same ? ` · <b style="color:var(--orange)">${p.lvlFb.higher > p.lvlFb.lower ? 'nivel bajo?' : 'nivel alto?'}</b>` : ''}${p.is_admin ? ' · Admin' : ''}${!p.active ? ' · desactivado' : ''}${p.muted ? ' · sin comentarios' : ''}</span></span></summary>
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px" data-p="${p.id}">
         <div class="when">${esc(p.phone || 'Sin móvil')} · Alta ${fmtWhen(String(p.created_at).slice(0, 10), false)}</div>
         ${p.lvlFb ? `<div class="when" style="color:var(--ink)">Según sus rivales: <b>juega mejor ${p.lvlFb.higher}</b> · parecido ${p.lvlFb.same} · <b>juega peor ${p.lvlFb.lower}</b></div>` : ''}
@@ -3999,6 +4024,7 @@ function paintAdmin() {
         if (!(await confirmBox('¿Cerrar la temporada?', 'Ya no se podrá jugar nada más en esta temporada.', 'Cerrar', true))) return;
         await api('POST', 'admin/season', { phase: 'closed' }); toast('Temporada cerrada.'); return screenAdmin();
       }
+      if (b.dataset.s && b.closest('#asort')) { admSort = b.dataset.s; return paintAdmin(); }
       if (b.dataset.adres) { await busy(b, () => api('POST', `admin/report/${b.dataset.adres}/resolve`)); toast('Marcado como resuelto.', true); return screenAdmin(); }
       if (b.dataset.adchat) {
         const r = await busy(b, () => api('GET', `admin/chat/${b.dataset.adchat}`));
